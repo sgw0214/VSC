@@ -1,2 +1,2 @@
 # git push -u origin master
-print("서귀완")
+완님
