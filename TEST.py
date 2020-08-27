@@ -1,19 +1,23 @@
 # git push -u origin master
 
-#import MySQLdb
+#import mysqldb
 import mysql.connector
 
-def save_record(title, article, date, writer, cnt):
+#def save_record(title, article, date, writer, cnt):
         # Open database connection
-        db = mysql.connector.connect(host="localhost", user="root", passwd="rnldhs0214",db="test_mysql")
-        db.set_character_set('utf8')
+        db = mysql.connector.connect(host="localhost:3306", user="root", passwd="rnldhs0214",db="temp",charset='utf8')
+        #db.set_character_set('utf8')
         # Prepare a cursor object using cursor( method
-        cursor =db.cursor()
+        cur =db.cursor()
         # # Prepare SQL query to INSERT a record into the database
-        sql= "INSERT INTO document(title, article, wdate, writer, vcnt)\ VALUES (%s, %s, %s, %s, %s)" %("'"+title+"'","'"+article+"'","'"+date+"'","'"+writer+"'", "'"+cnt+"'")
+        #sql= "INSERT INTO document(title, article, wdate, writer, vcnt)\ VALUES (%s, %s, %s, %s, %s)" %("'"+title+"'","'"+article+"'","'"+date+"'","'"+writer+"'", "'"+cnt+"'")
+        sql="create table woan("\
+            "title varchar(100),"\
+            "content text,"\
+            "primary key(title))"
         try:
             #Execute the SQL command
-            cursor.execute(sql)
+            cur.execute(sql)
 
             #Commit changes in the database
             db.commit()
