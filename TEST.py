@@ -6,7 +6,7 @@ import pymysql
 
 #def save_record(title, article, date, writer, cnt):
         # Open database connection
-db = pymysql.connect(host="localhost", user="root", passwd="rnldhs0214",db="temp",charset='utf8')
+db = pymysql.connect(host="localhost", user="root", passwd="rnldhs0214",db='temp',charset='utf8')
         #db.set_character_set('utf8')
         # Prepare a cursor object using cursor( method
 cur =db.cursor()
