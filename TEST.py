@@ -27,14 +27,6 @@ con=sqlite3.connect("./data/div.db")
 stock_code=[['005930','066570']
 
 
-#for s in tqdm(stock_code):
-#    temp=get_sise(s,1)
- #   temp.to_sql(con=con,name="div_stock_sise",if_exists="append")
- #   time.sleep(0.5)
-#con.close()
-
-
-#sql="delete from woan1"
 
 '''
 ##table 추가   
