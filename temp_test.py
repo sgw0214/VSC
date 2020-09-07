@@ -13,9 +13,6 @@ import MySQLdb
 import numpy as np
 import urllib
 
-
-#from pip._internal import req
-
 def stock_info(stock_code, try_cnt):
     try:
         url="http://asp1.krx.co.kr/servlet/krx.asp.XMLSiseEng?code={}".format(stock_code)
@@ -31,11 +28,10 @@ def stock_info(stock_code, try_cnt):
         stock_test=stock_test.applymap(lambda x: x.replace(",",""))
         stock_df.insert(0,'Code',stock_code)
         stock_df.insert(0,'day_Date',stock_test['day_Date'])
-        #print(stock_df)
 
         return stock_df
     except HTTPError as e:  
-        logging.warning(e)
+        print(e,stock_code)
         if try_cnt>=3:
             return None
         else:
@@ -50,11 +46,9 @@ def stock_tday(stockItem,try_cnt,mpNum):
         srvalue=list(range(mpNum*10))
         maxPage=source.find_all("table",align="center")
         mp = maxPage[0].find_all("td",class_="pgRR")
-        #mpNum = int(mp[0].a.get('href')[-3:])
-        #mpNum = 2
-        #print('mpNum :',mpNum)                                
+                             
         for page in range(mpNum+1):
-            #print ('page:',str(page) )
+
             url = 'http://finance.naver.com/item/sise_day.nhn?code='+ stockItem +'&page='+ str(page)
             html = urlopen(url)
             source = BeautifulSoup(html.read(), "html.parser")
@@ -63,24 +57,21 @@ def stock_tday(stockItem,try_cnt,mpNum):
                
             if((page % 1) == 0):
                 time.sleep(1.50)
-            #print(len(srlists)-1)
+
             for i in range(len(srlists)-1): 
                 if(srlists[i].span != isCheckNone):
                     srlists[i].td.text
-                    #srvalue=srlists[i].find_all("td",align="center")[0].text, srlists[i].find_all("td",class_="num")[0].text
-                    
                     srvalue[k]=srlists[i].find_all("td",class_="num")[0].text
                     k=k+1
-                    #print(srvalue)
                     
         return srvalue
     except HTTPError as e:  
-        logging.warning(e)
+        print(e,stockItem)
         if try_cnt>=3:
             return None
         else:
-            stock_tday(stockItem,try_cnt=+1)
-
+            stock_tday(stockItem,try_cnt=+1,*mpNum)
+            
 def stock_yday(stockItem,try_cnt,mpNum):
     try:
         url = 'http://finance.naver.com/item/sise_day.nhn?code='+stockItem
@@ -90,9 +81,7 @@ def stock_yday(stockItem,try_cnt,mpNum):
         srvalue=list(range(mpNum*10+1))
         maxPage=source.find_all("table",align="center")
         mp = maxPage[0].find_all("td",class_="pgRR")
-        #mpNum = int(mp[0].a.get('href')[-3:])
-        #mpNum = 2
-                             
+     
         for page in range(mpNum+2):
             url = 'http://finance.naver.com/item/sise_day.nhn?code='+ stockItem +'&page='+ str(page)
             html = urlopen(url)
@@ -108,50 +97,20 @@ def stock_yday(stockItem,try_cnt,mpNum):
                 if(srlists[i].span != isCheckNone):
                     try:
                         srlists[i].td.text
-                       
                         srvalue[k]=srlists[i].find_all("td",class_="num")[0].text
                         k=k+1
                     except IndexError as e:  
-                        #logging.warning(e)
-                        break
+                        print(e,stockItem)
+                        
         del srvalue[0]
         return srvalue
     except HTTPError as e:  
-        #logging.warning(e)
+        print(e,stockItem)
         if try_cnt>=3:
             return None
         else:
-            stock_yday(stockItem,try_cnt=+1)
+            stock_yday(stockItem,try_cnt=+1,*mpNum)
 
-'''  
-def yday_20_mean():
-    day20 = list(range(20))
-
-    for i in day20:
-        day20[i]=int(str(yday_20[i]).replace(',',''))
-    return np.mean(day20)
-
-def tday_20_mean():
-    day20 = list(range(20))
-
-    for i in day20:
-        day20[i]=int(str(tday_20[i]).replace(',',''))
-    return np.mean(day20)
-
-def tday_60_mean():
-    day60 = list(range(60))
-
-    for i in day60:
-        day60[i]=int(str(tday_60[i]).replace(',',''))
-    return np.mean(day60)
-
-def yday_60_mean():
-    day60 = list(range(60))
-
-    for i in day60:
-        day60[i]=int(str(yday_60[i]).replace(',',''))
-    return np.mean(day60)
-'''
 def day_20_mean(yday_20,tday_20):
     yday20 = list(range(20))
     tday20 = list(range(20))
@@ -175,7 +134,6 @@ import io
 from tracemalloc import stop
 sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding = 'utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.detach(), encoding = 'utf-8')
-
 
 df = pd.read_excel('D:\VSC\CODE\상장법인목록.xls',converters={'종목코드':str})
 stock_code=df.iloc[:,1]
@@ -206,68 +164,20 @@ for i in range(len(stock_code)):
         day_20=day_20_mean(yday_20,tday_20)
         day_60=day_60_mean(yday_60,tday_60)
         #print(day_20_mean,day_60_mean)
-        if day_20[1]>day_60[1]:
-            
+        if day_20[1]>=day_60[1] and day_20[1]>=day_60[1]:
+            print(K,stock_info(str(stock_code[i]), 1))
+            engine = create_engine("mysql://root:rnldhks0214@localhost/temp")
+            con = engine.connect()
+            temp=stock_info(str(stock_code[i]),1)
+            temp.to_sql(name='test',con=con,if_exists='append')
+            con.close()
             K=K+1
-            
-            if day_20[0]<day_60[0]:
-                print(K,stock_info(str(stock_code[i]), 1))
-                
-                engine = create_engine("mysql://root:rnldhks0214@localhost/temp")
-                con = engine.connect()
-                temp=stock_info(str(stock_code[i]),1)
-                temp.to_sql(name='test',con=con,if_exists='append')
-                con.close()
-
+        else:
+            print(K,'/대상아님/',stock_info(str(stock_code[i]), 1))
+            K=K+1
+          
     except urllib.error.URLError as e:  
-        logging.warning(e)
-
-
-
-
-'''
-stock_code='034220'
-engine = create_engine("mysql://root:rnldhks0214@localhost/temp")
-con = engine.connect()
-temp=stock_info(stock_code,1)
-print(temp)
-temp.to_sql(name='test',con=con,if_exists='append')
-con.close()
-'''
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-'''
-db = pymysql.connect(host="localhost", user="root", passwd="rnldhks0214",db='temp',charset='utf8')           
-cur =db.cursor()
-print(cur)
-print(db)
-'''
-
-
-
-'''
-temp=get_sise(stock_code,1)
-temp.to_sql(con=cur,name="test", if_exists="append")
-#time.sleep(0.5)
-
-#con.close()
-'''
+        print(e,stock_info(str(stock_code[i]), 1))
+    
+    if K==6:
+        break
