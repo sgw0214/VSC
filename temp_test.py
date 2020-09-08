@@ -1,5 +1,4 @@
-# git push -u origin master
-
+#git push -u origin master
 import pymysql
 import requests
 from urllib.request import urlopen
@@ -12,6 +11,7 @@ from sqlalchemy import create_engine
 import MySQLdb
 import numpy as np
 import urllib
+
 
 def stock_info(stock_code, try_cnt):
     try:
@@ -55,8 +55,8 @@ def stock_tday(stockItem,try_cnt,mpNum):
             srlists=source.find_all("tr")
             isCheckNone = None
                
-            if((page % 1) == 0):
-                time.sleep(1.50)
+            #if((page % 1) == 0):
+                #time.sleep(1.50)
 
             for i in range(len(srlists)-1): 
                 if(srlists[i].span != isCheckNone):
@@ -88,19 +88,19 @@ def stock_yday(stockItem,try_cnt,mpNum):
             source = BeautifulSoup(html.read(), "html.parser")
             srlists=source.find_all("tr")
             isCheckNone = None
-   
-            if((page % 1) == 0):
-                time.sleep(1.50)
+            try:
+            #if((page % 1) == 0):
+                #time.sleep(1.50)
+                
+                for i in range(len(srlists)-1): 
 
-            for i in range(len(srlists)-1): 
+                    if(srlists[i].span != isCheckNone):
 
-                if(srlists[i].span != isCheckNone):
-                    try:
-                        srlists[i].td.text
-                        srvalue[k]=srlists[i].find_all("td",class_="num")[0].text
-                        k=k+1
-                    except IndexError as e:  
-                        print(e,stockItem)
+                            srlists[i].td.text
+                            srvalue[k]=srlists[i].find_all("td",class_="num")[0].text
+                            k=k+1
+            except IndexError as e:  
+                    print(e,stockItem)
                         
         del srvalue[0]
         return srvalue
@@ -132,52 +132,56 @@ def day_60_mean(yday_60,tday_60):
 import sys
 import io
 from tracemalloc import stop
-sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding = 'utf-8')
-sys.stderr = io.TextIOWrapper(sys.stderr.detach(), encoding = 'utf-8')
+
+
+#sys.stdout = io.TextIOWrapper(sys.stdout.detach(), encoding = 'utf-8')
+#sys.stderr = io.TextIOWrapper(sys.stderr.detach(), encoding = 'utf-8')
 
 df = pd.read_excel('D:\VSC\CODE\상장법인목록.xls',converters={'종목코드':str})
 stock_code=df.iloc[:,1]
+
 K=0
-'''
-stock_code='357120'
-K=0
-tday_20=stock_tday(stock_code,1,2)
-tday_60=stock_tday(stock_code,1,6)
-yday_20=stock_yday(stock_code,1,2)
-yday_60=stock_yday(stock_code,1,6)
 
-day_20_mean=day_20_mean(yday_20,tday_20)
-day_60_mean=day_60_mean(yday_60,tday_60)
-
-print(day_20_mean,day_60_mean)
-
-'''
 for i in range(len(stock_code)):
 
-    try:    
-        
-        tday_20=stock_tday(str(stock_code[i]),1,2)
-        tday_60=stock_tday(str(stock_code[i]),1,6)
-        yday_20=stock_yday(str(stock_code[i]),1,2)
-        yday_60=stock_yday(str(stock_code[i]),1,6)
+    try:
+        info=stock_info(str(stock_code[i]), 1)
+        if int(info.iloc[0,7])>1000000: #거래량
+            tday_20=stock_tday(str(stock_code[i]),1,2)
+            tday_60=stock_tday(str(stock_code[i]),1,6)
+            yday_20=stock_yday(str(stock_code[i]),1,2)
+            yday_60=stock_yday(str(stock_code[i]),1,6)
 
-        day_20=day_20_mean(yday_20,tday_20)
-        day_60=day_60_mean(yday_60,tday_60)
-        #print(day_20_mean,day_60_mean)
-        if day_20[1]>=day_60[1] and day_20[1]>=day_60[1]:
-            print(K,stock_info(str(stock_code[i]), 1))
-            engine = create_engine("mysql://root:rnldhks0214@localhost/temp")
-            con = engine.connect()
-            temp=stock_info(str(stock_code[i]),1)
-            temp.to_sql(name='test',con=con,if_exists='append')
-            con.close()
-            K=K+1
+            day_20=day_20_mean(yday_20,tday_20)
+            day_60=day_60_mean(yday_60,tday_60)
+
+            if day_20[1]<int(info.iloc[0,3]): #종가-20일돌파
+                if info.iloc[0,4] != "" and info.iloc[0,16] != "":   # 빈값확인 
+                    if day_20[1]>=day_60[1] and day_20[0]<=day_60[0]: # 20일-60일돌파
+
+                        print(K,'Check',str(stock_code[i]),info.iloc[0,2])
+                        engine = create_engine("mysql://root:rnldhks0214@localhost/temp")
+                        con = engine.connect()
+                        temp=stock_info(str(stock_code[i]),1)
+                        temp.to_sql(name='test',con=con,if_exists='append')
+                        con.close()
+                        
+                        K=K+1
+                    else:
+                        print(K,'/Golden Cross Fail/',str(stock_code[i]),info.iloc[0,2])
+                        K=K+1
+                else:
+                    print(K,'/None Value/',str(stock_code[i]),info.iloc[0,2])
+                    K=K+1
+                
+            else:
+                print(K,'/Under 20day Line/',str(stock_code[i]),info.iloc[0,2])
+                K=K+1
         else:
-            print(K,'/대상아님/',stock_info(str(stock_code[i]), 1))
+            print(K,'/Under Tran.Vol/',str(stock_code[i]),info.iloc[0,2])
             K=K+1
-          
-    except urllib.error.URLError as e:  
-        print(e,stock_info(str(stock_code[i]), 1))
-    
-    if K==6:
-        break
+        #break
+    except AttributeError or TypeError or urllib.error.URLError as e:   # as e:  
+        #print(e,stock_info(str(stock_code[i]), 1),info.iloc[0,2])
+        print('Error',str(stock_code[i]))
+
