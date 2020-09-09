@@ -155,7 +155,7 @@ for i in range(len(stock_code)):
             day_20=day_20_mean(yday_20,tday_20)
             day_60=day_60_mean(yday_60,tday_60)
 
-            if day_20[1]<int(info.iloc[0,3]): #종가-20일돌파
+            if day_20[1]>int(info.iloc[0,3]): #종가-20일돌파
                 if info.iloc[0,4] != "" and info.iloc[0,16] != "":   # 빈값확인 
                     if day_20[1]>=day_60[1] and day_20[0]<=day_60[0]: # 20일-60일돌파
 
