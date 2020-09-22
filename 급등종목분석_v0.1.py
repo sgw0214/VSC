@@ -291,7 +291,7 @@ for i in range(len(stock_code)):
     try:
         info=stock_info(str(stock_code[i]), 1)
         tday_60=stock_tday(str(stock_code[i]),1,6)
-        if tday_60[59]!=59:
+        if tday_60[59]!=59: #60일선없으면제외
             tday_20=stock_tday(str(stock_code[i]),1,2)
             yday_20=stock_yday(str(stock_code[i]),1,2)
             yday_60=stock_yday(str(stock_code[i]),1,6)
@@ -303,13 +303,13 @@ for i in range(len(stock_code)):
             #day_20=day_20_mean(yday_20,tday_20)
             day_60=day_60_mean(yday_60,tday_60)
 
-            if day_past_1_17<day_60[1]*1.05 and day_past_1_17>day_60[1]*0.95:
+            if day_past_1_17<day_60[1]*1.05 and day_past_1_17>day_60[1]*0.95: #60일선과 17일선 근접
  
-                if day_past_2_17<day_past_1_17 and day_past_2_17<day_past_3_17 :
+                if day_past_2_17<day_past_1_17 and day_past_2_17<day_past_3_17: #17일선 상승방향 전환
                     print(day_past_3_17,day_past_2_17,day_past_1_17 )
                     fin=stock_finance(str(stock_code[i]))
-                    if fin.iloc[5,4]>10 :  
-                        if ((int(info.iloc[0,3])-int(info.iloc[0,6]))/int(info.iloc[0,6]))<0.05:
+                    if fin.iloc[5,4]>10 : #영업이익 10억이상
+                        if ((int(info.iloc[0,3])-int(info.iloc[0,6]))/int(info.iloc[0,6]))<0.05: #급등종목제한
 
                             print(K,'Check',str(stock_code[i]),info.iloc[0,2])
                             #print(stock_summary(str(stock_code[i])))
