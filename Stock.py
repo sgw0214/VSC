@@ -60,6 +60,7 @@ for page in range(0,int(maxpage)-1):
     
 title.to_excel("E:\VSC\CODE\stock.xlsx",encoding='utf8')
 title.to_csv("E:\VSC\CODE\stock.csv")
+ 
 
 print(time.time()-start)
 
