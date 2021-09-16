@@ -55,7 +55,7 @@ for page in range(0,int(maxpage)-1):
         # [str(titlelist[i]).find("code=")+5:str(titlelist[i]).find(">")-1]
         print(title)
 
-    break
+
     k=k+1
     
 title.to_excel("E:\VSC\CODE\stock.xlsx",encoding='utf8')
