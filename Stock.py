@@ -89,11 +89,11 @@ Info()
 GC()
 
 
-# read_info=pd.read_csv("E:\VSC\CODE\stock.csv")
+read_info=pd.read_csv("E:\VSC\CODE\stock.csv")
 read_info=Info().merge(GC(),left_on='종목', right_on='종목',how='left')
-print(read_info)
 read_info.to_excel("E:\VSC\CODE\stock.xlsx",encoding='utf8')
 read_info.to_csv("E:\VSC\CODE\stock.csv")
+print(GC())
 search('율촌화학')
 
 
