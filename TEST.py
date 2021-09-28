@@ -1,6 +1,7 @@
 #git push -u origin master
 
 from os import kill
+from sched import scheduler
 from pandas.core.frame import DataFrame
 import requests
 from urllib.request import urlopen
@@ -16,7 +17,7 @@ from openpyxl import load_workbook
 from openpyxl import Workbook
 import math
 import smtplib
-import sched
+import scheduler
 import time
 import smtplib
 from email.mime.text import MIMEText
@@ -96,14 +97,15 @@ def stock_an():
 
 # stock_an()
 stock_an().to_csv("E:\VSC\CODE\stock_an.csv")
-
-
-
-
-
-sched.every().day.at("22:06").do(stock_an)
-# while True:
-#     schedule.run_pending()
-#     time.sleep(1)
-
 print(time.time()-start)
+
+
+
+
+scheduler.every().day.at("22:06").do(stock_an)
+while True:
+    scheduler.run_pending()
+    time.sleep(1)
+
+
+
