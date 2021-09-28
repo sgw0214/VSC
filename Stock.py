@@ -85,6 +85,8 @@ def search(stock):
     search=search_info[search]
     print(search)
 
+
+
 Info()
 GC()
 
@@ -95,6 +97,8 @@ read_info.to_excel("E:\VSC\CODE\stock.xlsx",encoding='utf8')
 read_info.to_csv("E:\VSC\CODE\stock.csv")
 print(GC())
 search('율촌화학')
+
+
 
 
 
