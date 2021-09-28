@@ -16,7 +16,7 @@ from openpyxl import load_workbook
 from openpyxl import Workbook
 import math
 import smtplib
-import schedule
+import sched
 import time
 import smtplib
 from email.mime.text import MIMEText
@@ -101,9 +101,9 @@ stock_an().to_csv("E:\VSC\CODE\stock_an.csv")
 
 
 
-schedule.every().day.at("22:59").do(stock_an)
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+sched.every().day.at("22:06").do(stock_an)
+# while True:
+#     schedule.run_pending()
+#     time.sleep(1)
 
 print(time.time()-start)
