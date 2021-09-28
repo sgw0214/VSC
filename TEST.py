@@ -17,11 +17,12 @@ from openpyxl import load_workbook
 from openpyxl import Workbook
 import math
 import smtplib
-import schedule
+from apscheduler.schedulers.background import BackgroundScheduler
 import time
 import smtplib
 from email.mime.text import MIMEText
 
+sched = BackgroundScheduler()
 
 
 start = time.time()
@@ -101,10 +102,11 @@ stock_an().to_csv("E:\VSC\CODE\stock_an.csv")
 print(time.time()-start)
 
 
-schedule.every().day.at("07:32").do(stock_an) 
+sched.scheduled_job('cron', hour='08', minute='11', id='test_2')
+sched.start()
 
-while True: 
-    schedule.run_pending() 
+
+while True:
     time.sleep(1)
 
 
