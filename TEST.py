@@ -102,7 +102,7 @@ print(time.time()-start)
 
 
 
-scheduler.every().day.at("22:06").do(stock_an)
+scheduler.every().day.at("22:30").do(stock_an)
 while True:
     scheduler.run_pending()
     time.sleep(1)
