@@ -102,7 +102,7 @@ stock_an().to_csv("E:\VSC\CODE\stock_an.csv")
 print(time.time()-start)
 
 
-sched.scheduled_job('cron', hour='08', minute='11', id='test_2')
+sched.stock_an('cron', hour='08', minute='16', id='test_2')
 sched.start()
 
 
