@@ -92,8 +92,9 @@ def stock_an():
     s.starttls()
     s.login('sgw0214@gmail.com', 'thdfcvhemyjyxfik')
     msg = MIMEText(stock_an_html,'html')
-    msg['Subject'] = '제목 : 메일 보내기 테스트입니다.'
+    msg['Subject'] = '종목분석'
     s.sendmail("sgw0214@gmail.com", "sgw0214@gmail.com", msg.as_string())
+    s.sendmail("sgw0214@gmail.com", "sgw0214@lgdisplay.com", msg.as_string())
     s.quit()
     return stock_an
         
@@ -103,23 +104,4 @@ stock_an().to_csv("E:\VSC\CODE\stock_an.csv")
 print(time.time()-start)
 
 
-sched.scheduled_job(stock_an,'cron', hour='08', minute='28', id='test_2')
-sched.start()
 
-
-
-
-
-import sched, time
-s = sched.scheduler(time.time, time.sleep)
-def print_time(a='default'):
-    print("From print_time", time.time(), a)
-
-def print_some_times():
-    print(time.time())
-    s.enter(10, 1, print_time)
-    s.enter(5, 2, print_time, argument=('positional',))
-    s.enter(5, 1, print_time, kwargs={'a': 'keyword'})
-    s.run()
-    print(time.time())
-print_some_times()
