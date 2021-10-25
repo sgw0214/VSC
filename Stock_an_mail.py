@@ -297,13 +297,14 @@ def Summary():
             Summary.loc[k,['일자']]=datetime.date.strftime(date+pd.DateOffset(days=-k),'%Y.%m.%d')
 
     m=0
-    for k in range(len(Summary['일자'])):
-        # print(date_WTI[m].text.strip(),Summary['일자'].iloc[k])
-        if date_WTI[m].text.strip()== Summary['일자'].iloc[k]:
-            Summary.loc[k,['WTI']]=WTI[m*3].text.strip()+'/'+WTI[m*3+2].text.strip()
-            m=m+1  
-        else:
-            pass
+    for m in range(10):
+        for k in range(len(Summary['일자'])):
+            # print(date_WTI[m].text.strip(),len(Summary['일자'].iloc[k]))
+            if date_WTI[m].text.strip()== Summary['일자'].iloc[k]:
+                Summary.loc[k,['WTI']]=WTI[m*3].text.strip()+'/'+WTI[m*3+2].text.strip()
+                # print(Summary.loc[k,['WTI']])
+            else:
+                pass
 
 
 
@@ -315,18 +316,19 @@ def Summary():
     USD=src1.find_all(class_="num")
 
     m=0
-    for k in range(len(Summary['일자'])):
-        if date_USD[m].text.strip()== Summary['일자'].iloc[k]:
+    for m in range(10):
+        for k in range(len(Summary['일자'])):
+            if date_USD[m].text.strip()== Summary['일자'].iloc[k]:
+                # print(m,k,date_USD[m].text.strip(),Summary['일자'].iloc[k],len(Summary['일자']))
+                if str(USD[m*2+1])[str(USD[m*2+1]).find("alt=")+5:str(USD[m*2+1]).find("alt=")+7]=="하락":
+                    Summary.loc[k,['USD']]=USD[m*2].text.strip()+'/-'+USD[m*2+1].text.strip()
 
-            if str(USD[m*2+1])[str(USD[m*2+1]).find("alt=")+5:str(USD[m*2+1]).find("alt=")+7]=="하락":
-                Summary.loc[k,['USD']]=USD[m*2].text.strip()+'/-'+USD[m*2+1].text.strip()
-                m=m+1
+                else:
+                    Summary.loc[k,['USD']]=USD[m*2].text.strip()+'/'+USD[m*2+1].text.strip()
+
+
             else:
-                Summary.loc[k,['USD']]=USD[m*2].text.strip()+'/'+USD[m*2+1].text.strip()
-                m=m+1
-
-        else:
-            pass
+                pass
 
 
     ######    미국채(10year)    ####
@@ -363,13 +365,13 @@ def Summary():
         if m+1!=11:
             # print(date_DJI[m+1].text.strip(),Summary['일자'].iloc[k])
             if date_DJI[m+1].text.strip()== Summary['일자'].iloc[k]:
-
-                if str(DJI_UPDW[m+2])[str(DJI_UPDW[m+2]).find("=")+2:str(DJI_UPDW[m+2]).find("=")+10]=="point_dn":
-                    Summary.loc[k-1,['다우']]=DJI[m+1].text+'/+'+DJI_delta[m+1].text.strip()
+                # print('dji',str(DJI_UPDW[m+3])[str(DJI_UPDW[m+3]).find("=")+2:str(DJI_UPDW[m+3]).find("=")+10])
+                if str(DJI_UPDW[m+3])[str(DJI_UPDW[m+3]).find("=")+2:str(DJI_UPDW[m+3]).find("=")+10]=="point_dn":
+                    Summary.loc[k-1,['다우']]=DJI[m+1].text+'/-'+DJI_delta[m+1].text.strip()
                     # print(Summary.loc[k-1,['다우']],DJI[m+1].text+'/-'+DJI_delta[m+1].text.strip())
                     m=m+1
                 else:
-                    Summary.loc[k-1,['다우']]=DJI[m+1].text+'/-'+DJI_delta[m+1].text.strip()
+                    Summary.loc[k-1,['다우']]=DJI[m+1].text+'/'+DJI_delta[m+1].text.strip()
                     # print(Summary.loc[k-1,['다우']],DJI[m+1].text+'/'+DJI_delta[m+1].text.strip())
                     m=m+1
 
@@ -395,11 +397,12 @@ def Summary():
     for k in range(len(Summary['일자'])):
         if m+1!=11:
             if date_NAS[m+1].text.strip()== Summary['일자'].iloc[k]:
-                if str(NAS_UPDW[m+2])[str(NAS_UPDW[m+2]).find("=")+2:str(NAS_UPDW[m+2]).find("=")+10]=="point_dn":
-                    Summary.loc[k-1,['나스닥']]=NAS[m+1].text+'/+'+NAS_delta[m+1].text.strip()
+                # print('nas',str(NAS_UPDW[m+3])[str(NAS_UPDW[m+3]).find("=")+2:str(NAS_UPDW[m+3]).find("=")+10])
+                if str(NAS_UPDW[m+3])[str(NAS_UPDW[m+3]).find("=")+2:str(NAS_UPDW[m+3]).find("=")+10]=="point_dn":
+                    Summary.loc[k-1,['나스닥']]=NAS[m+1].text+'/-'+NAS_delta[m+1].text.strip()
                     m=m+1
                 else:
-                    Summary.loc[k-1,['나스닥']]=NAS[m+1].text+'/-'+NAS_delta[m+1].text.strip()
+                    Summary.loc[k-1,['나스닥']]=NAS[m+1].text+'/'+NAS_delta[m+1].text.strip()
                     m=m+1
 
             else:
@@ -423,11 +426,12 @@ def Summary():
     for k in range(len(Summary['일자'])):
         if m+1!=11:
             if date_SNP[m+1].text.strip()== Summary['일자'].iloc[k]:
-                if str(SNP_UPDW[m+2])[str(SNP_UPDW[m+2]).find("=")+2:str(SNP_UPDW[m+2]).find("=")+10]=="point_dn":
-                    Summary.loc[k-1,['S&P']]=SNP[m+1].text+'/+'+SNP_delta[m+1].text.strip()
+                # print(str(SNP_UPDW[m+3])[str(SNP_UPDW[m+3]).find("=")+2:str(SNP_UPDW[m+3]).find("=")+10])
+                if str(SNP_UPDW[m+3])[str(SNP_UPDW[m+3]).find("=")+2:str(SNP_UPDW[m+3]).find("=")+10]=="point_dn":
+                    Summary.loc[k-1,['S&P']]=SNP[m+1].text+'/-'+SNP_delta[m+1].text.strip()
                     m=m+1
                 else:
-                    Summary.loc[k-1,['S&P']]=SNP[m+1].text+'/-'+SNP_delta[m+1].text.strip()
+                    Summary.loc[k-1,['S&P']]=SNP[m+1].text+'/'+SNP_delta[m+1].text.strip()
                     m=m+1
 
             else:
@@ -450,18 +454,19 @@ def Summary():
     for k in range(len(Summary['일자'])):
         if m+1!=11:
             if date_PDM[m+1].text.strip()== Summary['일자'].iloc[k]:
-                if str(PDM_UPDW[m+2])[str(PDM_UPDW[m+2]).find("=")+2:str(PDM_UPDW[m+2]).find("=")+10]=="point_dn":
-                    Summary.loc[k-1,['PDM']]=PDM[m+1].text+'/+'+PDM_delta[m+1].text.strip()
+                # print('pdm',str(PDM_UPDW[m+3])[str(PDM_UPDW[m+3]).find("=")+2:str(PDM_UPDW[m+3]).find("=")+10])
+                if str(PDM_UPDW[m+3])[str(PDM_UPDW[m+3]).find("=")+2:str(PDM_UPDW[m+3]).find("=")+10]=="point_dn":
+                    Summary.loc[k-1,['PDM']]=PDM[m+1].text+'/-'+PDM_delta[m+1].text.strip()
                     m=m+1
                 else:
-                    Summary.loc[k-1,['PDM']]=PDM[m+1].text+'/-'+PDM_delta[m+1].text.strip()
+                    Summary.loc[k-1,['PDM']]=PDM[m+1].text+'/'+PDM_delta[m+1].text.strip()
                     m=m+1
 
             else:
                 pass
         else:
             break
-    Summary=Summary.fillna('-')      
+    Summary=Summary.fillna('-') 
     # print(Summary)
     Summary_html=Summary.to_html(index=False, justify='center')
     s = smtplib.SMTP('smtp.gmail.com', 587)

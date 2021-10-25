@@ -1,8 +1,7 @@
 #git push -u origin master
 
 from pandas.core.frame import DataFrame
-import requests
-from urllib.request import urlopen
+from urllib.request import Request,urlopen
 import logging
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -13,6 +12,15 @@ import numpy as np
 import urllib
 from openpyxl import load_workbook
 from openpyxl import Workbook
+from io import BytesIO
+import requests as rq
+from io import BytesIO
+
+
+
+ 
+
+
 start = time.time()
 
 def Info():
@@ -55,17 +63,10 @@ def Info():
             
                 
             # [str(titlelist[i]).find("code=")+5:str(titlelist[i]).find(">")-1]
-            print(title)
-
+            
+        print(title)    
         
         k=k+1
-    title.to_excel("E:\VSC\CODE\stock.xlsx",encoding='utf8')
-    title.to_csv("E:\VSC\CODE\stock.csv")
-    return title    
-    
-
-
-def GC():
     GC=pd.DataFrame()
     url = 'https://finance.naver.com/sise/item_gold.naver'
     html = urlopen(url) 
@@ -75,28 +76,42 @@ def GC():
         
         GC.loc[i,["종목"]]=GC_TITLELIST[i].text
         GC.loc[i,["GodenCross"]]=i+1
-        GC["GodenCross"].fillna(999)
-    return GC
 
-def search(stock):
-    search=pd.DataFrame()
-    search_info=pd.read_csv("E:\VSC\CODE\stock.csv")
-    search=search_info["종목"]==stock
-    search=search_info[search]
-    print(search)
+    title=title.merge(GC,left_on='종목', right_on='종목',how='left').fillna(9999)
+    title.index.name="No"  
+    title.to_excel("E:\VSC\CODE\stock.xlsx",encoding='utf8')
+    title.to_csv("E:\VSC\CODE\stock.csv")
+    return title     
+
+# def GC():
+#     GC=pd.DataFrame()
+#     url = 'https://finance.naver.com/sise/item_gold.naver'
+#     html = urlopen(url) 
+#     src= BeautifulSoup(html.read(), "html.parser")
+#     GC_TITLELIST=src.find_all(class_="tltle")
+#     for i in range(len(GC_TITLELIST)):
+        
+#         GC.loc[i,["종목"]]=GC_TITLELIST[i].text
+#         GC.loc[i,["GodenCross"]]=i+1
+
+#     return GC
+
+
+# url = 'https://finance.naver.com/item/sise_day.naver?code=005930'
+# html = urlopen(url) 
+# src= BeautifulSoup(html.read(), "html.parser")
+# print(src)
+
+# Info()
+# GC()
 
 
 
-Info()
-GC()
-
-
-read_info=pd.read_csv("E:\VSC\CODE\stock.csv")
-read_info=Info().merge(GC(),left_on='종목', right_on='종목',how='left')
-read_info.to_excel("E:\VSC\CODE\stock.xlsx",encoding='utf8')
-read_info.to_csv("E:\VSC\CODE\stock.csv")
-print(GC())
-search('율촌화학')
+# read_info=pd.read_csv("E:\VSC\CODE\stock.csv",index_col='No')
+# read_info.to_excel("E:\VSC\CODE\stock.xlsx",encoding='utf8')
+# read_info.to_csv("E:\VSC\CODE\stock.csv")
+# print(GC())
+# search('율촌화학')
 
 
 
