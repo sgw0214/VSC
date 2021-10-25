@@ -10,11 +10,11 @@ def zero_or_one_or_empty_ndarray(shape, type, dtype=np.int):
     if type==0:
         y=np.ndarray(shape,dtype=dtype)
     elif type==1:
-        y=np.ndarray(shape,dtype=dtype)
+        y=np.ndarray(shape,dtype=dtype).all(1)
     elif type==99:
         y=np.ndarray(shape,dtype=dtype)
     return y
-print(zero_or_one_or_empty_ndarray(shape=(2,2), type=99))
+print(zero_or_one_or_empty_ndarray(shape=(2,2), type=1))
 
 def change_shape_of_ndarray(X, n_row):
     pass
