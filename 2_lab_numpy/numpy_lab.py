@@ -19,10 +19,11 @@ def zero_or_one_or_empty_ndarray(shape, type, dtype=np.int):
 # print(zero_or_one_or_empty_ndarray(shape=(23,23), type=1))
 
 X = np.ones((32,32), dtype=np.int)
-print(len(X))
+print(X)
 def change_shape_of_ndarray(X, n_row):
-    x=np.ndarray(X).reshape()
-print(change_shape_of_ndarray(X, 2**np.size(X)))
+    x=np.ndarray(X)
+    return x
+print(change_shape_of_ndarray(X, 2**len(X)))
 
 def concat_ndarray(X_1, X_2, axis):
     pass
