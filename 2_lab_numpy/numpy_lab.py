@@ -8,13 +8,13 @@ print(n_size_ndarray_creation(3))
 '''''
 def zero_or_one_or_empty_ndarray(shape, type, dtype=np.int):
     if type==0:
-        y=np.ndarray(shape,dtype=dtype).fill(0)
+        y=np.ndarray(shape).fill(0)
     elif type==1:
         y=np.ndarray(shape,dtype=dtype).fill(1)
     elif type==99:
         y=np.ndarray(shape,dtype=dtype)
     return y
-print(zero_or_one_or_empty_ndarray(shape=(2,2), type=1))
+print(zero_or_one_or_empty_ndarray(shape=(2,2), type=0))
 
 def change_shape_of_ndarray(X, n_row):
     pass
