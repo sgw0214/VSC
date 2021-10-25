@@ -7,11 +7,11 @@ def n_size_ndarray_creation(n, dtype=np.int):
 print(n_size_ndarray_creation(3))
 
 def zero_or_one_or_empty_ndarray(shape, type, dtype=np.int):
-    if type=="type=0":
+    if type==0:
         x=np.ndarray(shape).fillna(0)
-    elif type=="type=1":
+    elif type==1:
         x=np.ndarray(shape).fillna(1)
-    elif type=="type=99":
+    elif type==99:
         x=np.ndarray(shape,order='F')
     return x
 zero_or_one_or_empty_ndarray(shape=(2,2), type=1)
