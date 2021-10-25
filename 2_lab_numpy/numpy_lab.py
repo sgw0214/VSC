@@ -1,26 +1,28 @@
 import numpy as np
 
-'''''
+
 def n_size_ndarray_creation(n, dtype=np.int):
     x=np.array([[n,n**2],[n**2,n**2-1]])
     return x
-print(n_size_ndarray_creation(3))
-'''''
+# print(n_size_ndarray_creation(3))
+
 def zero_or_one_or_empty_ndarray(shape, type, dtype=np.int):
     if type==0:
-        y=np.ndarray(shape,dtype=dtype)
-        y.fill(0)
+        x=np.ndarray(shape,dtype=dtype)
+        x.fill(0)
     elif type==1:
-        y=np.ndarray(shape,dtype=dtype)
-        y.fill(1)
+        x=np.ndarray(shape,dtype=dtype)
+        x.fill(1)
     elif type==99:
-        y=np.ndarray(shape,dtype=dtype)
-    return y
-print(zero_or_one_or_empty_ndarray(shape=(23,23), type=1))
+        x=np.ndarray(shape,dtype=dtype)
+    return x
+# print(zero_or_one_or_empty_ndarray(shape=(23,23), type=1))
 
+X = np.ones((32,32), dtype=np.int)
+print(np.size(X))
 def change_shape_of_ndarray(X, n_row):
-    pass
-
+    x=np.ndarray(X).reshape()
+print(change_shape_of_ndarray(X, 2**np.size(X)))
 
 def concat_ndarray(X_1, X_2, axis):
     pass
