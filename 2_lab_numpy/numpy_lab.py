@@ -21,9 +21,9 @@ def zero_or_one_or_empty_ndarray(shape, type, dtype=np.int):
 X = np.ones((32,32), dtype=np.int)
 print(X)
 def change_shape_of_ndarray(X, n_row):
-    x=np.ndarray(X)
+    x=np.ndarray(X).reshape(1,-1)
     return x
-print(change_shape_of_ndarray(X, 2**len(X)))
+print(change_shape_of_ndarray(X, 1))
 
 def concat_ndarray(X_1, X_2, axis):
     pass
