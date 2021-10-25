@@ -2,13 +2,14 @@ import numpy as np
 
 
 def n_size_ndarray_creation(n, dtype=np.int):
-    k=np.array([[n,n**2],[n**2,n**2-1]])
-    return k
+    x=np.array([[n,n**2],[n**2,n**2-1]])
+    return x
 print(n_size_ndarray_creation(3))
 
-def zero_or_one_or_empty_ndarray(shape, type=0, dtype=np.int):
-    pass
-
+def zero_or_one_or_empty_ndarray(shape, type, dtype=np.int):
+    x=np.ndarray(shape)
+    return x
+ zero_or_one_or_empty_ndarray(shape=(3,3), type=0)
 
 def change_shape_of_ndarray(X, n_row):
     pass
