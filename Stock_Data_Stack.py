@@ -81,7 +81,7 @@ def add_stock():
     tdate=datetime.today()
     get_day=tdate-max_date
     print(get_day)
-AA    for k in tdate-max_date:
+    for k in tdate-max_date:
         add_date=datetime.strftime(max_date+timedelta(days=1),'%Y%m%d')
         data(add_date)
         
