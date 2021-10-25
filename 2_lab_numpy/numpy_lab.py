@@ -21,7 +21,7 @@ def zero_or_one_or_empty_ndarray(shape, type, dtype=np.int):
 X = np.ones((32,32), dtype=np.int)
 print(X)
 def change_shape_of_ndarray(X, n_row):
-    x=X.reshape((n_row))
+    x=X.reshape((1,))
     return x
 print(change_shape_of_ndarray(X, 1))
 
