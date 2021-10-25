@@ -1,19 +1,19 @@
 import numpy as np
 
-
+'''''
 def n_size_ndarray_creation(n, dtype=np.int):
     x=np.array([[n,n**2],[n**2,n**2-1]])
     return x
 print(n_size_ndarray_creation(3))
-
+'''''
 def zero_or_one_or_empty_ndarray(shape, type, dtype=np.int):
     if type==0:
-        x=np.ndarray(shape,offset=0)
+        y=np.ndarray(shape,dtype=dtype)
     elif type==1:
-        x=np.ndarray(shape,offset=1)
+        y=np.ndarray(shape,dtype=dtype)
     elif type==99:
-        x=np.ndarray(shape,dtype=dtype)
-    return x
+        y=np.ndarray(shape,dtype=dtype)
+    return y
 print(zero_or_one_or_empty_ndarray(shape=(2,2), type=99))
 
 def change_shape_of_ndarray(X, n_row):
