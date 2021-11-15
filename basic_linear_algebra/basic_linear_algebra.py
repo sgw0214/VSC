@@ -77,7 +77,7 @@ def matrix_subtraction(*matrix_variables):
 matrix_x = [[2, 2], [2, 2]]
 matrix_y = [[2, 5], [2, 1]]
 matrix_z = [[2, 4], [5, 3]]
-print(matrix_x-matrix_y)
+
 # print (matrix_subtraction(matrix_x, matrix_y)) # Expected value: [[0, -3], [0, 1]]
 print (matrix_subtraction(matrix_x, matrix_y, matrix_z)) # Expected value: [[-2, -7], [-5, -2]]
 
