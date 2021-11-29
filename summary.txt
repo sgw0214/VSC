@@ -1,0 +1,124 @@
+○df=pd.read_csv(url,header=None,names=cols,na_values="?")
+  df=df.dropna()
+
+○전처리1 : 범주형 처리
+ 1. Label Encoding(DT OR RFC)
+   모듈: from sklearn.preprocessing import LabelEncoder
+   encoding_col=["",""]
+   not_encoding_col=["",""]
+   enc_classes={}
+   def encoding_label(x):
+      le=LabelEncoder()
+      le.fit(x) 
+      le_fitted=le.transform(x)
+
+   d1=df[encoding_col].apply(encoding_label)
+   d2=df[noy_encoding_col]
+   data=d1.join(d2)
+
+ 2. One Hot Encoding
+  x=pd.get_dummies(df[df.columns[:-1]])
+  y=df[""]
+
+○전처리2 : 연속형 처리(분리하기전에 전처리)
+  1. StandardScaler(평균0편차1 범위내)
+   모듈: from sklearn.preprocessing import StandardScaler
+   scaler=StandardScaler()
+   scaler.fit(df)
+   scaled=scaler.transform(df)
+   scaled_df=pd.DataFrame(scaled)
+   
+
+  2. MinMax Scaler
+   모듈: from sklearn.preprocessing import MinMaxScaler
+   scaler=MinMaxScaler()
+   scaler.fit(x_train)
+   scaled=scaler.transform(x_train)
+   scaled_df=pd.DataFrame(scaled)
+
+○전처리3 : 데이터셋 분리
+  모듈: from sklearn.model_selection import train_test_split
+  y=data["Y"]
+  x=data.drop[columns="Y"]
+  x_train,x_test,y_train,y_test = train_test_split(x,y,test_size=0.3,stratify=y,random_state=1)
+
+
+○분류평가지표
+  정확도,정밀도,재현률,f1 score,AUC
+
+○회귀평가지표
+  RMSE,MSE,R2
+
+○평가 지표 
+
+  모듈: from sklearn.metrics import ____
+
+  1. 혼동행렬반환 : confusion_matrix(y실제값,y예측값)
+  2. accuracy(정확도) : accuracy_score(y실제값,y예측값)
+  3. recall(재현율) 점수 반환(Positive중  Positive로 예측한 비율(TPR)) : recall_score(y실제값,y예측값)
+  4. precision(정밀도) 점수 반환(Positive로 예측한것중 Positive 인것의 비율(PPV)) : precision_score(y실제값,y예측값)
+  5. F1점수 반환(recall과 precision의 조화 평균값) : f1_score(y실제값,y예측값)
+  6. 클래스 별로 recall,precision,f1 score와 accuracy를 종합해서 보여준다 : classification_report(y실제값,y예측값)
+
+○머신러닝 모델
+
+  모듈
+
+  from sklearn.tree import DecisionTreeClassifier
+  from sklearn.ensemble import RandomForestClassifier
+  from sklearn.linear_model import LogisticRegression
+
+  dt=DecisionTreeClassifier(max_depth=3)
+  rfc=RandomForestClassifier(n_estimators=100)
+  lt=LogisticRegression(max_iter=500)
+
+  predict(x_test)
+
+○ROC곡선 AUC점수
+
+  모듈: from sklearn.metrics import roc_curve,roc_auc_score
+
+  TPR(Y),FPR(X) : 1에가까울수록 좋음
+
+  roc_curve(y_test,dt.predict_proba(x_test)[:,1])
+
+○과적합 확인
+
+  모듈: from sklearn.metrics import accuracy_score
+  
+  accuracy_score(y_train,pred_train)
+  accuracy_score(y_test,pred_test)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
