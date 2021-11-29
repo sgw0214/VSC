@@ -125,6 +125,7 @@ def stock_an():
     s.sendmail("sgw0214@gmail.com", "nuclearabc@lgdisplay.com", msg.as_string())
     s.sendmail("sgw0214@gmail.com", "choice@lgdisplay.com", msg.as_string())
     s.sendmail("sgw0214@gmail.com", "jwseo@pocons.co.kr", msg.as_string())
+    s.sendmail("sgw0214@gmail.com", "poqc@pocons.co.kr", msg.as_string())
     s.quit()
     return stock_an
 
@@ -192,6 +193,7 @@ def economy_an():
     s.sendmail("sgw0214@gmail.com", "nuclearabc@lgdisplay.com", msg.as_string())
     s.sendmail("sgw0214@gmail.com", "choice@lgdisplay.com", msg.as_string())
     s.sendmail("sgw0214@gmail.com", "jwseo@pocons.co.kr", msg.as_string())
+    s.sendmail("sgw0214@gmail.com", "poqc@pocons.co.kr", msg.as_string())
     s.quit()
     return economy_an 
 
@@ -265,6 +267,7 @@ def headline_in():
     s.sendmail("sgw0214@gmail.com", "nuclearabc@lgdisplay.com", msg.as_string())
     s.sendmail("sgw0214@gmail.com", "choice@lgdisplay.com", msg.as_string())
     s.sendmail("sgw0214@gmail.com", "jwseo@pocons.co.kr", msg.as_string())
+    s.sendmail("sgw0214@gmail.com", "poqc@pocons.co.kr", msg.as_string())    
     s.quit()
     return headline_in
 
@@ -480,6 +483,7 @@ def Summary():
     s.sendmail("sgw0214@gmail.com", "nuclearabc@lgdisplay.com", msg.as_string())
     s.sendmail("sgw0214@gmail.com", "choice@lgdisplay.com", msg.as_string())
     s.sendmail("sgw0214@gmail.com", "jwseo@pocons.co.kr", msg.as_string())
+    s.sendmail("sgw0214@gmail.com", "poqc@pocons.co.kr", msg.as_string())
     s.quit()
     return Summary       
 
