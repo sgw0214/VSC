@@ -49,7 +49,7 @@
 ○회귀평가지표
   RMSE,MSE,R2
 
-○평가 지표 
+○평가 지표(분류) 
 
   모듈: from sklearn.metrics import ____
 
@@ -59,6 +59,15 @@
   4. precision(정밀도) 점수 반환(Positive로 예측한것중 Positive 인것의 비율(PPV)) : precision_score(y실제값,y예측값)
   5. F1점수 반환(recall과 precision의 조화 평균값) : f1_score(y실제값,y예측값)
   6. 클래스 별로 recall,precision,f1 score와 accuracy를 종합해서 보여준다 : classification_report(y실제값,y예측값)
+
+○평가 지표(회귀) 
+
+  모듈: from sklearn.metrics import ____
+
+  1. MSE : mean_squared_error(y_test,y_pred)
+  2. RMSE : np.sqrt(mean_squared_error(y_test,y_pred))
+  3. R2 : r2_score(y_test,y_pred)
+  4. 회귀계수 lr.coef_  절편 lr.intercept
 
 ○머신러닝 모델
 
@@ -80,7 +89,14 @@
 
   TPR(Y),FPR(X) : 1에가까울수록 좋음
 
-  roc_curve(y_test,dt.predict_proba(x_test)[:,1])
+  rfc_pos=rfc.predict_proba(x_test)[:,1]
+  fpr,tpr,th = roc_curve(y_test,rfc_pos)
+  plt.figure(7,7)
+  plt.plot(fpr,tpr)
+  plt.show()
+
+  roc_curve(y_test,rfc.predict_proba(x_test)[:,1])
+  roc_auc_score(y_test,rfc.predict_proba(x_test)[:,1]])
 
 ○과적합 확인
 

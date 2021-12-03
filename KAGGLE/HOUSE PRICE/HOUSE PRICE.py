@@ -23,39 +23,50 @@ df2=pd.read_csv("E:/VSC/CODE/KAGGLE/HOUSE PRICE/test.csv")
 df_train=df1
 df_test=df2
 
-print(round(df_train.describe(),3),df_train.iloc[:,0].count())
-
-ncount=[df_train.columns[x] for x in range(len(df_train.columns)) if df_train.iloc[:,x].count() != 1460]
-print(df_train[ncount].info())
-
-LotFrontage_mod=df_train.groupby(["1stFlrSF"])["LotFrontage"].mean()
-# print(LotFrontage_mod)
-LotFrontage_mod=LotFrontage_mod.reset_index()
-print(LotFrontage_mod)
-
-LOT_STD=[5000,4000,3000,2000,1000]
-LOT_STD1=[1000 for x in LotFrontage_mod["1stFlrSF"] if x<1000 ]
-LOT_STD2=[2000 for x in LotFrontage_mod["1stFlrSF"] if x<2000 and x>=1000 ]
-LOT_STD3=[3000 for x in LotFrontage_mod["1stFlrSF"] if x<3000 and x>=2000 ]
-LOT_STD4=[4000 for x in LotFrontage_mod["1stFlrSF"] if x<4000 and x>=3000 ]
-LOT_STD5=[5000 for x in LotFrontage_mod["1stFlrSF"] if x<5000 and x>=4000 ]
-LOT_STD=LOT_STD1+LOT_STD2+LOT_STD3+LOT_STD4+LOT_STD5
+df_train=df_train.drop(columns=["Alley","PoolQC","Fence","MiscFeature","FireplaceQu"])
 
 
-LotFrontage_mod["1stFlrSF1"]=LOT_STD
-LotFrontage_mod1=LotFrontage_mod.groupby(["1stFlrSF1"])["LotFrontage"].mean().reset_index()
+df_train["LotFrontage"]=np.where(df_train["LotFrontage"].notnull()==True,
+                                  df_train["LotFrontage"],df_train["1stFlrSF"].mean()/df_train["1stFlrSF"]*df_train["LotFrontage"].mean())
 
-print(LotFrontage_mod1)
 
-df_train["LotFrontage"]=df_train["LotFrontage"].fillna(LotFrontage_mod.groupby(["1stFlrSF1"])["LotFrontage"].mean().transform('mean'))
 
-print(df_train["LotFrontage"])
+df_corr=pd.DataFrame(df_train.corr())
+# print(df_corr[[ "MasVnrArea","GarageYrBlt"]])
 
-# corr=df_train.corr(method="pearson")
-# print(corr)
-# plt.plot(LotFrontage_mod.iloc[:,0],LotFrontage_mod.iloc[:,1])
-# plt.show()
-# corr.to_csv("E:/VSC/CODE/KAGGLE/HOUSE PRICE/corr.csv")
+
+                                  
+df_train["GarageYrBlt"]=np.where(df_train["GarageYrBlt"].notnull()==True,
+                                  df_train["GarageYrBlt"],df_train["YearBuilt"].median()/df_train["YearBuilt"]*df_train["GarageYrBlt"].median())
+
+print(len(df_train.columns), df_train.info())
+
+from sklearn.preprocessing import LabelEncoder
+
+def encoding_label(x):
+    le=LabelEncoder()
+    le.fit(x) 
+    le_fitted=le.transform(x)
+    return le_fitted
+
+d1=df_train[["MasVnrType"]].apply(encoding_label)
+print(d1)
+
+# print(df_train[["MasVnrArea","MasVnrArea1","OverallQual"]].head(938))
+# print(df_train[["GarageYrBlt","GarageYrBlt1","YearBuilt"]].head(943))
+
+
+# print(round(df_train.describe(),3),df_train.iloc[:,0].count())
+# print([x for x in df_train.columns if df_train[x].count()<1460 ])
+# under_1460_list=[x for x in df_train.columns if df_train[x].count()<1460 ]
+# print(df_train[under_1460_list])
+# print(df_train[under_1460_list].describe())
+
+
+# df_count=df_train.columns(df_train.iloc[df_train.columns].count()<1460)
+# print(df_count)
+
+
 
 '''''''''
 SalePrice - 부동산의 판매 가격(달러)입니다. 이것은 예측하려는 대상 변수입니다.
