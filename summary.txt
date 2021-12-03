@@ -107,6 +107,28 @@
 
 
 
+○List
+
+ del a[],a.sort(),a.revers()
+ a.append(),a.insert(,),a.remove()
+ a.count(),a.extend()
+
+
+ 
+○DF
+ 
+ isnull(),notnull(),fillna(),dropna()
+ sort_‌index(),sort_values()
+
+ df.apply(lambda x: x.mean() - x.min())
+ df.value_counts()
+ df["User_Mean"] = df.groupby('User_ID')["Purchase"].transform('mean')
+ df['d'] = df.apply(lambda row: row.a + row.b + row.c, axis=1)
+
+
+
+
+
 
 
 
