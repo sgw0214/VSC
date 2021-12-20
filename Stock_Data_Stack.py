@@ -19,7 +19,8 @@ import numpy as np
 from datetime import datetime,date
 from datetime import timedelta
 
-start = time.time()
+start = time.time() 
+print(start)               
 
 path = 'E:/VSC/CODE/Stock/'
 
@@ -47,12 +48,12 @@ def data(date):
     print('KRX crawling completed :', date)
 
 def Total_Stack():    
-    for year in range(2021, 2022):
-        for month in range(1, 13):
-            for day in range(1, 32):
-                tdate = year * 10000 + month * 100 + day * 1
-                if tdate <= 20211231:
-                    data(tdate)
+    # for year in range(2021, 2022):
+    #     for month in range(10, 13):
+    #         for day in range(1, 32):
+    #             tdate = year * 10000 + month * 100 + day * 1
+    #             if tdate <= 20211231:
+    #                 data(tdate)
 
     WIP = pd.read_excel(path + 'basic_20210101.xlsx')
     
@@ -62,9 +63,9 @@ def Total_Stack():
                 tdate = year * 10000 + month * 100 + day * 1
                 if tdate <= 20211231:
                     yesterday = pd.read_excel(path + 'basic_' + str(tdate) + '.xlsx')
-                    print(str(datetime.date.strftime(datetime.date.today() ,'%Y%m%d')),str(tdate))
+                    print(str(datetime.strftime(datetime.today() ,'%Y%m%d')),str(tdate))
 
-                    if datetime.date.strftime(datetime.date.today() ,'%Y%m%d') == str(tdate):
+                    if datetime.strftime(datetime.today() ,'%Y%m%d') == str(tdate):
                         break
                     else:
                         WIP = pd.concat([WIP, yesterday], sort=False)
@@ -72,26 +73,26 @@ def Total_Stack():
     WIP = WIP.drop_duplicates()
     WIP.to_excel(path+'Total.xlsx', index=False, index_label=None)
 
-# Total_Stack()
+Total_Stack()
 
-def add_stock():
-    df = pd.read_excel(path + 'Total_modify_ver1.xlsx')
-    df.index.set_names='No'
-    max_date=datetime.strptime(str(max(df['일자'])),'%Y%m%d')
-    tdate=datetime.today()
-    get_day=tdate-max_date
-    print(get_day)
-    for k in tdate-max_date:
-        add_date=datetime.strftime(max_date+timedelta(days=1),'%Y%m%d')
-        data(add_date)
+# def add_stock():
+#     df = pd.read_excel(path + 'Total_modify_ver1.xlsx')
+#     df.index.set_names='No'
+#     max_date=datetime.strptime(str(max(df['일자'])),'%Y%m%d')
+#     tdate=datetime.today()
+#     get_day=tdate-max_date
+#     print(get_day,tdate,max_date)
+#     for k in tdate-max_date:
+#         add_date=datetime.strftime(max_date+timedelta(days=1),'%Y%m%d')
+#         data(add_date)
         
-        add_file = pd.read_excel(path + 'basic_' + str(add_date) + '.xlsx')
-        df = pd.concat([df, add_file], sort=False)
-    df.to_excel(path+'Total_modify_ver1.xlsx', index=False, index_label=None)
+#         add_file = pd.read_excel(path + 'basic_' + str(add_date) + '.xlsx')
+#         df = pd.concat([df, add_file], sort=False)
+#     df.to_excel(path+'Total_modify_ver1.xlsx', index=False, index_label=None)
 
 
-# wip2=len(wip['종목코드'])
+# # wip2=len(wip['종목코드'])
 
-add_stock()
+# add_stock()
 print(time.time()-start)
 
