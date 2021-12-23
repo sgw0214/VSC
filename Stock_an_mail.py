@@ -90,7 +90,7 @@ def stock_an():
                 stock_an.loc[m,['내용']]=research
                 m=m+1
             
-            elif str(src2.find_all(class_="source"))[19:25]=="나이스디앤비":
+            elif str(src2.find_all(class_="source"))[19:25]=="나이스디앤비" or str(src2.find_all(class_="source"))[19:25]=="하나금융투자" :
                 for n in range(strno2):
                     if n==0:
                         research=str(src2.find_all("tr")[3].find_all("div")[0].text.strip())[:50]
