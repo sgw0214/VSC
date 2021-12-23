@@ -90,7 +90,7 @@ def stock_an():
                 stock_an.loc[m,['내용']]=research
                 m=m+1
             
-            elif str(src2.find_all(class_="source"))[19:25]=="나이스디앤비" or str(src2.find_all(class_="source"))[19:25]=="하나금융투자" :
+            elif str(src2.find_all(class_="source"))[19:25]=="나이스디앤비" or str(src2.find_all(class_="source"))[19:25]=="하나금융투자" or str(src2.find_all(class_="source"))[19:25]=="이베스트증권" or str(src2.find_all(class_="source"))[19:25]=="하이투자증권":
                 for n in range(strno2):
                     if n==0:
                         research=str(src2.find_all("tr")[3].find_all("div")[0].text.strip())[:50]
@@ -137,12 +137,12 @@ def stock_an():
     msg = MIMEText(stock_an_html,'html')
     msg['Subject'] = '종목분석'
     s.sendmail("sgw0214@gmail.com", "sgw0214@gmail.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "sgw0214@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "nuclearabc@naver.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "nuclearabc@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "choice@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "jwseo@pocons.co.kr", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "poqc@pocons.co.kr", msg.as_string())
+    s.sendmail("sgw0214@gmail.com", "sgw0214@lgdisplay.com", msg.as_string())
+    s.sendmail("sgw0214@gmail.com", "nuclearabc@naver.com", msg.as_string())
+    s.sendmail("sgw0214@gmail.com", "nuclearabc@lgdisplay.com", msg.as_string())
+    s.sendmail("sgw0214@gmail.com", "choice@lgdisplay.com", msg.as_string())
+    s.sendmail("sgw0214@gmail.com", "jwseo@pocons.co.kr", msg.as_string())
+    s.sendmail("sgw0214@gmail.com", "poqc@pocons.co.kr", msg.as_string())
     s.quit()
     return stock_an
 
@@ -514,9 +514,9 @@ def Summary():
 
 
 stock_an().to_csv("E:\VSC\CODE\stock_an.csv")
-# economy_an().to_csv("E:\VSC\CODE\economy_an.csv")
-# headline_in().to_csv("E:\VSC\CODE\headline_in.csv")
-# Summary().to_csv("E:\VSC\CODE\Summary.csv")
+economy_an().to_csv("E:\VSC\CODE\economy_an.csv")
+headline_in().to_csv("E:\VSC\CODE\headline_in.csv")
+Summary().to_csv("E:\VSC\CODE\Summary.csv")
 print(time.time()-start)
 
 
