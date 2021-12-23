@@ -52,16 +52,21 @@ def stock_an():
             pass
         else:
             path=src1.find_all("tr")[i+2].find_all("td")[1]
+            print(path)
+            
             path=str(path) 
             path1=path[path.find("""=""")+2:path.find("""">""")]
+  
             # print(k,i,path1)
             url2 = "https://finance.naver.com/research/"+path1
+
             html2 = urlopen(url2)
             src2= BeautifulSoup(html2.read(), "html.parser")
             strno=math.ceil(len(str(src2.find_all("p")[3].text))/50)
             strno1=math.ceil(len(str(src2.find_all("p")[2].text))/50)
             strno2=math.ceil(len(str(src2.find_all("tr")[3].find_all("div")[0].text.strip()))/50)
             # print(str(src2.find_all(class_="source"))[19:25])
+
             if str(src2.find_all("p")[2].text)== "":
                 
                 for n in range(strno):
@@ -101,14 +106,17 @@ def stock_an():
                         research=research+str(src2.find_all("tr")[3].find_all("div")[0].text.strip())[50*n:50*(n+1)]
                 stock_an.loc[m,['내용']]=research
                 m=m+1
+
             
             else:
+
                 for n in range(strno1):
                     if n==0:
-                        research=str(src2.find_all("p")[2].text)[:50]
+                        research=str(src2.find_all("p")[7].text)[:50]
                         
                     else:
-                        research=research+str(src2.find_all("p")[2].text)[50*n:50*(n+1)]
+                        research=research+str(src2.find_all("p")[7].text)[50*n:50*(n+1)]
+
                 # research=str(src2.find_all("p")[2].text)
                 # print(stock_item[k].text,research)
                 stock_an.loc[m,['내용']]=research
@@ -145,7 +153,7 @@ def economy_an():
          
     # print(economy_an)
     for i in range(len(src1.find_all("tr"))):
-            
+
         # print(src1.find_all("tr")[5].find_all("td")[1])
         if i==5 or i==6 or i==7 or i==13 or i==14 or i==15 or i==21 or i==22 or i==23 or i==29 or i==30 or i==31 or i==37 or i==38 or i==39 or i>44  :
             
@@ -207,13 +215,23 @@ def headline_in():
     date=src1.find_all(class_="date")
     # print(range(1,len(stock_item)+1),stock_item)
     m=0
-    for k in range(len(stock_item)) :
+    for k in range(len(stock_item)):
         headline_in.loc[k,['일자']]=date[k*2+1].text
-        if stock_item[k*1].text[0]=="[":
-            headline_in.loc[k,['제목']]=stock_item[k*1].text[1:16]
-        else:
-            headline_in.loc[k,['제목']]=stock_item[k*1].text
-         
+        headline_in.loc[k,['제목']]=stock_item[k].text
+ 
+
+    # for k in range(len(stock_item)) :
+    #     headline_in.loc[k,['일자']]=date[k*2+1].text
+
+    #     if k==5 or k==6 or k==7 or k==13 or k==14 or k==15 or k==21 or k==22 or k==23 or k==29 or k==30 or k==31 or k==37 or k==38 or k==39 or k>44  :
+    #         pass
+    #     else:
+    #         if stock_item[k].text[0]=="[":
+    #             headline_in.loc[k,['제목']]=stock_item[k*2].text[0:16]
+
+    #         else:
+    #             headline_in.loc[k,['제목']]=stock_item[(k+1)*2].text
+    #     print(headline_in.loc[k,['제목']])
     # print(headline_in)
     for i in range(len(src1.find_all("tr"))):
             
@@ -228,21 +246,19 @@ def headline_in():
             url2 = "https://finance.naver.com/research/"+path1 
             html2 = urlopen(url2)
             src2= BeautifulSoup(html2.read(), "html.parser")
-            strno=math.ceil(len(str(src2.find_all("p")[2].text))/50)
+            strno=math.ceil(len(str(src2.find_all("p")[7].text))/50)
             strno1=math.ceil(len(str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text))/50)
-            
-            # print(str(src2.find_all("p")[2].text))
 
-            if str(src2.find_all("p")[2].text)!= "":
+            if str(3)!= "":
                 for n in range(strno):
                     if n==0:
-                        research=str(src2.find_all("p")[2].text)[:50].strip()
-                        
+                        research=str(src2.find_all("p")[7].text)[:50].strip()
+                        print(research)
                     else:
-                        research=research+str(src2.find_all("p")[2].text)[50*n:50*(n+1)].strip()
+                        research=research+str(src2.find_all("p")[7].text)[50*n:50*(n+1)].strip()
+                        print(research)
                 headline_in.loc[m,['내용']]=research
                 m=m+1
-                # print(headline_in)
                 
             else:
                 for n in range(strno1):
@@ -253,7 +269,7 @@ def headline_in():
                 
                 headline_in.loc[m,['내용']]=research
                 m=m+1
-                # print(headline_in)
+
 
     headline_in_html=headline_in.to_html(index=False, justify='center')
     s = smtplib.SMTP('smtp.gmail.com', 587)
