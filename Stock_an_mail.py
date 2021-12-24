@@ -501,7 +501,7 @@ def Summary():
     s.starttls()
     s.login('sgw0214@gmail.com', 'thdfcvhemyjyxfik')
     msg = MIMEText(Summary_html,'html')
-    msg['Subject'] = '주요시장지표'
+    msg['Subject'] = '주요시장지표    Merry Christmas!'
     s.sendmail("sgw0214@gmail.com", "sgw0214@gmail.com", msg.as_string())
     s.sendmail("sgw0214@gmail.com", "sgw0214@lgdisplay.com", msg.as_string())
     s.sendmail("sgw0214@gmail.com", "nuclearabc@naver.com", msg.as_string())
