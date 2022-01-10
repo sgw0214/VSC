@@ -48,12 +48,12 @@ def data(date):
     print('KRX crawling completed :', date)
 
 def Total_Stack():    
-    # for year in range(2021, 2022):
-    #     for month in range(10, 13):
-    #         for day in range(1, 32):
-    #             tdate = year * 10000 + month * 100 + day * 1
-    #             if tdate <= 20211231:
-    #                 data(tdate)
+    for year in range(2021, 2022):
+        for month in range(12, 13):
+            for day in range(7, 32):
+                tdate = year * 10000 + month * 100 + day * 1
+                if tdate <= 20211231:
+                    data(tdate)
 
     WIP = pd.read_excel(path + 'basic_20210101.xlsx')
     
