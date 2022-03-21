@@ -23,9 +23,6 @@ import time
 import smtplib
 from email.mime.text import MIMEText
 import datetime  
-
-
-
 start = time.time()
 
 def stock_an():
@@ -55,16 +52,21 @@ def stock_an():
             pass
         else:
             path=src1.find_all("tr")[i+2].find_all("td")[1]
+            print(path)
+            
             path=str(path) 
             path1=path[path.find("""=""")+2:path.find("""">""")]
+  
             # print(k,i,path1)
             url2 = "https://finance.naver.com/research/"+path1
+
             html2 = urlopen(url2)
             src2= BeautifulSoup(html2.read(), "html.parser")
             strno=math.ceil(len(str(src2.find_all("p")[3].text))/50)
             strno1=math.ceil(len(str(src2.find_all("p")[2].text))/50)
             strno2=math.ceil(len(str(src2.find_all("tr")[3].find_all("div")[0].text.strip()))/50)
             # print(str(src2.find_all(class_="source"))[19:25])
+
             if str(src2.find_all("p")[2].text)== "":
                 
                 for n in range(strno):
@@ -79,7 +81,7 @@ def stock_an():
                 stock_an.loc[m,['내용']]=research
                 m=m+1
                 
-            elif str(src2.find_all(class_="source"))[19:26]=="한국기업데이터":
+            elif str(src2.find_all(class_="source"))[19:26]=="한국기업데이터"  or str(src2.find_all(class_="source"))[19:26]=="IBK투자증권" or str(src2.find_all(class_="source"))[19:26]=="케이프투자증권":
                 for n in range(strno2):
                     if n==0:
                         research=str(src2.find_all("tr")[3].find_all("div")[0].text.strip())[:50]
@@ -88,7 +90,7 @@ def stock_an():
                 stock_an.loc[m,['내용']]=research
                 m=m+1
             
-            elif str(src2.find_all(class_="source"))[19:25]=="나이스디앤비":
+            elif str(src2.find_all(class_="source"))[19:25]=="나이스디앤비" or str(src2.find_all(class_="source"))[19:25]=="하나금융투자" or str(src2.find_all(class_="source"))[19:25]=="이베스트증권" or str(src2.find_all(class_="source"))[19:25]=="하이투자증권" or str(src2.find_all(class_="source"))[19:25]=="미래에셋증권":
                 for n in range(strno2):
                     if n==0:
                         research=str(src2.find_all("tr")[3].find_all("div")[0].text.strip())[:50]
@@ -104,31 +106,39 @@ def stock_an():
                         research=research+str(src2.find_all("tr")[3].find_all("div")[0].text.strip())[50*n:50*(n+1)]
                 stock_an.loc[m,['내용']]=research
                 m=m+1
+            elif str(src2.find_all(class_="source"))[19:23]=="교보증권":
+                for n in range(strno2):
+                    if n==0:
+                        research=str(src2.find_all("tr")[3].find_all("div")[0].text.strip())[:50]
+                    else:
+                        research=research+str(src2.find_all("tr")[3].find_all("div")[0].text.strip())[50*n:50*(n+1)]
+                stock_an.loc[m,['내용']]=research
+                m=m+1
+                
+
             
             else:
+
                 for n in range(strno1):
                     if n==0:
-                        research=str(src2.find_all("p")[2].text)[:50]
+                        research=str(src2.find_all("p")[7].text)[:50]
                         
                     else:
-                        research=research+str(src2.find_all("p")[2].text)[50*n:50*(n+1)]
+                        research=research+str(src2.find_all("p")[7].text)[50*n:50*(n+1)]
+
                 # research=str(src2.find_all("p")[2].text)
                 # print(stock_item[k].text,research)
                 stock_an.loc[m,['내용']]=research
                 m=m+1
-    # stock_an_html=stock_an.to_html(index=False, justify='center')
-    # s = smtplib.SMTP('smtp.gmail.com', 587)
-    # s.starttls()
-    # s.login('sgw0214@gmail.com', 'thdfcvhemyjyxfik')
-    # msg = MIMEText(stock_an_html,'html')
-    # msg['Subject'] = '종목분석'
+    stock_an_html=stock_an.to_html(index=False, justify='center')
+    s = smtplib.SMTP('smtp.gmail.com', 587)
+    s.starttls()
+    s.login('sgw0214@gmail.com', 'thdfcvhemyjyxfik')
+    msg = MIMEText(stock_an_html,'html')
+    msg['Subject'] = '종목분석'
     # s.sendmail("sgw0214@gmail.com", "sgw0214@gmail.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "sgw0214@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "nuclearabc@naver.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "nuclearabc@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "choice@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "jwseo@pocons.co.kr", msg.as_string())
-    # s.quit()
+
+    s.quit()
     return stock_an
 
 def economy_an():
@@ -147,7 +157,7 @@ def economy_an():
          
     # print(economy_an)
     for i in range(len(src1.find_all("tr"))):
-            
+
         # print(src1.find_all("tr")[5].find_all("td")[1])
         if i==5 or i==6 or i==7 or i==13 or i==14 or i==15 or i==21 or i==22 or i==23 or i==29 or i==30 or i==31 or i==37 or i==38 or i==39 or i>44  :
             
@@ -183,22 +193,19 @@ def economy_an():
                 economy_an.loc[m,['내용']]=research
                 m=m+1
                 # print(economy_an)
-    # economy_an_html=economy_an.to_html(index=False, justify='center')
-    # s = smtplib.SMTP('smtp.gmail.com', 587)
-    # s.starttls()
-    # s.login('sgw0214@gmail.com', 'thdfcvhemyjyxfik')
-    # msg = MIMEText(economy_an_html,'html')
-    # msg['Subject'] = '경제분석'
+    economy_an_html=economy_an.to_html(index=False, justify='center')
+    s = smtplib.SMTP('smtp.gmail.com', 587)
+    s.starttls()
+    s.login('sgw0214@gmail.com', 'thdfcvhemyjyxfik')
+    msg = MIMEText(economy_an_html,'html')
+    msg['Subject'] = '경제분석'
     # s.sendmail("sgw0214@gmail.com", "sgw0214@gmail.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "sgw0214@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "nuclearabc@naver.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "nuclearabc@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "choice@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "jwseo@pocons.co.kr", msg.as_string())
-    # s.quit()
+
+    s.quit()
     return economy_an 
 
 def headline_in():
+    
     k=0
     headline_in=pd.DataFrame()
     url1 = 'https://finance.naver.com/research/market_info_list.naver'
@@ -208,13 +215,23 @@ def headline_in():
     date=src1.find_all(class_="date")
     # print(range(1,len(stock_item)+1),stock_item)
     m=0
-    for k in range(len(stock_item)) :
+    for k in range(len(stock_item)):
         headline_in.loc[k,['일자']]=date[k*2+1].text
-        if stock_item[k*1].text[0]=="[":
-            headline_in.loc[k,['제목']]=stock_item[k*1].text[1:16]
-        else:
-            headline_in.loc[k,['제목']]=stock_item[k*1].text
-         
+        headline_in.loc[k,['제목']]=stock_item[k].text
+ 
+
+    # for k in range(len(stock_item)) :
+    #     headline_in.loc[k,['일자']]=date[k*2+1].text
+
+    #     if k==5 or k==6 or k==7 or k==13 or k==14 or k==15 or k==21 or k==22 or k==23 or k==29 or k==30 or k==31 or k==37 or k==38 or k==39 or k>44  :
+    #         pass
+    #     else:
+    #         if stock_item[k].text[0]=="[":
+    #             headline_in.loc[k,['제목']]=stock_item[k*2].text[0:16]
+
+    #         else:
+    #             headline_in.loc[k,['제목']]=stock_item[(k+1)*2].text
+    #     print(headline_in.loc[k,['제목']])
     # print(headline_in)
     for i in range(len(src1.find_all("tr"))):
             
@@ -226,49 +243,60 @@ def headline_in():
             path=src1.find_all("tr")[i+2].find_all("td")[0]
             path=str(path) 
             path1=path[path.find("href=")+6:path.find("""1">""")+1]
+
             url2 = "https://finance.naver.com/research/"+path1 
+            
             html2 = urlopen(url2)
             src2= BeautifulSoup(html2.read(), "html.parser")
-            strno=math.ceil(len(str(src2.find_all("p")[2].text))/50)
+            strno=math.ceil(len(str(src2.find_all("p")[8].text))/50)
             strno1=math.ceil(len(str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text))/50)
+            # print(strno,strno1,str(src2.find_all("p")[8].text))                     
+            # if str(src2.find_all("p")[2].text)!= "":
+            #     for n in range(strno):
+            #         if n==0:
+            #             research=str(src2.find_all("p")[8].text)[:50].strip()
+
+            #         else:
+            #             research=research+str(src2.find_all("p")[8].text)[50*n:50*(n+1)].strip()
+
+
+            #     headline_in.loc[m,['내용']]=research
+            #     # print(research)
+            #     m=m+1
+                
+            # else:
+            #     for n in range(strno1):
+            #         if n==0:
+            #             research=str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text).strip()[:50]
+
+            #         else:
+            #             research=research+str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text).strip()[50*n:50*(n+1)]
+
+            #     headline_in.loc[m,['내용']]=research
+            #     # print(research)
+            #     m=m+1
+            for n in range(strno1):
+                if n==0:
+                    research=str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text).strip()[:50]
+
+                else:
+                    research=research+str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text).strip()[50*n:50*(n+1)]
+
+            headline_in.loc[m,['내용']]=research
+            print(research)
+            m=m+1
             
-            # print(str(src2.find_all("p")[2].text))
+  
 
-            if str(src2.find_all("p")[2].text)!= "":
-                for n in range(strno):
-                    if n==0:
-                        research=str(src2.find_all("p")[2].text)[:50].strip()
-                        
-                    else:
-                        research=research+str(src2.find_all("p")[2].text)[50*n:50*(n+1)].strip()
-                headline_in.loc[m,['내용']]=research
-                m=m+1
-                # print(headline_in)
-                
-            else:
-                for n in range(strno1):
-                    if n==0:
-                        research=str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text).strip()[:50]
-                    else:
-                        research=research+str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text).strip()[50*n:50*(n+1)]
-                
-                headline_in.loc[m,['내용']]=research
-                m=m+1
-                # print(headline_in)
+    headline_in_html=headline_in.to_html(index=False, justify='center')
+    s = smtplib.SMTP('smtp.gmail.com', 587)
+    s.starttls()
+    s.login('sgw0214@gmail.com', 'thdfcvhemyjyxfik')
+    msg = MIMEText(headline_in_html,'html')
+    msg['Subject'] = '시황정보'
+    s.sendmail("sgw0214@gmail.com", "sgw0214@gmail.com", msg.as_string())
 
-    # headline_in_html=headline_in.to_html(index=False, justify='center')
-    # s = smtplib.SMTP('smtp.gmail.com', 587)
-    # s.starttls()
-    # s.login('sgw0214@gmail.com', 'thdfcvhemyjyxfik')
-    # msg = MIMEText(headline_in_html,'html')
-    # msg['Subject'] = '시황정보'
-    # s.sendmail("sgw0214@gmail.com", "sgw0214@gmail.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "sgw0214@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "nuclearabc@naver.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "nuclearabc@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "choice@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "jwseo@pocons.co.kr", msg.as_string())
-    # s.quit()
+    s.quit()
     return headline_in
 
 
@@ -469,30 +497,63 @@ def Summary():
                 pass
         else:
             break
-    Summary=Summary.fillna('-')
-    print(Summary)  
+        
+    ######    VIX(S&P500)    ####
+    url1 = 'https://kr.investing.com/indices/volatility-s-p-500-historical-data'
+    req=Request(url1,headers={'User-Agent':'Mozila/5.0'})
+    src1=urlopen(req)
+    src2= BeautifulSoup(src1.read(), "html.parser")
+    date_vix=src2.find_all(class_="first left bold noWrap")
+    vix=src2.find_all("tbody")[1]
 
+    for k in range(len(Summary['일자'])):
+        for m in range(len(date_vix)):
+            # print("date",date_vix,date_vix[m],m)
+            date_vix_list=date_vix[m].text[0:4]+"."+date_vix[m].text[6:8]+"."+date_vix[m].text[10:12]
+            
+            if date_vix_list == Summary['일자'].iloc[k]:
+                Summary.loc[k,['VIX(S&P)']]=vix.find_all("tr")[m].find_all("td")[1].text+'/'+vix.find_all("tr")[m].find_all("td")[6].text
+
+            else:
+                pass
+            
+    ######    VIX(KOSPI)    ####
+    url1 = 'https://kr.investing.com/indices/kospi-volatility-historical-data'
+    req=Request(url1,headers={'User-Agent':'Mozila/5.0'})
+    src1=urlopen(req)
+    src2= BeautifulSoup(src1.read(), "html.parser")
+    date_vix=src2.find_all(class_="first left bold noWrap")
+    vix=src2.find_all("tbody")[0]
+
+    for k in range(len(Summary['일자'])):
+        for m in range(len(date_vix)):
+            # print("date",date_vix,date_vix[m],m)
+            date_vix_list=date_vix[m].text[0:4]+"."+date_vix[m].text[6:8]+"."+date_vix[m].text[10:12]
+            
+            if date_vix_list == Summary['일자'].iloc[k]:
+                Summary.loc[k,['VIX(KOSPI)']]=vix.find_all("tr")[m].find_all("td")[1].text+'/'+vix.find_all("tr")[m].find_all("td")[6].text
+
+            else:
+                pass
+            
+    Summary=Summary.fillna('-') 
     # print(Summary)
-    # Summary_html=Summary.to_html(index=False, justify='center')
-    # s = smtplib.SMTP('smtp.gmail.com', 587)
-    # s.starttls()
-    # s.login('sgw0214@gmail.com', 'thdfcvhemyjyxfik')
-    # msg = MIMEText(Summary_html,'html')
-    # msg['Subject'] = '주요시장지표'
+    Summary_html=Summary.to_html(index=False, justify='center')
+    s = smtplib.SMTP('smtp.gmail.com', 587)
+    s.starttls()
+    s.login('sgw0214@gmail.com', 'thdfcvhemyjyxfik')
+    msg = MIMEText(Summary_html,'html')
+    msg['Subject'] = '주요시장지표'
     # s.sendmail("sgw0214@gmail.com", "sgw0214@gmail.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "sgw0214@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "nuclearabc@naver.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "nuclearabc@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "choice@lgdisplay.com", msg.as_string())
-    # s.sendmail("sgw0214@gmail.com", "jwseo@pocons.co.kr", msg.as_string())
-    # s.quit()
+
+    s.quit() 
     return Summary       
 
 
-stock_an().to_csv("E:\VSC\CODE\stock_an.csv")
-economy_an().to_csv("E:\VSC\CODE\economy_an.csv")
-headline_in().to_csv("E:\VSC\CODE\headline_in.csv")
-Summary().to_csv("E:\VSC\CODE\Summary.csv")
+# stock_an().to_csv("E:\VSC\CODE\stock_an.csv") ##종목분석
+# economy_an().to_csv("E:\VSC\CODE\economy_an.csv")  ##경제분석
+headline_in().to_csv("E:\VSC\CODE\headline_in.csv")  ##시황정보
+# Summary().to_csv("E:\VSC\CODE\Summary.csv") ##주요시장지표
 print(time.time()-start)
 
 

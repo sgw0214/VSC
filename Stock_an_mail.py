@@ -90,7 +90,7 @@ def stock_an():
                 stock_an.loc[m,['내용']]=research
                 m=m+1
             
-            elif str(src2.find_all(class_="source"))[19:25]=="나이스디앤비" or str(src2.find_all(class_="source"))[19:25]=="하나금융투자" or str(src2.find_all(class_="source"))[19:25]=="이베스트증권" or str(src2.find_all(class_="source"))[19:25]=="하이투자증권":
+            elif str(src2.find_all(class_="source"))[19:25]=="나이스디앤비" or str(src2.find_all(class_="source"))[19:25]=="하나금융투자" or str(src2.find_all(class_="source"))[19:25]=="이베스트증권" or str(src2.find_all(class_="source"))[19:25]=="이베스트증권" or str(src2.find_all(class_="source"))[19:25]=="하이투자증권" or str(src2.find_all(class_="source"))[19:25]=="미래에셋증권":
                 for n in range(strno2):
                     if n==0:
                         research=str(src2.find_all("tr")[3].find_all("div")[0].text.strip())[:50]
@@ -215,6 +215,7 @@ def economy_an():
     return economy_an 
 
 def headline_in():
+    
     k=0
     headline_in=pd.DataFrame()
     url1 = 'https://finance.naver.com/research/market_info_list.naver'
@@ -252,33 +253,43 @@ def headline_in():
             path=src1.find_all("tr")[i+2].find_all("td")[0]
             path=str(path) 
             path1=path[path.find("href=")+6:path.find("""1">""")+1]
+
             url2 = "https://finance.naver.com/research/"+path1 
+            
             html2 = urlopen(url2)
             src2= BeautifulSoup(html2.read(), "html.parser")
-            strno=math.ceil(len(str(src2.find_all("p")[7].text))/50)
+            strno=math.ceil(len(str(src2.find_all("p")[8].text))/50)
             strno1=math.ceil(len(str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text))/50)
+                                 
+            # if str(src2.find_all("p")[2].text)!= "":
+            #     for n in range(strno):
+            #         if n==0:
+            #             research=str(src2.find_all("p")[7].text)[:50].strip()
+            #         else:
+            #             research=research+str(src2.find_all("p")[7].text)[50*n:50*(n+1)].strip()
 
-            if str(3)!= "":
-                for n in range(strno):
-                    if n==0:
-                        research=str(src2.find_all("p")[7].text)[:50].strip()
-                        print(research)
-                    else:
-                        research=research+str(src2.find_all("p")[7].text)[50*n:50*(n+1)].strip()
-                        print(research)
-                headline_in.loc[m,['내용']]=research
-                m=m+1
+            #     headline_in.loc[m,['내용']]=research
+            #     m=m+1
                 
-            else:
-                for n in range(strno1):
-                    if n==0:
-                        research=str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text).strip()[:50]
-                    else:
-                        research=research+str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text).strip()[50*n:50*(n+1)]
+            # else:
+            #     for n in range(strno1):
+            #         if n==0:
+            #             research=str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text).strip()[:50]
+            #         else:
+            #             research=research+str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text).strip()[50*n:50*(n+1)]
                 
-                headline_in.loc[m,['내용']]=research
-                m=m+1
+            #     headline_in.loc[m,['내용']]=research
+            #     m=m+1
+            for n in range(strno1):
+                if n==0:
+                    research=str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text).strip()[:50]
 
+                else:
+                    research=research+str(src2.find_all(style="width:555px;height:100% clear:both; text-align: justify; overflow-x: auto;padding: 20px 0pt 30px;font-size:9pt;line-height:160%; color:#000000;")[0].text).strip()[50*n:50*(n+1)]
+
+            headline_in.loc[m,['내용']]=research
+            # print(research)
+            m=m+1
 
     headline_in_html=headline_in.to_html(index=False, justify='center')
     s = smtplib.SMTP('smtp.gmail.com', 587)
@@ -494,6 +505,45 @@ def Summary():
                 pass
         else:
             break
+        
+    ######    VIX(S&P500)    ####
+    url1 = 'https://kr.investing.com/indices/volatility-s-p-500-historical-data'
+    req=Request(url1,headers={'User-Agent':'Mozila/5.0'})
+    src1=urlopen(req)
+    src2= BeautifulSoup(src1.read(), "html.parser")
+    date_vix=src2.find_all(class_="first left bold noWrap")
+    vix=src2.find_all("tbody")[1]
+
+    for k in range(len(Summary['일자'])):
+        for m in range(len(date_vix)):
+            # print("date",date_vix,date_vix[m],m)
+            date_vix_list=date_vix[m].text[0:4]+"."+date_vix[m].text[6:8]+"."+date_vix[m].text[10:12]
+            
+            if date_vix_list == Summary['일자'].iloc[k]:
+                Summary.loc[k,['VIX(S&P)']]=vix.find_all("tr")[m].find_all("td")[1].text+'/'+vix.find_all("tr")[m].find_all("td")[6].text
+
+            else:
+                pass
+            
+    ######    VIX(KOSPI)    ####
+    url1 = 'https://kr.investing.com/indices/kospi-volatility-historical-data'
+    req=Request(url1,headers={'User-Agent':'Mozila/5.0'})
+    src1=urlopen(req)
+    src2= BeautifulSoup(src1.read(), "html.parser")
+    date_vix=src2.find_all(class_="first left bold noWrap")
+    vix=src2.find_all("tbody")[0]
+
+    for k in range(len(Summary['일자'])):
+        for m in range(len(date_vix)):
+            # print("date",date_vix,date_vix[m],m)
+            date_vix_list=date_vix[m].text[0:4]+"."+date_vix[m].text[6:8]+"."+date_vix[m].text[10:12]
+            
+            if date_vix_list == Summary['일자'].iloc[k]:
+                Summary.loc[k,['VIX(KOSPI)']]=vix.find_all("tr")[m].find_all("td")[1].text+'/'+vix.find_all("tr")[m].find_all("td")[6].text
+
+            else:
+                pass
+            
     Summary=Summary.fillna('-') 
     # print(Summary)
     Summary_html=Summary.to_html(index=False, justify='center')
@@ -509,7 +559,7 @@ def Summary():
     s.sendmail("sgw0214@gmail.com", "choice@lgdisplay.com", msg.as_string())
     s.sendmail("sgw0214@gmail.com", "jwseo@pocons.co.kr", msg.as_string())
     s.sendmail("sgw0214@gmail.com", "poqc@pocons.co.kr", msg.as_string())
-    s.quit()
+    s.quit() 
     return Summary       
 
 
