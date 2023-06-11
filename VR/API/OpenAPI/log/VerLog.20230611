@@ -806,3 +806,56 @@
 [21:51:58]:3 Handle Check [3273][853932]
 [21:51:58]:Send Before
 [21:51:59]:Send After [0]
+[22:00:36]:********************** Start **********************
+[22:00:36]:********************** Finish **********************
+[22:00:36]:FirstInstance
+[22:00:36]:Gdiplus Init
+[22:00:36]:Socket Init
+[22:00:36]:RegistryKey
+[22:00:36]:---------- Begin ----------
+[22:00:36]:RemoveTempDownloadedFiles
+[22:00:37]:SetVersionFileName
+[22:00:37]:InitControls
+[22:00:37]:CreateSubDirectory
+[22:00:37]:Read Security [1] Install[0]
+[22:00:37]:ASTX Procted ID 0 PWD 0 CERT 0
+[22:00:37]:ASTX Proc Done
+[22:00:37]:Server_Imit [SVRIP0]  IP=MainIP  port=MainPort
+
+[22:00:37]:InitDlg  etc read[0] [User ID][ ][ ]
+[22:00:37]:---------- Starter OnInitDialog End ----------
+[22:00:40]:Server_Imit [SVRIP0]  IP=MainIP  port=MainPort
+
+[22:00:40]:Server Socket 접속중...
+[22:00:40]:Server Socket 접속성공...
+[22:00:40]:교환이 완료될 때 까지 기다림
+[22:00:40]:암호화 HANDSHAKE:update  nLen=2044
+[22:00:40]:암호화 HANDSHAKE:final  nLen=86
+[22:00:40]:암호화 HANDSHAKE:ok  nLen=86
+[22:00:40]:********************** Start **********************
+[22:00:40]:서버에 FileDown요구 [mst.lst]
+[22:00:40]:ZipExtract BEFORE [1]
+[22:00:40]:ZipExtract AFTER [1] FileSize[1149]
+[22:00:41]:서버에 FileDown요구 [apiinitrsc.lst]
+[22:00:41]:No Writing temp.zip File : [0, 101] E:\VSC\CODE\VR\API\OpenAPI\
+[22:00:41]:E:\VSC\CODE\VR\API\OpenAPI\$apiinitrsc.lst Open Error.  CNKStarterDlg::GetDownLoadListToFile
+[22:00:41]:CFile::Rename org(E:\VSC\CODE\VR\API\OpenAPI\mst.lst), new(E:\VSC\CODE\VR\API\OpenAPI\_mst.lst)
+[22:00:41]:==>InitRename()
+[22:00:41]:E:\VSC\CODE\VR\API\OpenAPI\$apiinitrsc.lst Open Error.  CNKStarterDlg::GetDownLoadListToFile
+[22:00:41]:<==InitRename() : nTotalFileCount=0
+[22:00:41]:IsFindFile_astxsdk >>>>>>>>>>>>>>>
+[22:00:41]:IsFindFile_astxsdk 파일 찾을 경로 -  [E:\VSC\CODE\VR\API\OpenAPI\astxsdk\_*.*]
+[22:00:41]:IsFindFile_astxsdk <<<<<<<<<<<
+[22:00:41]:ProcessFIDData [LogonResult]  result=1
+[22:00:41]:ProcessFIDData [LogonMessage]  <39, 모의투자 : 정상적으로 로그인되었습니다.>
+[22:00:41]:ProcessFIDData [MenuFile]  file(12)=모의투자.mnu
+[22:00:41]:ProcessFIDData [use]  result=R
+[22:00:41]:ProcessFIDData [SVRIP0] IP=61.78.32.142  port=0
+[22:00:41]:ProcessFIDData [SVRIP1] IP=61.78.32.143  port=0
+[22:00:41]:서버에 FileDown요구 [apiotrsc.lst]
+[22:00:41]:No Writing temp.zip File : [0, 101] E:\VSC\CODE\VR\API\OpenAPI\
+[22:00:41]:m_ProgressMng.Exit BEFORE
+[22:00:41]:m_ProgressMng.Exit AFTER
+[22:00:42]:3 Handle Check [3273][264150]
+[22:00:42]:Send Before
+[22:00:42]:Send After [0]
