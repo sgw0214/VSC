@@ -19,26 +19,26 @@
 # window.show()
 # app.exec_()
 
-# import sys 
-# from PyQt5.QtWidgets import *
-# from PyQt5.QAxContainer import *
+import sys 
+from PyQt5.QtWidgets import *
+from PyQt5.QAxContainer import *
 
 
-# class MyWindow(QMainWindow):
-#     def __init__(self):
-#         super().__init__()
-#         self.ocx = QAxWidget("KHOPENAPI.KHOpenAPICtrl.1")
-#         self.ocx.dynamicCall("CommConnect()")
-#         self.ocx.OnEventConnect.connect(self.OnEventConnect)
+class MyWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.ocx = QAxWidget("KHOPENAPI.KHOpenAPICtrl.1")
+        self.ocx.dynamicCall("CommConnect()")
+        self.ocx.OnEventConnect.connect(self.OnEventConnect)
 
-#     def OnEventConnect(self, err_code):
-#         print(err_code)
+    def OnEventConnect(self, err_code):
+        print(err_code)
 
 
-# app = QApplication(sys.argv)
-# window = MyWindow()
-# window.show()
-# app.exec_()
+app = QApplication(sys.argv)
+window = MyWindow()
+window.show()
+app.exec_()
 
-set CONDA_FORCE_32BIT=1 
-conda create -n None python=3.6.5
+# set CONDA_FORCE_32BIT=1 
+# conda create -n base python=3.8.5
