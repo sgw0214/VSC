@@ -41,3 +41,4 @@
 # app.exec_()
 
 set CONDA_FORCE_32BIT=1 
+conda create -n None python=3.6.5
