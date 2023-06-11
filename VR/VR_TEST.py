@@ -1,52 +1,38 @@
-import sys 
+import sys
 from PyQt5.QtWidgets import *
-
-app = QApplication(sys.argv)
-label = QLabel("Hello PyQt")
-label.show()
-app.exec_()
-print("1")
-# import sys 
-# from PyQt5.QtWidgets import *
-
-# class MyWindow(QMainWindow):
-#     def __init__(self):
-#         super().__init__()
-
-
-# app = QApplication(sys.argv)
-# window = MyWindow()
-# window.show()
-# app.exec_()
-
-import sys 
-from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
 from PyQt5.QAxContainer import *
 
-print("2")
 class MyWindow(QMainWindow):
-    print("3")
     def __init__(self):
         super().__init__()
-        print("4")
-        self.ocx = QAxWidget("KHOPENAPI.KHOpenAPICtrl.1")
-        print("5")
-        self.ocx.dynamicCall("CommConnect()")
-        print("6")
-        self.ocx.OnEventConnect.connect(self.OnEventConnect)
+        self.setWindowTitle("PyStock")
+        self.setGeometry(300, 300, 300, 150)
 
-    def OnEventConnect(self, err_code):
-        print(err_code)
+        self.kiwoom = QAxWidget("KHOPENAPI.KHOpenAPICtrl.1")
 
-print("7")
-app = QApplication(sys.argv)
-print("8")
-window = MyWindow()
-print("9")
-window.show()
-print("10")
-app.exec_()
-print("11")
+        btn1 = QPushButton("Login", self)
+        btn1.move(20, 20)
+        btn1.clicked.connect(self.btn1_clicked)
 
+        btn2 = QPushButton("Check state", self)
+        btn2.move(20, 70)
+        btn2.clicked.connect(self.btn2_clicked)
+
+    def btn1_clicked(self):
+        ret = self.kiwoom.dynamicCall("CommConnect()")
+
+    def btn2_clicked(self):
+        if self.kiwoom.dynamicCall("GetConnectState()") == 0:
+            self.statusBar().showMessage("Not connected")
+        else:
+            self.statusBar().showMessage("Connected")
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    myWindow = MyWindow()
+    myWindow.show()
+    app.exec_()
+    
 # set CONDA_FORCE_32BIT=1 
 # conda create -n base python=3.8.5

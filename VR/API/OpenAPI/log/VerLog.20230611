@@ -859,3 +859,60 @@
 [22:00:42]:3 Handle Check [3273][264150]
 [22:00:42]:Send Before
 [22:00:42]:Send After [0]
+[22:36:34]:********************** Start **********************
+[22:36:34]:********************** Finish **********************
+[22:36:34]:FirstInstance
+[22:36:34]:Gdiplus Init
+[22:36:34]:Socket Init
+[22:36:34]:RegistryKey
+[22:36:34]:---------- Begin ----------
+[22:36:34]:RemoveTempDownloadedFiles
+[22:36:34]:SetVersionFileName
+[22:36:34]:InitControls
+[22:36:34]:CreateSubDirectory
+[22:36:34]:Read Security [1] Install[0]
+[22:36:35]:ASTX Procted ID 0 PWD 0 CERT 0
+[22:36:35]:ASTX Proc Done
+[22:36:35]:Server_Imit [SVRIP0]  IP=MainIP  port=MainPort
+
+[22:36:35]:InitDlg  etc read[0] [User ID][ ][ ]
+[22:36:35]:---------- Starter OnInitDialog End ----------
+[22:36:38]:Server_Imit [SVRIP0]  IP=MainIP  port=MainPort
+
+[22:36:38]:Server Socket 접속중...
+[22:36:38]:Server Socket 접속성공...
+[22:36:38]:교환이 완료될 때 까지 기다림
+[22:36:38]:암호화 HANDSHAKE:update  nLen=2042
+[22:36:38]:암호화 HANDSHAKE:final  nLen=82
+[22:36:38]:암호화 HANDSHAKE:ok  nLen=82
+[22:36:38]:********************** Start **********************
+[22:36:38]:서버에 FileDown요구 [mst.lst]
+[22:36:39]:ZipExtract BEFORE [1]
+[22:36:39]:ZipExtract AFTER [1] FileSize[1147]
+[22:36:39]:DownFileInList CRC 다름 File[cjcode.dat] LocalCrc[8e5ce2f0] ServerCrc[e58e0fae] Restarter[0]
+[22:36:39]:서버에 FileDown요구 [apiinitrsc.lst]
+[22:36:39]:No Writing temp.zip File : [0, 101] E:\VSC\CODE\VR\API\OpenAPI\
+[22:36:39]:E:\VSC\CODE\VR\API\OpenAPI\$apiinitrsc.lst Open Error.  CNKStarterDlg::GetDownLoadListToFile
+[22:36:39]:서버에 FileDown요구 [cjcode.dat]
+[22:36:44]:ZipExtract BEFORE [2]
+[22:36:44]:ZipExtract AFTER [2] FileSize[375622]
+[22:36:44]:CFile::Rename org(E:\VSC\CODE\VR\API\OpenAPI\mst.lst), new(E:\VSC\CODE\VR\API\OpenAPI\_mst.lst)
+[22:36:44]:==>InitRename()
+[22:36:44]:E:\VSC\CODE\VR\API\OpenAPI\$apiinitrsc.lst Open Error.  CNKStarterDlg::GetDownLoadListToFile
+[22:36:44]:<==InitRename() : nTotalFileCount=0
+[22:36:44]:IsFindFile_astxsdk >>>>>>>>>>>>>>>
+[22:36:44]:IsFindFile_astxsdk 파일 찾을 경로 -  [E:\VSC\CODE\VR\API\OpenAPI\astxsdk\_*.*]
+[22:36:44]:IsFindFile_astxsdk <<<<<<<<<<<
+[22:36:44]:ProcessFIDData [LogonResult]  result=1
+[22:36:44]:ProcessFIDData [LogonMessage]  <39, 모의투자 : 정상적으로 로그인되었습니다.>
+[22:36:44]:ProcessFIDData [MenuFile]  file(12)=모의투자.mnu
+[22:36:44]:ProcessFIDData [use]  result=R
+[22:36:44]:ProcessFIDData [SVRIP0] IP=61.78.32.143  port=0
+[22:36:44]:ProcessFIDData [SVRIP1] IP=61.78.32.142  port=0
+[22:36:44]:서버에 FileDown요구 [apiotrsc.lst]
+[22:36:44]:No Writing temp.zip File : [0, 101] E:\VSC\CODE\VR\API\OpenAPI\
+[22:36:44]:m_ProgressMng.Exit BEFORE
+[22:36:44]:m_ProgressMng.Exit AFTER
+[22:36:45]:3 Handle Check [3273][788424]
+[22:36:45]:Send Before
+[22:36:46]:Send After [0]
