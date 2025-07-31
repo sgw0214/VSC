@@ -41,13 +41,7 @@ from geopy.geocoders import Nominatim
 from selenium.webdriver.chrome.service import Service
 from urllib.parse import quote
 
-
-    
-    # 네이버 지도 검색 페이지 열기
-
-
 start = time.time()
-
 
 # 위도, 경도 반환 함수
 def geocoding(address):
@@ -136,7 +130,6 @@ def search_lnglat(key_word):
                 # 주소 버튼 누르기
                 address_buttons = driver.find_elements(By.CSS_SELECTOR, '.lWwyx > a')
                 address_buttons[data].click()
-
                 
                 # 로딩 기다리기
                 sleep(2)
@@ -191,7 +184,7 @@ def dismin(url):
 
     
 my_list=[]
-key_word = ['대화마을 7단지','두산위브더제니스 일산']# 검색어
+key_word = ['대화마을 7단지','두산위브더제니스 일산'] # 검색어
 for i in key_word:
     print(i)
     ml=search_lnglat(i)
