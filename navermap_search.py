@@ -94,8 +94,8 @@ def search_lnglat(key_word):
 
     sleep(5)
 
-    page_down(40,driver)
-    sleep(5)
+    #page_down(40,driver)
+    #sleep(5)
 
     # 가게 리스트
     store_list = driver.find_elements(By.CSS_SELECTOR, 'li.VLTHu')
@@ -109,10 +109,15 @@ def search_lnglat(key_word):
     # 시작시간
     start = time.time()
     print('[크롤링 시작...]')
+    
+    driver.switch_to.default_content()
+    time_wait(driver, 10, 'iframe#entryIframe')
+    driver.switch_to.frame('entryIframe')
+    time.sleep(3)
 
     # 크롤링 (페이지 리스트 만큼)
     for btn in range(len(next_btn))[1:]:  # next_btn[0] = 이전 페이지 버튼 무시 -> [1]부터 시작
-        store_list = driver.find_elements(By.CSS_SELECTOR, 'li.VLTHu')
+        # store_list = driver.find_elements(By.CSS_SELECTOR, 'li.VLTHu')
         
         names = driver.find_elements(By.CSS_SELECTOR, '.YwYLL')  #  장소명
         for data in range(len(store_list)): 
