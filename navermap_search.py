@@ -197,7 +197,7 @@ my_list=[]
 df=DataFrame()
 
 
-point_list=["엘지디스플레이 파주공장","일산동양타운아파트입구","대윤프라자","탄현큰마을 대림 102동","광성교회","파리바게뜨 일산역점","탄현마을3.5단지","탄현에듀포레푸르지오","SK엔크린 삼정셀프주유소"]
+point_list=["엘지디스플레이 파주공장","동양아파트 버스정류장","대윤프라자","탄현큰마을 대림 102동","광성교회","파리바게뜨 일산역점","탄현마을3.5단지","탄현에듀포레푸르지오","SK엔크린 삼정셀프주유소"]
 df=DataFrame(index=point_list,columns=point_list)
 from itertools import combinations
 
