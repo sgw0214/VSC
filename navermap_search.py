@@ -188,15 +188,14 @@ def dismin(url):
     
     return dism1.text, time_filter(dism1.text)
 
-def time_filter(timetext):   
-    match = re.search(r'(\d+)\s*분', timetext)
-    if match:
-        minutes = int(match.group(1))
-        print(minutes)
-    else:
-        minutes=0
-        print("분 앞 숫자를 찾을 수 없습니다.")
-    return minutes
+def time_filter(timetext):
+    hours = re.search(r'(\d+)\s*시간', timetext)
+    minutes = re.search(r'(\d+)\s*분', timetext)
+    
+    h = int(hours.group(1)) if hours else 0
+    m = int(minutes.group(1)) if minutes else 0
+    
+    return h * 60 + m
     
 my_list=[]
 df=DataFrame()
