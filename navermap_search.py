@@ -14,13 +14,10 @@ import time
 # from sqlalchemy import create_engine
 import numpy as np
 import urllib
-from openpyxl import load_workbook
-from openpyxl import Workbook
+from openpyxl import load_workbook,Workbook
 import math
 import smtplib
 import sched
-import time
-import smtplib
 from email.mime.text import MIMEText
 import datetime
 import inspect
@@ -50,7 +47,6 @@ def geocoding(address):
         geo = geo_local.geocode(address)
         x_y = [geo.latitude, geo.longitude]
         return x_y
-
     except:
         return [0,0]
 
@@ -103,11 +99,13 @@ def search_lnglat(key_word):
 
     # 가게 리스트
     store_list = driver.find_elements(By.CSS_SELECTOR, 'li.VLTHu')
+    
     # 페이지 리스트
     next_btn = driver.find_elements(By.CSS_SELECTOR, '.zRM9F> a')
 
     # dictionary 생성
     store_dict = {'가게 정보': []}
+    
     # 시작시간
     start = time.time()
     print('[크롤링 시작...]')
@@ -180,21 +178,32 @@ def dismin(url):
     dism1 = driver.find_element(By.CSS_SELECTOR, 'div.route_summary_box > div.route_summary_info_duration')
     sleep(5)
     print(dism1.text)
-    driver.quit()  # 작업이 끝나면 창을 닫는다.\
+    driver.quit()  # 작업이 끝나면 창을 닫는다.
     print(time.time()-start)
     
 my_list=[]
-key_word = ['대화마을 7단지','두산위브더제니스 일산'] # 검색어
-for i in key_word:
-    print(i)
-    ml=search_lnglat(i)
-    print(ml)
-    my_list.extend(ml)
-print(my_list)    
-url="https://map.naver.com/p/directions/"+str(my_list[0])+","+str(my_list[1])+","+quote(key_word[0])+",/"+str(my_list[2])+","+str(my_list[3])+","+quote(key_word[1])+",/-/car/0?c=11.00,0,0,0,dh"
 
-print(url)
-dismin(url)
+
+point_list=["엘지디스플레이 파주공장","일산동양타운아파트입구","대윤프라자","탄현큰마을 대림 102동","광성교회","파리바게뜨 일산역점","탄현마을3.5단지","탄현에듀포레푸르지오","SK엔크린 삼정셀프주유소"]
+from itertools import combinations
+
+result = list(combinations(point_list, 2))  # 2개씩 순서 없이 뽑기
+print(result)
+print(f"경우의 수: {len(result)}")
+
+
+
+# key_word = ['대화마을 7단지','두산위브더제니스 일산'] # 검색어
+# for i in key_word:
+#     print(i)
+#     ml=search_lnglat(i)
+#     print(ml)
+#     my_list.extend(ml)
+# print(my_list)    
+# url="https://map.naver.com/p/directions/"+str(my_list[0])+","+str(my_list[1])+","+quote(key_word[0])+",/"+str(my_list[2])+","+str(my_list[3])+","+quote(key_word[1])+",/-/car/0?c=11.00,0,0,0,dh"
+
+# print(url)
+# dismin(url)
 
 
 
