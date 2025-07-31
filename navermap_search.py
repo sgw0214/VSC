@@ -24,7 +24,7 @@ import inspect
 import sys
 # from datetime import datetime,date
 # # import pyautogui as pg
-
+import re
 import json
 
 from time import sleep
@@ -181,29 +181,47 @@ def dismin(url):
     driver.quit()  # 작업이 끝나면 창을 닫는다.
     print(time.time()-start)
     
+    return dism1.text, time_filter(dism1.text)
+
+def time_filter(timetext):   
+    match = re.search(r'(\d+)\s*분', timetext)
+    if match:
+        minutes = int(match.group(1))
+        print(minutes)
+    else:
+        minutes=0
+        print("분 앞 숫자를 찾을 수 없습니다.")
+    return minutes
+    
 my_list=[]
+df=DataFrame()
 
 
 point_list=["엘지디스플레이 파주공장","일산동양타운아파트입구","대윤프라자","탄현큰마을 대림 102동","광성교회","파리바게뜨 일산역점","탄현마을3.5단지","탄현에듀포레푸르지오","SK엔크린 삼정셀프주유소"]
+df=DataFrame(index=point_list,columns=point_list)
 from itertools import combinations
 
 result = list(combinations(point_list, 2))  # 2개씩 순서 없이 뽑기
 print(result)
 print(list(result[0]))
 
+for i in result:
+    
+    key_word = list(i) #['대화마을 7단지','두산위브더제니스 일산'] # 검색어
+    for i in key_word:
+        print(i)
+        ml=search_lnglat(i)
+        print(ml)
+        my_list.extend(ml)
+    print(my_list)    
+    url="https://map.naver.com/p/directions/"+str(my_list[0])+","+str(my_list[1])+","+quote(key_word[0])+",/"+str(my_list[2])+","+str(my_list[3])+","+quote(key_word[1])+",/-/car/0?c=11.00,0,0,0,dh"
+    print(url)
+    
+    df.loc[key_word,key_word]= dismin(url)[1]
+    
+print(df)
+    
 
-
-# key_word = ['대화마을 7단지','두산위브더제니스 일산'] # 검색어
-# for i in key_word:
-#     print(i)
-#     ml=search_lnglat(i)
-#     print(ml)
-#     my_list.extend(ml)
-# print(my_list)    
-# url="https://map.naver.com/p/directions/"+str(my_list[0])+","+str(my_list[1])+","+quote(key_word[0])+",/"+str(my_list[2])+","+str(my_list[3])+","+quote(key_word[1])+",/-/car/0?c=11.00,0,0,0,dh"
-
-# print(url)
-# dismin(url)
 
 
 
