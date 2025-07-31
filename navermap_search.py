@@ -90,13 +90,13 @@ def search_lnglat(key_word):
     search.send_keys(key_word)  
     search.send_keys(Keys.ENTER) 
 
-    sleep(10)
+    sleep(5)
 
     # frame 변경
     time_wait(10, 'iframe#searchIframe',driver)
     switch_frame('searchIframe',driver)
 
-    sleep(10)
+    sleep(5)
 
     page_down(40,driver)
     sleep(5)
@@ -178,10 +178,10 @@ def dismin(url):
     driver.get(url) 
     time_wait(10, 'div.route_summary_box > div.route_summary_info_duration',driver)
     dism1 = driver.find_element(By.CSS_SELECTOR, 'div.route_summary_box > div.route_summary_info_duration')
-    sleep(10)
+    sleep(5)
     print(dism1.text)
     driver.quit()  # 작업이 끝나면 창을 닫는다.\
-
+    print(time.time()-start)
     
 my_list=[]
 key_word = ['대화마을 7단지','두산위브더제니스 일산'] # 검색어
@@ -192,94 +192,9 @@ for i in key_word:
     my_list.extend(ml)
 print(my_list)    
 url="https://map.naver.com/p/directions/"+str(my_list[0])+","+str(my_list[1])+","+quote(key_word[0])+",/"+str(my_list[2])+","+str(my_list[3])+","+quote(key_word[1])+",/-/car/0?c=11.00,0,0,0,dh"
-# url="https://map.naver.com/p/directions/126.9405487,37.5951089,%EC%84%9C%EC%9A%B8%EC%97%AD%20%EA%B2%BD%EC%9D%98%EC%A4%91%EC%95%99%EC%84%A0,/126.7609492,37.694007,%ED%83%84%ED%98%84%EC%97%AD%20%EA%B2%BD%EC%9D%98%EC%A4%91%EC%95%99%EC%84%A0,/-/car/0?c=11.00,0,0,0,dh"
+
 print(url)
 dismin(url)
 
 
 
-
-
-
-
-#<div class="route_summary_info_duration"><strong class="StyledReadableDuration-sc-16wltj8-0 hwCdEF type_car"><span class="item_value">34</span><span class="item_unit">분</span></strong><span class="item_distance">20km</span></div>
-# json 파일로 저장
-#with open('data/geongjy_store_data.json', 'w', encoding='utf-8') as f:
- #   json.dump(store_dict, f, indent=4, ensure_ascii=False)
-
-# def stock_an():
-#     i=57427
-#     k=0
-#     stock_an=pd.DataFrame()
-#     url1 = 'https://finance.naver.com/research/company_list.naver'
-#     html1 = urlopen(url1).read()
-#     html1 = html1.decode('euc-kr') 
-#     src1= BeautifulSoup(html1, "html.parser"    )
-#     stock_item=src1.find_all(class_="stock_item")
-#     date=src1.find_all(class_="date")
-#     m=0
-#     for k in range(len(stock_item)) :
-#         stock_an.loc[k,['일자']]=date[k*2].text #[k*2+1]
-#         stock_an.loc[k,['종목']]=stock_item[k].text
-#     for i in range(len(src1.find_all("tr"))):
-#         # print(src1.find_all("tr")[5].find_all("td")[1])
-#         if i==5 or i==6 or i==7 or i==13 or i==14 or i==15 or i==21 or i==22 or i==23 or i==29 or i==30 or i==31 or i==37 or i==38 or i==39 or i>44  :
-#             pass
-#         else:
-#             path=src1.find_all("tr")[i+2].find_all("td")[1]
-#             print(path)
-#             print(stock_an.loc[m,['종목']])
-#             path=str(path) 
-#             path1=path[path.find("""=""")+2:path.find("""">""")]
-#             url2 = "https://finance.naver.com/research/"+path1
-#             html2 = urlopen(url2)
-#             src2= BeautifulSoup(html2.read(), "html.parser")
-#             strno=math.ceil(len(str(src2.find_all("p")[3].text))/50)
-#             strno1=math.ceil(len(str(src2.find_all("p")[2].text))/50)
-#             strno2=math.ceil(len(str(src2.find_all("tr")[3].find_all("div")[0].text.strip()))/50)
-#             # print(str(src2.find_all(class_="source"))[19:25])
-#             if str(src2.find_all("p")[2].text)== "":
-#                 for n in range(strno):
-#                     if n==0:
-#                         research=str(src2.find_all("p")[3].text)[:50]
-#                     else:
-#                         research=research+str(src2.find_all("p")[3].text)[50*n:50*(n+1)]
-#                 stock_an.loc[m,['내용']]=research
-#                 m=m+1
-#             else:#str(src2.find_all(class_="source"))[19:26]=="한국기업데이터"  or str(src2.find_all(class_="source"))[19:26]=="IBK투자증권" or str(src2.find_all(class_="source"))[19:26]=="케이프투자증권"
-#                 for n in range(strno2):
-#                     if n==0:
-#                         research=str(src2.find_all("tr")[3].find_all("div")[0].text.strip())[:50]
-#                     else:
-#                         research=research+str(src2.find_all("tr")[3].find_all("div")[0].text.strip())[50*n:50*(n+1)]
-#                 stock_an.loc[m,['내용']]=research
-#                 m=m+1
-
-#     stock_an_html=stock_an.to_html(index=False, justify='center')
-#     total=stock_an_html
-
-#     # s = smtplib.SMTP('smtp.gmail.com', 587)
-#     # s.starttls()
-#     # s.login('sgw0214@gmail.com', 'thdfcvhemyjyxfik')
-#     # msg = MIMEText(stock_an_html,'html')
-#     # msg['Subject'] = '종목분석'+"_"+datetime.datetime.strftime(datetime.datetime.today() ,'%Y%m%d')
-#     # s.sendmail("sgw0214@gmail.com", "sgw0214@gmail.com", msg.as_string())
-#     # s.sendmail("sgw0214@lgdisplay.com", "sgw0214@lgdisplay.com", msg.as_string())
-#     # s.sendmail("jwseo@pocons.co.kr", "jwseo@pocons.co.kr", msg.as_string())
-#     # s.quit()
-#     print("종목분석완료")
-#     return stock_an
-
-# stock_an().to_csv("E:\VSC\CODE\stock_an.csv")
-
-
-
-
-
-
-
-
-
-
-
-print(time.time()-start)
