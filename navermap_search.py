@@ -189,7 +189,7 @@ from itertools import combinations
 
 result = list(combinations(point_list, 2))  # 2개씩 순서 없이 뽑기
 print(result)
-print(f"경우의 수: {len(result)}")
+print(list(result[0]))
 
 
 
