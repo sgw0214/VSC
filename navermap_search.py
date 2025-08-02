@@ -159,7 +159,7 @@ def search_lnglat(key_word):
                     print(f"도로명 재시도1,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
                     if geocoding(road_address_fi)[0]==0:
                         road_address_fi=store_name
-                        print(f"도로명 재시도2,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
+                        print(f"도로명 재시도2,'id':{data}, 'title': {key_word}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
                 
                 # dict에 데이터 집어넣기
                 dict_temp = {
