@@ -155,6 +155,7 @@ def search_lnglat(key_word):
                     road = addr[1].text 
                     road_address = road[3:-2].replace("\n", "")
                     road_address_fi=addr0.text+" "+road_address
+                    remove_duplicate_words(road_address_fi)
                     print(f"도로명 재시도1,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
                     if geocoding(road_address_fi)[0]==0:
                         road_address_fi=store_name
@@ -188,6 +189,15 @@ def search_lnglat(key_word):
     print('[데이터 수집 완료]\n소요 시간 :', time.time() - start)
     driver.quit()  # 작업이 끝나면 창을 닫는다.\
     return geocoding(road_address_fi)[1], geocoding(road_address_fi)[0]
+
+def remove_duplicate_words(address):
+    words = address.split()
+    result = []
+    for word in words:
+        if len(result) == 0 or word != result[-1]:
+            result.append(word)
+    return ' '.join(result)
+
 
 def dismin(url):
 
