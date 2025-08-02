@@ -117,10 +117,10 @@ def search_lnglat(key_word):
 
     # 크롤링 (페이지 리스트 만큼)
     for btn in range(len(next_btn))[1:]:  # next_btn[0] = 이전 페이지 버튼 무시 -> [1]부터 시작
-        store_list = driver.find_elements(By.CSS_SELECTOR, 'li.VLTHu')
-        
+        # store_list = driver.find_element(By.CSS_SELECTOR, 'li.VLTHu')
+        store_name = driver.find_element(By.CSS_SELECTOR, 'li.VLTHu')
         names = driver.find_elements(By.CSS_SELECTOR, '.YwYLL')  #  장소명
-        for data in range(len(store_list)): 
+        for data in range(len(store_name)): 
 
             sleep(2)
             try:
@@ -225,7 +225,7 @@ def time_filter(timetext):
 df=DataFrame()
 point_hist=DataFrame()
 
-point_list=["일산아름미용실","일산동양아파트101동","대윤프라자","탄현큰마을대림아파트 일현로 140","광성교회","리드인 독서논술 일산","부영3단지 303동","일산에듀포레푸르지오아파트","SK엔크린 삼정셀프주유소"]
+point_list=["일산아름미용실","일산동양아파트101동","대윤프라자","탄현큰마을대림아파트 일현로 140","광성교회","리드인 독서논술 일산","일산에듀포레푸르지오아파트","SK엔크린 삼정셀프주유소"]
 # point_list=["엘지디스플레이 파주공장","일산동양아파트101동","대윤프라자","탄현큰마을대림아파트 일현로 140","광성교회","리드인 독서논술 일산","부영3단지 303동","일산에듀포레푸르지오아파트","SK엔크린 삼정셀프주유소"]
 df=DataFrame(index=point_list,columns=point_list)
 point_hist=DataFrame(index=point_list,columns=["lng","lat"])
