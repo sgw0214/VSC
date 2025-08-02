@@ -229,8 +229,8 @@ def time_filter(timetext):
 df=DataFrame()
 point_hist=DataFrame()
 
-point_list=["탄현마을부영3단지아파트","일산동양아파트101동","대윤프라자","탄현큰마을대림아파트 일현로 140","광성교회","리드인 독서논술 일산","일산에듀포레푸르지오아파트","SK엔크린 삼정셀프주유소"]
-# point_list=["엘지디스플레이 파주공장","일산동양아파트101동","대윤프라자","탄현큰마을대림아파트 일현로 140","광성교회","리드인 독서논술 일산","부영3단지 303동","일산에듀포레푸르지오아파트","SK엔크린 삼정셀프주유소"]
+# point_list=["탄현마을부영3단지아파트","일산동양아파트101동","대윤프라자","탄현큰마을대림아파트 일현로 140","광성교회","리드인 독서논술 일산","일산에듀포레푸르지오아파트","SK엔크린 삼정셀프주유소"]
+point_list=["엘지디스플레이 파주공장","일산동양아파트101동","대윤프라자","탄현큰마을대림아파트 일현로 140","광성교회","리드인 독서논술 일산","탄현마을부영3단지아파트","일산에듀포레푸르지오아파트","SK엔크린 삼정셀프주유소"]
 df=DataFrame(index=point_list,columns=point_list)
 point_hist=DataFrame(index=point_list,columns=["lng","lat"])
 
@@ -244,7 +244,7 @@ for k in result:
     for i in key_word:
         print(i)
 
-        if point_hist.loc[i,'lng']>0:
+        if point_hist.loc[i,'lng']>=0:
             my_list.append(point_hist.loc[i,'lng'])
             my_list.append(point_hist.loc[i,'lat'])
             print(f'print(my_list):{my_list}')
