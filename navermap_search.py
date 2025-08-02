@@ -202,17 +202,19 @@ def remove_duplicate_words(address):
 
 
 def dismin(url):
+    try:
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))  #ChromeDriverManager().install()
+        driver.get(url) 
+        time_wait(10, 'div.route_summary_box > div.route_summary_info_duration',driver)
+        dism1 = driver.find_element(By.CSS_SELECTOR, 'div.route_summary_box > div.route_summary_info_duration')
+        sleep(10)
+        dism1_text=dism1.text
 
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))  #ChromeDriverManager().install()
-    driver.get(url) 
-    time_wait(10, 'div.route_summary_box > div.route_summary_info_duration',driver)
-    dism1 = driver.find_element(By.CSS_SELECTOR, 'div.route_summary_box > div.route_summary_info_duration')
-    sleep(10)
-    dism1_text=dism1.text
-
-    print(dism1_text)
-    driver.quit()    
-    return time_filter(dism1_text)
+        print(dism1_text)
+        driver.quit()    
+        return time_filter(dism1_text)
+    except UnboundLocalError as e:
+        print(e)
 
 def time_filter(timetext):
     hours = re.search(r'(\d+)\s*시간', timetext)
