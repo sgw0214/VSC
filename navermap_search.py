@@ -300,7 +300,7 @@ df2["시간합"]=df2["시간1"]+df2["시간2"]+df2["시간3"]+df2["시간4"]
 df2=df2.sort_values(by="시간합")
 print(df2)
 
-df2.to_excel("./정렬결과.excel",index=False)
+df2.to_excel("./정렬결과.xlsx",index=False)
 
 
 
