@@ -124,7 +124,7 @@ def search_lnglat(key_word):
                 store_name = names[data].text
                 print(store_name)
 
-                if store_list[1] is not None:
+                if store_list[0] =="":
                     # 주소 버튼 누르기
                     address_buttons = driver.find_elements(By.CSS_SELECTOR, '.lWwyx > a')
                     address_buttons[data].click()
@@ -146,7 +146,7 @@ def search_lnglat(key_word):
                 else:  
                     data=key_word
                     # 주소 버튼 누르기
-                    address_buttons = driver.find_element(By.CSS_SELECTOR, '.vV_z_ > a')
+                    address_buttons = driver.find_element(By.CSS_SELECTOR, 'a.vV_z_')
                     address_buttons.click()    
                     # 로딩 기다리기
                     sleep(2)       
