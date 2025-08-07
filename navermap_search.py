@@ -284,10 +284,10 @@ print(df1)
 
 print(df1.columns)
 
-from itertools import product
-point_case = list(product(df1, 5))  # 2개씩 순서 없이 뽑기
-point_case1=[ i for i in point_case if i[0]=="엘지디스플레이 파주공장"]
-print(point_case1)
+# from itertools import product
+# point_case = list(product(df1, repeat=5)) 
+# point_case1=[ i for i in point_case if i[0]=="엘지디스플레이 파주공장"]
+# print(point_case1)
 
 
 
