@@ -301,7 +301,10 @@ print(df2)
 for i in range(len(point_case1)):
     for k in range(4):
         # print(df1.loc[point_case1[i][k],point_case1[i][k+1]])
-        df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i][k],point_case1[i][k+1]]
+        if df1.loc[point_case1[i][k],point_case1[i][k+1]]==None:
+            df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i+1][k],point_case1[i][k]]
+        else:
+            df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i][k],point_case1[i][k+1]]
         print(df2)
 # df2=df2.dropna()
 # df2["시간합"]=df2["시간1"]+df2["시간2"]+df2["시간3"]+df2["시간4"]
