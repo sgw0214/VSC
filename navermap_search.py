@@ -302,14 +302,14 @@ df2=df2.dropna().reset_index(drop=True)
 
 df2["라벨"]=0
 n=1
-for i,j in zip(range(len(point_case1)),point_case1):
+for i,j in zip(range(len(df2)),df2["경로"]):
     if df2.loc[i,"라벨"]==0:
         df2.loc[i,"라벨"]=n
         print(df2)
-    for k in range(len(point_case1)-1):
+    for k in range(len(df2)-1):
         m=0
         for l in range(3):
-            if point_case1[k+1][l+1] in j:
+            if df2.iloc[k+1,0][l+1] in j:
                 m+=1
         if m==0:
             if df2.loc[k,"라벨"]==0:
