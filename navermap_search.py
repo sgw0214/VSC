@@ -313,7 +313,7 @@ for i,j in zip(range(len(df2)),df2["경로"]):
     for k in range(len(df2)):
         m=0
         for l in range(3):
-            if df2.iloc[k+1,0][l+1] in j:
+            if df2.iloc[k+1,0][l+1:] in j:
                 m+=1
         if m==0:
             if df2.loc[k+1,"라벨"]==0:
