@@ -293,13 +293,14 @@ print(point_case1)
     
 df2=pd.DataFrame()
 df2["경로"]=point_case1
-df2["라벨"]=0
+
 for i in range(len(point_case1)):
     for k in range(4):
         print(df1.loc[point_case1[i][k],point_case1[i][k+1]])
         df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i][k],point_case1[i][k+1]]
-df2=df2.dropna()
+df2=df2.dropna().reset_index(drop=True)
 
+df2["라벨"]=0
 n=1
 for i,j in zip(range(len(point_case1)),point_case1):
     if df2.loc[i,"라벨"]==0:
