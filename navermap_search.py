@@ -283,21 +283,21 @@ df1=pd.read_csv("./거리산출결과.csv" )
 df1=df1.set_index('Unnamed: 0')
 print(df1)
 print(df1.columns)
-print(df1.loc["일산동양아파트101동 ","엘지디스플레이 파주공장"])
-# from itertools import permutations
-# point_case = list(permutations(df1,5)) 
-# point_case1=[ i for i in point_case if i[0]=="엘지디스플레이 파주공장"]
-# print(point_case1)
+# print(df1.loc["엘지디스플레이 파주공장","일산동양아파트101동"])
+from itertools import permutations
+point_case = list(permutations(df1,5)) 
+point_case1=[ i for i in point_case if i[0]=="엘지디스플레이 파주공장"]
+print(point_case1)
 
-# df2=pd.DataFrame()
-# df2["경로"]=point_case1
-# for i in range(len(point_case1)):
-#     for k in range(4):
-#         print(df1.loc[point_case1[k],point_case1[k+1]])
-#         df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[k],point_case1[k+1]]
+df2=pd.DataFrame()
+df2["경로"]=point_case1
+for i in range(len(point_case1)):
+    for k in range(4):
+        print(df1.loc[point_case1[k],point_case1[k+1]])
+        df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[k],point_case1[k+1]]
         
 
-# print(df2)
+print(df2)
 
 
 
