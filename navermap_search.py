@@ -316,10 +316,10 @@ for i,j in zip(range(len(df2)),df2["경로"]):
             if df2.iloc[k+1,0][l+1] in j:
                 m+=1
         if m==0:
-            if df2.loc[k,"라벨"]==0:
-                df2.loc[k,"라벨"]=n
+            if df2.loc[k+1,"라벨"]==0:
+                df2.loc[k+1,"라벨"]=n
                 print("against")
-                print(k,df2.loc[k,"경로"],n)
+                print(k,df2.loc[k+1,"경로"],n)
                 n+=1
                 break
     # print(df2)   
