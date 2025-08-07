@@ -298,14 +298,18 @@ for i in range(len(point_case1)):
     for k in range(4):
         print(df1.loc[point_case1[i][k],point_case1[i][k+1]])
         df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i][k],point_case1[i][k+1]]
-df2=df2.dropna().reset_index(drop=True)
+df2=df2.dropna()
+df2["시간합"]=df2["시간1"]+df2["시간2"]+df2["시간3"]+df2["시간4"]
+df2=df2.sort_values(by="시간합").reset_index(drop=True)
+print(df2)
 
 df2["라벨"]=0
 n=1
 for i,j in zip(range(len(df2)),df2["경로"]):
     if df2.loc[i,"라벨"]==0:
         df2.loc[i,"라벨"]=n
-        print(df2)
+        print("first")
+        print(i,df2.loc[i,"경로"],n)
     for k in range(len(df2)-1):
         m=0
         for l in range(3):
@@ -314,15 +318,15 @@ for i,j in zip(range(len(df2)),df2["경로"]):
         if m==0:
             if df2.loc[k,"라벨"]==0:
                 df2.loc[k,"라벨"]=n
+                print("against")
+                print(k,df2.loc[k,"경로"],n)
                 n+=1
-    print(df2)   
+    # print(df2)   
      
 print(df2)
 
 
-df2["시간합"]=df2["시간1"]+df2["시간2"]+df2["시간3"]+df2["시간4"]
-df2=df2.sort_values(by="시간합")
-print(df2)
+
 
 
 
