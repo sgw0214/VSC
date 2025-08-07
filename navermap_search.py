@@ -279,9 +279,9 @@ point_hist=DataFrame(index=point_list,columns=["lng","lat"])
 # print(geocoding("홀트로 11"))
 
 df1=pd.read_csv("./거리산출결과.csv" )
-df1=df1.drop(columns=['Unnamed: 0'])
+# df1=df1.drop(columns=['Unnamed: 0'])
+df1=df1.set_index('Unnamed: 0')
 print(df1)
-
 print(df1.columns)
 
 from itertools import permutations
@@ -291,6 +291,10 @@ print(point_case1)
 
 df2=pd.DataFrame()
 df2["경로"]=point_case1
+for i in range(len(point_case1)):
+    for k in range(4):
+        df2.loc[i,"시간"+k+1]=df1.loc[point_case1[k],point_case1[k+1]]
+
 
 print(df2)
 
