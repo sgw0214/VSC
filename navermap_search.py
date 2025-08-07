@@ -305,30 +305,36 @@ print(df2)
 
 df2["라벨"]=0
 n=1
-for i,j in zip(range(len(df2)),df2["경로"]):
+for i,j in zip(range(len(df2)-1),df2["경로"]):
     if df2.loc[i,"라벨"]==0:
         df2.loc[i,"라벨"]=n
         print("first")
         print(i,df2.loc[i,"경로"],n)
-    for k in range(len(df2)):
+    for k in range(1,len(df2)):
         m=0
         for l in range(4):
-            if df2.iloc[k+1,0][l+1] in j:
-                print(df2.iloc[k+1,0][l+1])
+            # print(df2.iloc[k,0])
+            # print(k+1,df2.iloc[k,0][l+1],"=",j)
+            if df2.iloc[k,0][l+1] in j:
+                # print(k,df2.iloc[k,0][l+1])
                 m+=1
         if m==0:
-            if df2.loc[k+1,"라벨"]==0:
-                df2.loc[k+1,"라벨"]=n
+            if df2.loc[k,"라벨"]==0:
+                df2.loc[k,"라벨"]=n
                 print("against")
-                print(i,k+1,df2.loc[k+1,"경로"],n)
+                print(i,k,df2.loc[k,"경로"],n)
                 n+=1
     # print(df2)   
      
 print(df2)
 
+# 라벨별 평균 계산
+avg_time = df.groupby('라벨')['시간합'].mean()
 
+# 평균값을 원래 데이터프레임에 매핑하여 새 컬럼 추가
+df['라벨별_평균시간'] = df['라벨'].map(avg_time)
 
-
+print(df2)
 
 
 df2.to_excel("./정렬결과.xlsx",index=False)
