@@ -119,7 +119,7 @@ def search_lnglat(key_word):
             store_name = names[data].text
             print(store_name)
 
-            if store_list[0] =="":
+            if store_list[1] == None:
                 # 주소 버튼 누르기
                 address_buttons = driver.find_elements(By.CSS_SELECTOR, '.lWwyx > a')
                 address_buttons[data].click()
