@@ -99,9 +99,6 @@ def search_lnglat(key_word):
 
     # 가게 리스트
     store_list = driver.find_elements(By.CSS_SELECTOR, 'li.VLTHu')
-    
-    # 페이지 리스트
-    next_btn = driver.find_elements(By.CSS_SELECTOR, '.zRM9F> a')
 
     # dictionary 생성
     store_dict = {'가게 정보': []}
@@ -110,109 +107,92 @@ def search_lnglat(key_word):
     
     print('[크롤링 시작...]')
 
-    # 크롤링 (페이지 리스트 만큼)
-    for btn in range(len(next_btn))[1:]:  # next_btn[0] = 이전 페이지 버튼 무시 -> [1]부터 시작
-        store_list = driver.find_elements(By.CSS_SELECTOR, 'li.VLTHu')
-        names = driver.find_elements(By.CSS_SELECTOR, '.YwYLL')  #  장소명
-        for data in range(len(store_list)): 
+    # 크롤링
+    store_list = driver.find_elements(By.CSS_SELECTOR, 'li.VLTHu')
+    names = driver.find_elements(By.CSS_SELECTOR, '.YwYLL')  #  장소명
+    for data in range(len(store_list)): 
+        sleep(2)
+        try:
+            # 도로명 초기화
+            road_address = ''
+            # 가게명 가져오기
+            store_name = names[data].text
+            print(store_name)
 
-            sleep(2)
-            try:
-                # 도로명 초기화
-                road_address = ''
-                # 가게명 가져오기
-                store_name = names[data].text
-                print(store_name)
+            if store_list[0] =="":
+                # 주소 버튼 누르기
+                address_buttons = driver.find_elements(By.CSS_SELECTOR, '.lWwyx > a')
+                address_buttons[data].click()
+                
+                # 로딩 기다리기
+                sleep(2)
 
-                if store_list[0] =="":
-                    # 주소 버튼 누르기
-                    address_buttons = driver.find_elements(By.CSS_SELECTOR, '.lWwyx > a')
-                    address_buttons[data].click()
-                    
-                    # 로딩 기다리기
-                    sleep(2)
-
-                    # 주소 눌렀을 때 도로명, 지번 나오는 div
-                    addr0 = driver.find_element(By.CSS_SELECTOR, "span.Pb4bU")
-                    sleep(2)
-                    addr1 = driver.find_elements(By.CSS_SELECTOR, '.AbTyi> div')
-                    sleep(2)
-                    # 도로명            
-                    road = addr1[0].text 
+                # 주소 눌렀을 때 도로명, 지번 나오는 div
+                addr0 = driver.find_element(By.CSS_SELECTOR, "span.Pb4bU")
+                sleep(2)
+                addr1 = driver.find_elements(By.CSS_SELECTOR, '.AbTyi> div')
+                sleep(2)
+                # 도로명            
+                road = addr1[0].text 
+                road_address = road[3:-2].replace("\n", "")
+                road_address_fi=addr0.text+" "+road_address
+                print(road_address_fi)
+                
+                sleep(2)
+                print({'id':data, 'title': store_name, 'address':road_address_fi, 'lat':geocoding(road_address_fi)[0],'lng':geocoding(road_address_fi)[1]})
+                if geocoding(road_address_fi)[0]==0:
+                    road = addr1[1].text 
                     road_address = road[3:-2].replace("\n", "")
                     road_address_fi=addr0.text+" "+road_address
-                    print(road_address_fi)
-                    
-                    sleep(2)
-                    print({'id':data, 'title': store_name, 'address':road_address_fi, 'lat':geocoding(road_address_fi)[0],'lng':geocoding(road_address_fi)[1]})
+                    road_address_fi=remove_duplicate_words(road_address_fi)
+                    print(f"도로명 재시도1,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
                     if geocoding(road_address_fi)[0]==0:
-                        road = addr1[1].text 
-                        road_address = road[3:-2].replace("\n", "")
-                        road_address_fi=addr0.text+" "+road_address
-                        road_address_fi=remove_duplicate_words(road_address_fi)
-                        print(f"도로명 재시도1,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
-                        if geocoding(road_address_fi)[0]==0:
-                            store_name=key_word
-                            road_address_fi=key_word
-                            print(f"도로명 재시도2,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
-                    
-                else:  
-                    switch_frame('entryIframe',driver) #entryIframe
-                    sleep(5)
-                    data=key_word
-                    # 주소 버튼 누르기
-                    address_buttons = driver.find_elements(By.CSS_SELECTOR, 'a.PkgBl') #vV_z_
-                    address_buttons[0].click()    
-                    # 로딩 기다리기
-                    sleep(2)       
-                    # 주소 눌렀을 때 도로명, 지번 나오는 div
-                    addr1 = driver.find_elements(By.CSS_SELECTOR, '.Y31Sf> div')
-                    sleep(2)
-                    road = addr1[0].text 
+                        store_name=key_word
+                        road_address_fi=key_word
+                        print(f"도로명 재시도2,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
+                
+            else:  
+                switch_frame('entryIframe',driver) #entryIframe
+                sleep(5)
+                data=key_word
+                # 주소 버튼 누르기
+                address_buttons = driver.find_elements(By.CSS_SELECTOR, 'a.PkgBl') #vV_z_
+                address_buttons[0].click()    
+                # 로딩 기다리기
+                sleep(2)       
+                # 주소 눌렀을 때 도로명, 지번 나오는 div
+                addr1 = driver.find_elements(By.CSS_SELECTOR, '.Y31Sf> div')
+                sleep(2)
+                road = addr1[0].text 
+                road_address = road[3:-2].replace("\n", "")
+                road_address_fi=road_address
+                print(road_address_fi)
+                sleep(2)
+                print({'id':data, 'title': store_name, 'address':road_address_fi, 'lat':geocoding(road_address_fi)[0],'lng':geocoding(road_address_fi)[1]})
+                if geocoding(road_address_fi)[0]==0:
+                    road = addr1[1].text 
                     road_address = road[3:-2].replace("\n", "")
                     road_address_fi=road_address
-                    print(road_address_fi)
-                    sleep(2)
-                    print({'id':data, 'title': store_name, 'address':road_address_fi, 'lat':geocoding(road_address_fi)[0],'lng':geocoding(road_address_fi)[1]})
+                    road_address_fi=remove_duplicate_words(road_address_fi)
+                    print(f"도로명 재시도1,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
                     if geocoding(road_address_fi)[0]==0:
-                        road = addr1[1].text 
-                        road_address = road[3:-2].replace("\n", "")
-                        road_address_fi=road_address
-                        road_address_fi=remove_duplicate_words(road_address_fi)
-                        print(f"도로명 재시도1,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
-                        if geocoding(road_address_fi)[0]==0:
-                            store_name=key_word
-                            road_address_fi=key_word
-                            print(f"도로명 재시도2,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
-                    
-
-
- 
-                        
-                # dict에 데이터 집어넣기
-                dict_temp = {
-                    'name': store_name,
-                    'road_address': road_address_fi,
-                    'latitude' : geocoding(road_address_fi)[0],
-                    'longitude' : geocoding(road_address_fi)[1]}
-                store_dict['가게 정보'].append(dict_temp)
-
-                if data==0:
-                    break
-            except Exception as e:
-                print(e)
+                        store_name=key_word
+                        road_address_fi=key_word
+                        print(f"도로명 재시도2,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
                 
-        # 다음 페이지 버튼 누를 수 없으면 종료
-        if not next_btn or not next_btn[-1].is_enabled():
-            break
+            # dict에 데이터 집어넣기
+            dict_temp = {
+                'name': store_name,
+                'road_address': road_address_fi,
+                'latitude' : geocoding(road_address_fi)[0],
+                'longitude' : geocoding(road_address_fi)[1]}
+            store_dict['가게 정보'].append(dict_temp)
 
-        # if names[-1]:  # 마지막 가게일 경우 다음버튼 클릭
-        #     next_btn[-1].click()
-        #     sleep(2)
+            if data==0:
+                break
+        except Exception as e:
+            print(e)
 
-        else:
-            print('페이지 인식 못함')
-            break
 
     print('[데이터 수집 완료]\n소요 시간 :', time.time() - start)
     driver.quit()  # 작업이 끝나면 창을 닫는다.\
