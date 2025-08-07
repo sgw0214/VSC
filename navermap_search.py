@@ -123,8 +123,8 @@ def search_lnglat(key_word):
                 # 가게명 가져오기
                 store_name = names[data].text
                 print(store_name)
-                print(driver.find_elements(By.CSS_SELECTOR, '.panel_content_wrap> div'))
-                if driver.find_elements(By.CSS_SELECTOR, '.panel_content_wrap> div') is None:
+
+                if store_list[1] is not None:
                     # 주소 버튼 누르기
                     address_buttons = driver.find_elements(By.CSS_SELECTOR, '.lWwyx > a')
                     address_buttons[data].click()
