@@ -285,6 +285,7 @@ print(df1)
 print(df1.columns)
 
 df1=df1[['엘지디스플레이 파주공장']+df1.loc['엘지디스플레이 파주공장'].dropna().sort_values(ascending=True).index.to_list()]
+df1=df1.reindex(['엘지디스플레이 파주공장']+df1.loc['엘지디스플레이 파주공장'].dropna().sort_values(ascending=True).index.to_list())
 print(df1)
 
 from itertools import permutations
