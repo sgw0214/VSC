@@ -266,7 +266,7 @@ print(result)
     
 
     
-geocoding("경기 고양시 일산서구 홀트로 11")
+print(geocoding("경기 고양시 일산서구 탄현동 1484"))
 
 
 
