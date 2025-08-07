@@ -131,19 +131,31 @@ def search_lnglat(key_word):
             road_address = road[3:-2].replace("\n", "")
             road_address_fi=addr0.text+" "+road_address
             print(road_address_fi)
-            
             sleep(2)
-            print({ 'title': store_name, 'address':road_address_fi, 'lat':geocoding(road_address_fi)[0],'lng':geocoding(road_address_fi)[1]})
+            print(f"도로명 재시도1, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[0]}','lng':'{geocoding(road_address_fi)[1]}'")
             if geocoding(road_address_fi)[0]==0:
-                road = addr1[1].text 
+                road = addr1[0].text 
                 road_address = road[3:-2].replace("\n", "")
-                road_address_fi=addr0.text+" "+road_address
+                road_address_fi=road_address
                 road_address_fi=remove_duplicate_words(road_address_fi)
-                print(f"도로명 재시도1, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[0]}','lng':'{geocoding(road_address_fi)[1]}'")
+                print(f"도로명 재시도2, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[0]}','lng':'{geocoding(road_address_fi)[1]}'")
                 if geocoding(road_address_fi)[0]==0:
-                    store_name=key_word
-                    road_address_fi=key_word
-                    print(f"도로명 재시도2, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[0]}','lng':'{geocoding(road_address_fi)[1]}'")
+                    road = addr1[1].text 
+                    road_address = road[3:-2].replace("\n", "")
+                    road_address_fi=addr0.text+" "+road_address
+                    road_address_fi=remove_duplicate_words(road_address_fi)
+                    print(f"도로명 재시도3, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[0]}','lng':'{geocoding(road_address_fi)[1]}'")
+                    if geocoding(road_address_fi)[0]==0:
+                        road = addr1[1].text 
+                        road_address = road[3:-2].replace("\n", "")
+                        road_address_fi=road_address
+                        road_address_fi=remove_duplicate_words(road_address_fi)
+                        print(f"도로명 재시도4, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[0]}','lng':'{geocoding(road_address_fi)[1]}'")
+                        if geocoding(road_address_fi)[0]==0:
+                            store_name=key_word
+                            road_address_fi=key_word
+                            print(f"도로명 재시도5, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[0]}','lng':'{geocoding(road_address_fi)[1]}'")
+            
             
         else:  
             switch_frame('entryIframe',driver) #entryIframe
@@ -173,6 +185,7 @@ def search_lnglat(key_word):
                 if geocoding(road_address_fi)[0]==0:
                     road_address_fi=key_word
                     print(f"도로명 재시도2, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[0]}','lng':'{geocoding(road_address_fi)[1]}'")
+ 
             
         # dict에 데이터 집어넣기
         dict_temp = {
@@ -226,7 +239,7 @@ def time_filter(timetext):
 
 df=DataFrame()
 point_hist=DataFrame()
-point_list=["경기 고양시 일산서구 홀트로 11","일산동양아파트101동","대윤프라자","탄현큰마을대림아파트 일현로 140","광성교회","리드인 독서논술 일산","일산에듀포레푸르지오아파트","SK엔크린 삼정셀프주유소"]
+point_list=["탄현마을부영3단지아파트","일산동양아파트101동","대윤프라자","탄현큰마을대림아파트 일현로 140","광성교회","리드인 독서논술 일산","일산에듀포레푸르지오아파트","SK엔크린 삼정셀프주유소"]
 # point_list=["엘지디스플레이 파주공장","일산동양아파트101동","대윤프라자","탄현큰마을대림아파트 일현로 140","광성교회","리드인 독서논술 일산","탄현마을부영3단지아파트상가","일산에듀포레푸르지오아파트","SK엔크린 삼정셀프주유소"]
 df=DataFrame(index=point_list,columns=point_list)
 point_hist=DataFrame(index=point_list,columns=["lng","lat"])
@@ -235,33 +248,33 @@ from itertools import combinations
 result = list(combinations(point_list, 2))  # 2개씩 순서 없이 뽑기
 print(result)
 
-# for k in result:
-#     key_word = list(k) #['대화마을 7단지','두산위브더제니스 일산'] # 검색어
-#     my_list=[]
-#     for i in key_word:
-#         print(i)
+for k in result:
+    key_word = list(k) #['대화마을 7단지','두산위브더제니스 일산'] # 검색어
+    my_list=[]
+    for i in key_word:
+        print(i)
 
-#         if point_hist.loc[i,'lng']>=0:
-#             my_list.append(point_hist.loc[i,'lng'])
-#             my_list.append(point_hist.loc[i,'lat'])
-#             print(f'print(my_list):{my_list}')
-#         else:    
-#             ml=search_lnglat(i)
-#             point_hist.loc[i,'lng']=ml[0]
-#             point_hist.loc[i,'lat']=ml[1]
-#             print(f'point_hist:{point_hist},ml:{ml}')
-#             my_list.extend(ml)
-#             print(f'print(my_list):{my_list}')
+        if point_hist.loc[i,'lng']>=0:
+            my_list.append(point_hist.loc[i,'lng'])
+            my_list.append(point_hist.loc[i,'lat'])
+            print(f'print(my_list):{my_list}')
+        else:    
+            ml=search_lnglat(i)
+            point_hist.loc[i,'lng']=ml[0]
+            point_hist.loc[i,'lat']=ml[1]
+            print(f'point_hist:{point_hist},ml:{ml}')
+            my_list.extend(ml)
+            print(f'print(my_list):{my_list}')
         
         
-#     print(my_list)    
-#     url="https://map.naver.com/p/directions/"+str(my_list[0])+","+str(my_list[1])+","+quote(key_word[0])+",/"+str(my_list[2])+","+str(my_list[3])+","+quote(key_word[1])+",/-/car/0?c=11.00,0,0,0,dh"
-#     print(url)
+    print(my_list)    
+    url="https://map.naver.com/p/directions/"+str(my_list[0])+","+str(my_list[1])+","+quote(key_word[0])+",/"+str(my_list[2])+","+str(my_list[3])+","+quote(key_word[1])+",/-/car/0?c=11.00,0,0,0,dh"
+    print(url)
     
-#     df.loc[key_word[0],key_word[1]]= dismin(url)
-#     df.to_csv("./거리산출결과.csv")
-#     print(time.time()-start)   
-#     print(df)
+    df.loc[key_word[0],key_word[1]]= dismin(url)
+    df.to_csv("./거리산출결과.csv")
+    print(time.time()-start)   
+    print(df)
     
     
 
