@@ -244,42 +244,45 @@ point_list=["엘지디스플레이 파주공장","일산동양아파트101동","
 df=DataFrame(index=point_list,columns=point_list)
 point_hist=DataFrame(index=point_list,columns=["lng","lat"])
 
-from itertools import combinations
-result = list(combinations(point_list, 2))  # 2개씩 순서 없이 뽑기
-print(result)
+# from itertools import combinations
+# result = list(combinations(point_list, 2))  # 2개씩 순서 없이 뽑기
+# print(result)
 
-for k in result:
-    key_word = list(k) #['대화마을 7단지','두산위브더제니스 일산'] # 검색어
-    my_list=[]
-    for i in key_word:
-        print(i)
+# for k in result:
+#     key_word = list(k) #['대화마을 7단지','두산위브더제니스 일산'] # 검색어
+#     my_list=[]
+#     for i in key_word:
+#         print(i)
 
-        if point_hist.loc[i,'lng']>=0:
-            my_list.append(point_hist.loc[i,'lng'])
-            my_list.append(point_hist.loc[i,'lat'])
-            print(f'print(my_list):{my_list}')
-        else:    
-            ml=search_lnglat(i)
-            point_hist.loc[i,'lng']=ml[0]
-            point_hist.loc[i,'lat']=ml[1]
-            print(f'point_hist:{point_hist},ml:{ml}')
-            my_list.extend(ml)
-            print(f'print(my_list):{my_list}')
+#         if point_hist.loc[i,'lng']>=0:
+#             my_list.append(point_hist.loc[i,'lng'])
+#             my_list.append(point_hist.loc[i,'lat'])
+#             print(f'print(my_list):{my_list}')
+#         else:    
+#             ml=search_lnglat(i)
+#             point_hist.loc[i,'lng']=ml[0]
+#             point_hist.loc[i,'lat']=ml[1]
+#             print(f'point_hist:{point_hist},ml:{ml}')
+#             my_list.extend(ml)
+#             print(f'print(my_list):{my_list}')
         
         
-    print(my_list)    
-    url="https://map.naver.com/p/directions/"+str(my_list[0])+","+str(my_list[1])+","+quote(key_word[0])+",/"+str(my_list[2])+","+str(my_list[3])+","+quote(key_word[1])+",/-/car/0?c=11.00,0,0,0,dh"
-    print(url)
+#     print(my_list)    
+#     url="https://map.naver.com/p/directions/"+str(my_list[0])+","+str(my_list[1])+","+quote(key_word[0])+",/"+str(my_list[2])+","+str(my_list[3])+","+quote(key_word[1])+",/-/car/0?c=11.00,0,0,0,dh"
+#     print(url)
     
-    df.loc[key_word[0],key_word[1]]= dismin(url)
-    df.to_csv("./거리산출결과.csv")
-    print(time.time()-start)   
-    print(df)
-    
-    
-
+#     df.loc[key_word[0],key_word[1]]= dismin(url)
+#     df.to_csv("./거리산출결과.csv")
+#     print(time.time()-start)   
+#     print(df)
     
 # print(geocoding("홀트로 11"))
+
+df1=pd.read_csv("./거리산출결과.csv")
+print(df1)
+
+print(df1.columns)
+
 
 
 
