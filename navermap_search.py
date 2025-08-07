@@ -109,11 +109,6 @@ def search_lnglat(key_word):
     # 시작시간
     
     print('[크롤링 시작...]')
-    
-    # driver.switch_to.default_content()
-    # time_wait(driver, 10, 'iframe#entryIframe')
-    # driver.switch_to.frame('entryIframe')
-    # time.sleep(3)
 
     # 크롤링 (페이지 리스트 만큼)
     for btn in range(len(next_btn))[1:]:  # next_btn[0] = 이전 페이지 버튼 무시 -> [1]부터 시작
@@ -128,29 +123,40 @@ def search_lnglat(key_word):
                 # 가게명 가져오기
                 store_name = names[data].text
                 print(store_name)
-            
-                # 주소 버튼 누르기
-                address_buttons = driver.find_elements(By.CSS_SELECTOR, '.lWwyx > a')
-                address_buttons[data].click()
-                
-                # 로딩 기다리기
-                sleep(2)
+                if driver.find_elements(By.CSS_SELECTOR, '.panel_content_wrap> div') is None:
+                    # 주소 버튼 누르기
+                    address_buttons = driver.find_elements(By.CSS_SELECTOR, '.lWwyx > a')
+                    address_buttons[data].click()
+                    
+                    # 로딩 기다리기
+                    sleep(2)
 
-                # 주소 눌렀을 때 도로명, 지번 나오는 div
-                addr0 = driver.find_element(By.CSS_SELECTOR, "span.Pb4bU")
-                sleep(2)
-                
-                addr1 = driver.find_elements(By.CSS_SELECTOR, '.AbTyi> div')
-                sleep(2)
-                
-                addr2 = driver.find_elements(By.CSS_SELECTOR, '.vV_z_> div')
-                sleep(2)
-                
-                # 도로명            
-                road = addr1[0].text 
-                road_address = road[3:-2].replace("\n", "")
-                road_address_fi=addr0.text+" "+road_address
-                print(road_address_fi)    
+                    # 주소 눌렀을 때 도로명, 지번 나오는 div
+                    addr0 = driver.find_element(By.CSS_SELECTOR, "span.Pb4bU")
+                    sleep(2)
+                    addr1 = driver.find_elements(By.CSS_SELECTOR, '.AbTyi> div')
+                    sleep(2)
+                    # 도로명            
+                    road = addr1[0].text 
+                    road_address = road[3:-2].replace("\n", "")
+                    road_address_fi=addr0.text+" "+road_address
+                    print(road_address_fi)
+                    
+                else:    
+                    # 주소 버튼 누르기
+                    address_buttons = driver.find_elements(By.CSS_SELECTOR, '.vV_z_ > div')
+                    address_buttons[data].click()    
+                    # 로딩 기다리기
+                    sleep(2)       
+                    # 주소 눌렀을 때 도로명, 지번 나오는 div
+                    addr0 = driver.find_element(By.CSS_SELECTOR, "span.LDgIH")
+                    sleep(2)         
+                    addr2 = driver.find_elements(By.CSS_SELECTOR, '.Y31Sf> div')
+                    sleep(2)
+                    road = addr2[0].text 
+                    road_address = road[3:-2].replace("\n", "")
+                    road_address_fi=addr0.text+" "+road_address
+                    print(road_address_fi)
                 
                 sleep(2)
                 print({'id':data, 'title': store_name, 'address':road_address_fi, 'lat':geocoding(road_address_fi)[0],'lng':geocoding(road_address_fi)[1]})
@@ -166,10 +172,7 @@ def search_lnglat(key_word):
                         print(f"도로명 재시도2,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
                         # if geocoding(road_address_fi)[0]==0:
                         if geocoding(road_address_fi)[0]==0:
-                            road = addr2[0].text 
-                            road_address = road[3:-2].replace("\n", "")
-                            road_address_fi=addr0.text+" "+road_address
-                            print(road_address_fi)
+
                             print(f"도로명 재시도3,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
                         
                 # dict에 데이터 집어넣기
