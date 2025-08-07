@@ -289,10 +289,28 @@ point_case = list(permutations(df1,5))
 point_case1=[ i for i in point_case if i[0]=="엘지디스플레이 파주공장"]
 print(point_case1)
 
-print('일산동양아파트101동' in point_case1[0])
+        
+    
+df2=pd.DataFrame()
+df2["경로"]=point_case1
+df2["라벨"]=0
 
-# df2=pd.DataFrame()
-# df2["경로"]=point_case1
+n=1
+for i,j in zip(range(len(point_case1)),point_case1):
+    for k in range(len(point_case1)-1):
+        m=0
+        for l in range(3):
+            if point_case1[k+1][l+1] in j:
+                m+=1
+        if m==0:
+            if df2.loc[i,"라벨"]==0:
+                df2.loc[i,"라벨"]=n
+                df2.loc[k,"라벨"]=n
+                n+=1
+    print(df2)   
+     
+print(df2)
+
 # for i in range(len(point_case1)):
 #     for k in range(4):
 #         print(df1.loc[point_case1[i][k],point_case1[i][k+1]])
