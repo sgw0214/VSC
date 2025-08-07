@@ -294,6 +294,11 @@ print(point_case1)
 df2=pd.DataFrame()
 df2["경로"]=point_case1
 df2["라벨"]=0
+for i in range(len(point_case1)):
+    for k in range(4):
+        print(df1.loc[point_case1[i][k],point_case1[i][k+1]])
+        df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i][k],point_case1[i][k+1]]
+df2=df2.dropna()
 
 n=1
 for i,j in zip(range(len(point_case1)),point_case1):
@@ -313,18 +318,14 @@ for i,j in zip(range(len(point_case1)),point_case1):
      
 print(df2)
 
-# for i in range(len(point_case1)):
-#     for k in range(4):
-#         print(df1.loc[point_case1[i][k],point_case1[i][k+1]])
-#         df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i][k],point_case1[i][k+1]]
-# df2=df2.dropna()
-# df2["시간합"]=df2["시간1"]+df2["시간2"]+df2["시간3"]+df2["시간4"]
-# df2=df2.sort_values(by="시간합")
-# print(df2)
+
+df2["시간합"]=df2["시간1"]+df2["시간2"]+df2["시간3"]+df2["시간4"]
+df2=df2.sort_values(by="시간합")
+print(df2)
 
 
 
-# df2.to_excel("./정렬결과.xlsx",index=False)
+df2.to_excel("./정렬결과.xlsx",index=False)
 
 
 
