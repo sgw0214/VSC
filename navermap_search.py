@@ -272,16 +272,21 @@ point_hist=DataFrame(index=point_list,columns=["lng","lat"])
 #     print(url)
     
 #     df.loc[key_word[0],key_word[1]]= dismin(url)
-#     df.to_csv("./거리산출결과.csv")
+    # df.to_csv("./거리산출결과.csv",index=False)
 #     print(time.time()-start)   
 #     print(df)
     
 # print(geocoding("홀트로 11"))
 
-df1=pd.read_csv("./거리산출결과.csv")
+df1=pd.read_csv("./거리산출결과.csv" )
+df1=df1.drop(columns=['Unnamed: 0'])
 print(df1)
 
 print(df1.columns)
+
+# from itertools import product
+# result = list(product(point_list, 5))  # 2개씩 순서 없이 뽑기
+# print(result)
 
 
 
