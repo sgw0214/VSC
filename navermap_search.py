@@ -321,6 +321,7 @@ for i,j in zip(range(len(df2)),df2["경로"]):
                 print("against")
                 print(k,df2.loc[k,"경로"],n)
                 n+=1
+                break
     # print(df2)   
      
 print(df2)
