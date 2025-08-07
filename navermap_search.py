@@ -90,7 +90,7 @@ def search_lnglat(key_word):
 
     # frame 변경
     time_wait(10, 'iframe#searchIframe',driver)
-    switch_frame('searchIframe',driver)
+    switch_frame('searchIframe',driver) #entryIframe
 
     sleep(5)
 
@@ -144,10 +144,12 @@ def search_lnglat(key_word):
                     print(road_address_fi)
                     
                 else:  
-                    data=key_word
+                    switch_frame('entryIframe',driver) #entryIframe
+                    sleep(5)
+                    # data=key_word
                     # 주소 버튼 누르기
                     address_buttons = driver.find_elements(By.CSS_SELECTOR, 'a.PkgBl') #vV_z_
-                    address_buttons.click()    
+                    address_buttons[0].click()    
                     # 로딩 기다리기
                     sleep(2)       
                     # 주소 눌렀을 때 도로명, 지번 나오는 div
