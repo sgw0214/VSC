@@ -145,11 +145,11 @@ def search_lnglat(key_word):
                     road_address = road[3:-2].replace("\n", "")
                     road_address_fi=addr0.text+" "+road_address
                     road_address_fi=remove_duplicate_words(road_address_fi)
-                    print(f"도로명 재시도1,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
+                    print(f"도로명 재시도1,'id':'{data}', 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[0]}','lng':'{geocoding(road_address_fi)[1]}'")
                     if geocoding(road_address_fi)[0]==0:
                         store_name=key_word
                         road_address_fi=key_word
-                        print(f"도로명 재시도2,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
+                        print(f"도로명 재시도2,'id':'{data}', 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[0]}','lng':'{geocoding(road_address_fi)[1]}'")
                 
             else:  
                 switch_frame('entryIframe',driver) #entryIframe
@@ -174,11 +174,11 @@ def search_lnglat(key_word):
                     road_address = road[2:-2].replace("\n", "")
                     road_address_fi=road_address
                     road_address_fi=remove_duplicate_words(road_address_fi)
-                    print(f"도로명 재시도1,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
+                    print(f"도로명 재시도1,'id':'{data}', 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[0]}','lng':'{geocoding(road_address_fi)[1]}'")
                     if geocoding(road_address_fi)[0]==0:
                         store_name=key_word
                         road_address_fi=key_word
-                        print(f"도로명 재시도2,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
+                        print(f"도로명 재시도2,'id':'{data}', 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[0]}','lng':'{geocoding(road_address_fi)[1]}'")
                 
             # dict에 데이터 집어넣기
             dict_temp = {
@@ -267,6 +267,7 @@ for k in result:
     print(url)
     
     df.loc[key_word[0],key_word[1]]= dismin(url)
+    df.to_csv("./거리산출결과.csv")
     print(time.time()-start)   
     print(df)
 
