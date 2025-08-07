@@ -312,7 +312,7 @@ for i,j in zip(range(len(df2)),df2["경로"]):
         print(i,df2.loc[i,"경로"],n)
     for k in range(len(df2)):
         m=0
-        for l in range(3):
+        for l in range(4):
             if df2.iloc[k+1,0][l+1] in j:
                 print(df2.iloc[k+1,0][l+1])
                 m+=1
