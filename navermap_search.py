@@ -297,14 +297,16 @@ df2["라벨"]=0
 
 n=1
 for i,j in zip(range(len(point_case1)),point_case1):
+    if df2.loc[i,"라벨"]==0:
+        df2.loc[i,"라벨"]=n
+        print(df2)
     for k in range(len(point_case1)-1):
         m=0
         for l in range(3):
             if point_case1[k+1][l+1] in j:
                 m+=1
         if m==0:
-            if df2.loc[i,"라벨"]==0:
-                df2.loc[i,"라벨"]=n
+            if df2.loc[k,"라벨"]==0:
                 df2.loc[k,"라벨"]=n
                 n+=1
     print(df2)   
