@@ -142,9 +142,9 @@ def search_lnglat(key_word):
                     road_address_fi=addr0.text+" "+road_address
                     print(road_address_fi)
                     
-                else:    
+                else:  
                     # 주소 버튼 누르기
-                    address_buttons = driver.find_elements(By.CSS_SELECTOR, '.vV_z_ > div')
+                    address_buttons = driver.find_elements(By.CSS_SELECTOR, '.PkgBl> a')
                     address_buttons[data].click()    
                     # 로딩 기다리기
                     sleep(2)       
