@@ -143,37 +143,50 @@ def search_lnglat(key_word):
                     road_address_fi=addr0.text+" "+road_address
                     print(road_address_fi)
                     
+                    sleep(2)
+                    print({'id':data, 'title': store_name, 'address':road_address_fi, 'lat':geocoding(road_address_fi)[0],'lng':geocoding(road_address_fi)[1]})
+                    if geocoding(road_address_fi)[0]==0:
+                        road = addr1[1].text 
+                        road_address = road[3:-2].replace("\n", "")
+                        road_address_fi=addr0.text+" "+road_address
+                        road_address_fi=remove_duplicate_words(road_address_fi)
+                        print(f"도로명 재시도1,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
+                        if geocoding(road_address_fi)[0]==0:
+                            store_name=key_word
+                            road_address_fi=key_word
+                            print(f"도로명 재시도2,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
+                    
                 else:  
                     switch_frame('entryIframe',driver) #entryIframe
                     sleep(5)
-                    # data=key_word
+                    data=key_word
                     # 주소 버튼 누르기
                     address_buttons = driver.find_elements(By.CSS_SELECTOR, 'a.PkgBl') #vV_z_
                     address_buttons[0].click()    
                     # 로딩 기다리기
                     sleep(2)       
                     # 주소 눌렀을 때 도로명, 지번 나오는 div
-   
                     addr1 = driver.find_elements(By.CSS_SELECTOR, '.Y31Sf> div')
                     sleep(2)
                     road = addr1[0].text 
                     road_address = road[3:-2].replace("\n", "")
                     road_address_fi=road_address
                     print(road_address_fi)
-                
-                sleep(2)
-                print({'id':data, 'title': store_name, 'address':road_address_fi, 'lat':geocoding(road_address_fi)[0],'lng':geocoding(road_address_fi)[1]})
-                if geocoding(road_address_fi)[0]==0:
-                    road = addr1[1].text 
-                    road_address = road[3:-2].replace("\n", "")
-                    road_address_fi=addr0.text+" "+road_address
-                    road_address_fi=remove_duplicate_words(road_address_fi)
-                    print(f"도로명 재시도1,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
+                    sleep(2)
+                    print({'id':data, 'title': store_name, 'address':road_address_fi, 'lat':geocoding(road_address_fi)[0],'lng':geocoding(road_address_fi)[1]})
                     if geocoding(road_address_fi)[0]==0:
-                        store_name=key_word
-                        road_address_fi=key_word
-                        print(f"도로명 재시도2,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
-                        # if geocoding(road_address_fi)[0]==0:
+                        road = addr1[1].text 
+                        road_address = road[3:-2].replace("\n", "")
+                        road_address_fi=road_address
+                        road_address_fi=remove_duplicate_words(road_address_fi)
+                        print(f"도로명 재시도1,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
+                        if geocoding(road_address_fi)[0]==0:
+                            store_name=key_word
+                            road_address_fi=key_word
+                            print(f"도로명 재시도2,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
+                    
+
+
  
                         
                 # dict에 데이터 집어넣기
