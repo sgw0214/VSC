@@ -140,18 +140,22 @@ def search_lnglat(key_word):
                 addr0 = driver.find_element(By.CSS_SELECTOR, "span.Pb4bU")
                 sleep(2)
                 
-                addr = driver.find_elements(By.CSS_SELECTOR, '.AbTyi> div')
+                addr1 = driver.find_elements(By.CSS_SELECTOR, '.AbTyi> div')
+                sleep(2)
+                
+                addr2 = driver.find_elements(By.CSS_SELECTOR, '.vV_z_> div')
                 sleep(2)
                 
                 # 도로명            
-                road = addr[0].text 
+                road = addr1[0].text 
                 road_address = road[3:-2].replace("\n", "")
                 road_address_fi=addr0.text+" "+road_address
-                print(road_address_fi)
+                print(road_address_fi)    
+                
                 sleep(2)
                 print({'id':data, 'title': store_name, 'address':road_address_fi, 'lat':geocoding(road_address_fi)[0],'lng':geocoding(road_address_fi)[1]})
                 if geocoding(road_address_fi)[0]==0:
-                    road = addr[1].text 
+                    road = addr1[1].text 
                     road_address = road[3:-2].replace("\n", "")
                     road_address_fi=addr0.text+" "+road_address
                     road_address_fi=remove_duplicate_words(road_address_fi)
@@ -161,7 +165,12 @@ def search_lnglat(key_word):
                         road_address_fi=key_word
                         print(f"도로명 재시도2,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
                         # if geocoding(road_address_fi)[0]==0:
-                            
+                        if geocoding(road_address_fi)[0]==0:
+                            road = addr2[0].text 
+                            road_address = road[3:-2].replace("\n", "")
+                            road_address_fi=addr0.text+" "+road_address
+                            print(road_address_fi)
+                            print(f"도로명 재시도3,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
                         
                 # dict에 데이터 집어넣기
                 dict_temp = {
