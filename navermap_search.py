@@ -146,7 +146,7 @@ def search_lnglat(key_word):
                     data=key_word
                     # 주소 버튼 누르기
                     address_buttons = driver.find_elements(By.CSS_SELECTOR, '.PkgBl> a')
-                    address_buttons[data].click()    
+                    address_buttons.click()    
                     # 로딩 기다리기
                     sleep(2)       
                     # 주소 눌렀을 때 도로명, 지번 나오는 div
