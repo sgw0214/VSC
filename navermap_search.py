@@ -171,7 +171,7 @@ def search_lnglat(key_word):
                 print({'id':data, 'title': store_name, 'address':road_address_fi, 'lat':geocoding(road_address_fi)[0],'lng':geocoding(road_address_fi)[1]})
                 if geocoding(road_address_fi)[0]==0:
                     road = addr1[1].text 
-                    road_address = road[3:-2].replace("\n", "")
+                    road_address = road[2:-2].replace("\n", "")
                     road_address_fi=road_address
                     road_address_fi=remove_duplicate_words(road_address_fi)
                     print(f"도로명 재시도1,'id':{data}, 'title': {store_name}, 'address':{road_address_fi}, 'lat':{geocoding(road_address_fi)[0]},'lng':{geocoding(road_address_fi)[1]}")
