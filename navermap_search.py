@@ -283,20 +283,22 @@ df1=pd.read_csv("./거리산출결과.csv" )
 df1=df1.set_index('Unnamed: 0')
 print(df1)
 print(df1.columns)
-# print(df1.loc["엘지디스플레이 파주공장","일산동양아파트101동"])
+
+df1=df1[['엘지디스플레이 파주공장']+df1.loc['엘지디스플레이 파주공장'].dropna().sort_values(ascending=True).index.to_list()]
+print(df1)
+
 from itertools import permutations
 point_case = list(permutations(df1,5)) 
 point_case1=[ i for i in point_case if i[0]=="엘지디스플레이 파주공장"]
 print(point_case1)
-
-        
+       
     
 df2=pd.DataFrame()
 df2["경로"]=point_case1
 
 for i in range(len(point_case1)):
     for k in range(4):
-        print(df1.loc[point_case1[i][k],point_case1[i][k+1]])
+        # print(df1.loc[point_case1[i][k],point_case1[i][k+1]])
         df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i][k],point_case1[i][k+1]]
 df2=df2.dropna()
 df2["시간합"]=df2["시간1"]+df2["시간2"]+df2["시간3"]+df2["시간4"]
@@ -329,14 +331,11 @@ for i,j in zip(range(len(df2)-1),df2["경로"]):
 print(df2)
 
 # 라벨별 평균 계산
-avg_time = df.groupby('라벨')['시간합'].mean()
+avg_time = df2.groupby('라벨')['시간합'].mean()
 
 # 평균값을 원래 데이터프레임에 매핑하여 새 컬럼 추가
-df['라벨별_평균시간'] = df['라벨'].map(avg_time)
-
+df2['라벨별_평균시간'] = df2['라벨'].map(avg_time)
 print(df2)
-
-
 df2.to_excel("./정렬결과.xlsx",index=False)
 
 
