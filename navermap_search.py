@@ -301,7 +301,7 @@ print(df2)
 for i in range(len(point_case1)):
     for k in range(4):
         # print(df1.loc[point_case1[i][k],point_case1[i][k+1]])
-        if df1.loc[point_case1[i][k],point_case1[i][k+1]]==None:
+        if df1.loc[point_case1[i][k],point_case1[i][k+1]]=="":
             df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i+1][k],point_case1[i][k]]
         else:
             df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i][k],point_case1[i][k+1]]
