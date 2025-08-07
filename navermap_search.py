@@ -300,49 +300,49 @@ print(df2)
 
 for i in range(len(point_case1)):
     for k in range(4):
-        print(df1.loc[point_case1[i][k],point_case1[i][k+1]])
-        if df1.loc[point_case1[i][k],point_case1[i][k+1]] is None:
-            df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i+1][k],point_case1[i][k]]
+        # print(df1.loc[point_case1[i][k],point_case1[i][k+1]])
+        if pd.isna(df1.loc[point_case1[i][k],point_case1[i][k+1]])==True:
+            df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i][k+1],point_case1[i][k]]
         else:
             df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i][k],point_case1[i][k+1]]
         print(df2)
-# df2=df2.dropna()
-# df2["시간합"]=df2["시간1"]+df2["시간2"]+df2["시간3"]+df2["시간4"]
-# df2=df2.sort_values(by="시간합").reset_index(drop=True)
-# print(df2)
+df2=df2.dropna()
+df2["시간합"]=df2["시간1"]+df2["시간2"]+df2["시간3"]+df2["시간4"]
+df2=df2.sort_values(by="시간합").reset_index(drop=True)
+print(df2)
 
-# df2["라벨"]=0
-# n=1
-# for i,j in zip(range(len(df2)-1),df2["경로"]):
-#     if df2.loc[i,"라벨"]==0:
-#         df2.loc[i,"라벨"]=n
-#         print("first")
-#         print(i,df2.loc[i,"경로"],n)
-#     for k in range(1,len(df2)):
-#         m=0
-#         for l in range(4):
-#             # print(df2.iloc[k,0])
-#             # print(k+1,df2.iloc[k,0][l+1],"=",j)
-#             if df2.iloc[k,0][l+1] in j:
-#                 # print(k,df2.iloc[k,0][l+1])
-#                 m+=1
-#         if m==0:
-#             if df2.loc[k,"라벨"]==0:
-#                 df2.loc[k,"라벨"]=n
-#                 print("against")
-#                 print(i,k,df2.loc[k,"경로"],n)
-#                 n+=1
-#     # print(df2)   
+df2["라벨"]=0
+n=1
+for i,j in zip(range(len(df2)-1),df2["경로"]):
+    if df2.loc[i,"라벨"]==0:
+        df2.loc[i,"라벨"]=n
+        print("first")
+        print(i,df2.loc[i,"경로"],n)
+    for k in range(1,len(df2)):
+        m=0
+        for l in range(4):
+            # print(df2.iloc[k,0])
+            # print(k+1,df2.iloc[k,0][l+1],"=",j)
+            if df2.iloc[k,0][l+1] in j:
+                # print(k,df2.iloc[k,0][l+1])
+                m+=1
+        if m==0:
+            if df2.loc[k,"라벨"]==0:
+                df2.loc[k,"라벨"]=n
+                print("against")
+                print(i,k,df2.loc[k,"경로"],n)
+                n+=1
+    # print(df2)   
      
-# print(df2)
+print(df2)
 
-# # 라벨별 평균 계산
-# avg_time = df2.groupby('라벨')['시간합'].mean()
+# 라벨별 평균 계산
+avg_time = df2.groupby('라벨')['시간합'].mean()
 
-# # 평균값을 원래 데이터프레임에 매핑하여 새 컬럼 추가
-# df2['라벨별_평균시간'] = df2['라벨'].map(avg_time)
-# print(df2)
-# df2.to_excel("./정렬결과.xlsx",index=False)
+# 평균값을 원래 데이터프레임에 매핑하여 새 컬럼 추가
+df2['라벨별_평균시간'] = df2['라벨'].map(avg_time)
+print(df2)
+df2.to_excel("./정렬결과.xlsx",index=False)
 
 
 
