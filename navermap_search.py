@@ -146,7 +146,7 @@ def search_lnglat(key_word):
                 else:  
                     data=key_word
                     # 주소 버튼 누르기
-                    address_buttons = driver.find_elements(By.CSS_SELECTOR, 'div.vV_z_')
+                    address_buttons = driver.find_elements(By.CSS_SELECTOR, 'a.PkgBl') #vV_z_
                     address_buttons.click()    
                     # 로딩 기다리기
                     sleep(2)       
