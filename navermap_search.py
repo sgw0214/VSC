@@ -93,8 +93,7 @@ def search_lnglat(key_word):
             print("searchIframe_CSS")
             store_name = key_word
             road_address_fi= key_word
-            lat=geocoding(key_word)[1]
-            lon=geocoding(key_word)[0]
+            lon,lat=geocoding(road_address_fi)
             print(f"도로명, 'title': '{key_word}', 'address':'{key_word}', 'lat':'{lat}','lng':'{lon}'")
             # dictionary 생성
             store_dict = {'가게 정보': []}
@@ -144,16 +143,18 @@ def search_lnglat(key_word):
                 road_address = road[3:-2].replace("\n", "")
                 road_address_fi=addr0.text+" "+road_address
                 print(road_address_fi)
-                print(f"도로명 재시도1, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
-                sleep(2)
-                if geocoding(road_address_fi)[0]==0:
+                lon,lat=geocoding(road_address_fi)
+                print(f"도로명 재시도1, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{lat}','lng':'{lon}'")
+
+                if lat==0:
                     road = addr1[0].text 
                     road_address = road[3:-2].replace("\n", "")
                     road_address_fi=road_address
                     road_address_fi=remove_duplicate_words(road_address_fi)
-                    print(f"도로명 재시도2, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
-                    sleep(2)
-                    if geocoding(road_address_fi)[0]==0:
+                    lon,lat=geocoding(road_address_fi)
+                    print(f"도로명 재시도2, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{lat}','lng':'{lon}'")
+
+                    if lat==0:
                         pattern = r"(\S+[로길])\s(\d+(-\d+)?)"
                         match = re.search(pattern, road_address_fi)
                         sleep(2)
@@ -165,29 +166,34 @@ def search_lnglat(key_word):
                             road_address_fi=full
                         else:
                             print("❌ 도로명 주소를 찾을 수 없습니다.")
-                        print(f"도로명 재시도3, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
-                        sleep(2)
-                        if geocoding(road_address_fi)[0]==0:
+                        lon,lat=geocoding(road_address_fi)
+                        print(f"도로명 재시도3, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{lat}','lng':'{lon}'")
+
+                        if lat==0:
                             road = addr1[1].text 
                             road_address = road[3:-2].replace("\n", "")
                             road_address_fi=addr0.text+" "+road_address
                             road_address_fi=remove_duplicate_words(road_address_fi)
-                            print(f"도로명 재시도4, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
-                            sleep(2)
-                            if geocoding(road_address_fi)[0]==0:
+                            lon,lat=geocoding(road_address_fi)
+                            print(f"도로명 재시도4, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{lat}','lng':'{lon}'")
+
+                            if lat==0:
                                 road = addr1[1].text 
                                 road_address = road[3:-2].replace("\n", "")
                                 road_address_fi=road_address
                                 road_address_fi=remove_duplicate_words(road_address_fi)
-                                print(f"도로명 재시도5, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
-                                sleep(2)
-                                if geocoding(road_address_fi)[0]==0:
-                                    store_name=key_word
-                                    road_address_fi=key_word
-                                    print(f"도로명 재시도6, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
+                                lon,lat=geocoding(road_address_fi)                             
+                                print(f"도로명 재시도5, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{lat}','lng':'{lon}'")
+
+                                # if lat==0:
+                                #     store_name=key_word
+                                #     road_address_fi=key_word
+                                #     lat=geocoding(road_address_fi)[1]
+                                #     lon=geocoding(road_address_fi)[0]                                
+                                #     print(f"도로명 재시도6, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{lat}','lng':'{lon}'")
                 
-            lat=geocoding(road_address_fi)[1]
-            lon=geocoding(road_address_fi)[0]
+            # lat=geocoding(road_address_fi)[1]
+            # lon=geocoding(road_address_fi)[0]
             # dict에 데이터 집어넣기
             dict_temp = {
                 'name': store_name,
@@ -219,9 +225,10 @@ def search_lnglat(key_word):
                     road_address = road[3:-2].replace("\n", "")
                     road_address_fi=road_address
                     print(road_address_fi)
-                    print(f"도로명 재시도1, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
-                    sleep(2)
-                    if geocoding(road_address_fi)[0]==0:
+                    lon,lat=geocoding(road_address_fi)                             
+                    print(f"도로명 재시도1, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{lat}','lng':'{lon}'")
+
+                    if lat==0:
                         pattern = r"(\S+[로길])\s(\d+(-\d+)?)"
                         match = re.search(pattern, road_address_fi)
                         sleep(2)
@@ -233,20 +240,22 @@ def search_lnglat(key_word):
                             road_address_fi=full
                         else:
                             print("❌ 도로명 주소를 찾을 수 없습니다.")
-                        print(f"도로명 재시도2, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
-                        sleep(2)
-                        if geocoding(road_address_fi)[0]==0:
+                        lon,lat=geocoding(road_address_fi)
+                        print(f"도로명 재시도2, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{lat}','lng':'{lon}'")
+
+                        if lat==0:
                             road = addr1[1].text 
                             road_address = road[2:-2].replace("\n", "")
                             road_address_fi=road_address
                             road_address_fi=remove_duplicate_words(road_address_fi)
-                            print(f"도로명 재시도3, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
-                            sleep(2)
-                            if geocoding(road_address_fi)[0]==0:
+                            lon,lat=geocoding(road_address_fi)
+                            print(f"도로명 재시도3, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{lat}','lng':'{lon}'")
+
+                            if lat==0:
                                 road_address_fi=key_word
-                                print(f"도로명 재시도4, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
-                                lat=geocoding(road_address_fi)[1]
-                    lon=geocoding(road_address_fi)[0]
+                                lon,lat=geocoding(road_address_fi)
+                                print(f"도로명 재시도4, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{lat}','lng':'{lon}'")
+
                     # dict에 데이터 집어넣기
                     dict_temp = {
                         'name': store_name,
@@ -259,9 +268,7 @@ def search_lnglat(key_word):
                     try:
                         print("entryIframe_Script")
                         scripts = driver.find_elements(By.TAG_NAME, 'script')
-
                         lon, lat = None, None
-
                         for script in scripts:
                             inner = script.get_attribute("innerHTML")
                             print(inner)
