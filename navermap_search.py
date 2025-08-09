@@ -89,6 +89,7 @@ def search_lnglat(key_word):
 
     try:
         try:
+            print("searchIframe_CSS")
             store_name = key_word
             road_address_fi= key_word
             print(f"도로명, 'title': '{key_word}', 'address':'{key_word}', 'lat':'{geocoding(key_word)[1]}','lng':'{geocoding(key_word)[0]}'")
@@ -193,62 +194,94 @@ def search_lnglat(key_word):
               
         except Exception as e:        
             # time_wait(10, 'iframe#entryIframe',driver)
-            
+            print("entryIframe")
             try:
-                switch_frame('entryIframe',driver) #entryIframe
-                sleep(5)
-                
-                store_name=key_word
-                print("entryIframe",store_name)
-                # 주소 버튼 누르기
-                address_buttons = driver.find_elements(By.CSS_SELECTOR, 'a.PkgBl') #vV_z_
-                address_buttons[0].click()
-                # 로딩 기다리기
-                sleep(2)       
-                # 주소 눌렀을 때 도로명, 지번 나오는 div
-                addr1 = driver.find_elements(By.CSS_SELECTOR, '.Y31Sf> div')
-                sleep(2)
-                road = addr1[0].text 
-                road_address = road[3:-2].replace("\n", "")
-                road_address_fi=road_address
-                print(road_address_fi)
-                sleep(2)
-                print(f"도로명 재시도1, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
-                if geocoding(road_address_fi)[0]==0:
-                    pattern = r"(\S+[로길])\s(\d+(-\d+)?)"
-                    match = re.search(pattern, road_address_fi)
-                    if match:
-                        road = match.group(1)  # "일현로"
-                        number = match.group(2)  # "89" 또는 "89-2"
-                        full = f"{road} {number}"
-                        print("📍 도로명 주소:", full)
-                        road_address_fi=full
-                    else:
-                        print("❌ 도로명 주소를 찾을 수 없습니다.")
-                    print(f"도로명 재시도2, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
+                try:
+                    print("entryIframe_CSS")
+                    switch_frame('entryIframe',driver) #entryIframe
+                    sleep(5)
+                    
+                    store_name=key_word
+                    print("entryIframe",store_name)
+                    # 주소 버튼 누르기
+                    address_buttons = driver.find_elements(By.CSS_SELECTOR, 'a.PkgBl') #vV_z_
+                    address_buttons[0].click()
+                    # 로딩 기다리기
+                    sleep(2)       
+                    # 주소 눌렀을 때 도로명, 지번 나오는 div
+                    addr1 = driver.find_elements(By.CSS_SELECTOR, '.Y31Sf> div')
                     sleep(2)
+                    road = addr1[0].text 
+                    road_address = road[2:-2].replace("\n", "")
+                    road_address_fi=road_address
+                    print(road_address_fi)
+                    sleep(2)
+                    print(f"도로명 재시도1, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
                     if geocoding(road_address_fi)[0]==0:
-                        road = addr1[1].text 
-                        road_address = road[2:-2].replace("\n", "")
-                        road_address_fi=road_address
-                        road_address_fi=remove_duplicate_words(road_address_fi)
-                        print(f"도로명 재시도3, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
+                        pattern = r"(\S+[로길])\s(\d+(-\d+)?)"
+                        match = re.search(pattern, road_address_fi)
+                        if match:
+                            road = match.group(1)  # "일현로"
+                            number = match.group(2)  # "89" 또는 "89-2"
+                            full = f"{road} {number}"
+                            print("📍 도로명 주소:", full)
+                            road_address_fi=full
+                        else:
+                            print("❌ 도로명 주소를 찾을 수 없습니다.")
+                        print(f"도로명 재시도2, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
                         sleep(2)
                         if geocoding(road_address_fi)[0]==0:
-                            road_address_fi=key_word
-                            print(f"도로명 재시도4, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
-                
-                lat=geocoding(road_address_fi)[1]
-                lon=geocoding(road_address_fi)[0]
-                # dict에 데이터 집어넣기
-                dict_temp = {
-                    'name': store_name,
-                    'road_address': road_address_fi,
-                    'latitude' : lat,
-                    'longitude' : lon}
-                store_dict['가게 정보'].append(dict_temp)
-                
+                            road = addr1[1].text 
+                            road_address = road[2:-2].replace("\n", "")
+                            road_address_fi=road_address
+                            road_address_fi=remove_duplicate_words(road_address_fi)
+                            print(f"도로명 재시도3, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
+                            sleep(2)
+                            if geocoding(road_address_fi)[0]==0:
+                                road_address_fi=key_word
+                                print(f"도로명 재시도4, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
+                                lat=geocoding(road_address_fi)[1]
+                    lon=geocoding(road_address_fi)[0]
+                    # dict에 데이터 집어넣기
+                    dict_temp = {
+                        'name': store_name,
+                        'road_address': road_address_fi,
+                        'latitude' : lat,
+                        'longitude' : lon}
+                    store_dict['가게 정보'].append(dict_temp)
+                    
+                except Exception as e: 
+                    print("entryIframe_Script")
+                    scripts = driver.find_elements(By.TAG_NAME, 'script')
+
+                    lon, lat = None, None
+
+                    for script in scripts:
+                        inner = script.get_attribute("innerHTML")
+                        print(inner)
+                        if inner and '"lon":' in inner and '"lat":' in inner:
+                            # 정규식으로 "lon":"126.7698144","lat":"37.6968808" 같은 패턴 찾기
+                            match = re.search(r'"lon":"(.*?)","lat":"(.*?)"', inner) #'"lon"\s*:\s*([\d.]+)\s*,\s*"lat"\s*:\s*([\d.]+)'
+                            if match:
+                                lat = float(match.group(1))  # 경도
+                                lon = float(match.group(2))  # 위도
+                                break
+
+                    if lon and lat:
+                        print("📍 경도 (longitude):", lon)
+                        print("📍 위도 (latitude):", lat)
+                    else:
+                        print("❌ 좌표를 찾을 수 없습니다.")
+                    # dict에 데이터 집어넣기
+                    dict_temp = {
+                        'name': store_name,
+                        'road_address': road_address_fi,
+                        'latitude' : lat,
+                        'longitude' : lon}
+                    store_dict['가게 정보'].append(dict_temp)  
+                    
             except Exception as e:  
+                print("searchIframe_Script")
                 time_wait(10, 'iframe#searchIframe',driver)
                 switch_frame('searchIframe',driver) #entryIframe
                 sleep(2)      
