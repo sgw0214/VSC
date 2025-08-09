@@ -45,6 +45,7 @@ def geocoding(address):
     try:        
         geo_local = Nominatim(user_agent='South Korea')
         geo = geo_local.geocode(address)
+        sleep(2)
         x_y = [geo.latitude, geo.longitude]
         return x_y
     except:
@@ -78,29 +79,30 @@ def search_lnglat(key_word):
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))  #ChromeDriverManager().install()
     driver.get("https://map.naver.com/v5/search") 
     
-    # css를 찾을때 까지 10초 대기
-    time_wait(10, 'div.input_box > input.input_search',driver)
+    # css를 찾을때 까지 5초 대기
+    time_wait(5, 'div.input_box > input.input_search',driver)
 
     # 검색창 찾기
     search = driver.find_element(By.CSS_SELECTOR, 'div.input_box > input.input_search')
     search.send_keys(key_word)  
     search.send_keys(Keys.ENTER) 
-    sleep(5)
+    sleep(2)
 
     try:
         try:
             print("searchIframe_CSS")
             store_name = key_word
             road_address_fi= key_word
-            print(f"도로명, 'title': '{key_word}', 'address':'{key_word}', 'lat':'{geocoding(key_word)[1]}','lng':'{geocoding(key_word)[0]}'")
+            lat=geocoding(key_word)[1]
+            lon=geocoding(key_word)[0]
+            print(f"도로명, 'title': '{key_word}', 'address':'{key_word}', 'lat':'{lat}','lng':'{lon}'")
             # dictionary 생성
             store_dict = {'가게 정보': []}
-            if geocoding(road_address_fi)[0]==0: 
-            
+            if lat==0: 
                 # frame 변경
-                time_wait(10, 'iframe#searchIframe',driver)
+                time_wait(5, 'iframe#searchIframe',driver)
                 switch_frame('searchIframe',driver) #entryIframe
-                sleep(5)     
+                sleep(2)     
 
                 # dictionary 생성
                 store_dict = {'가게 정보': []}
@@ -142,8 +144,8 @@ def search_lnglat(key_word):
                 road_address = road[3:-2].replace("\n", "")
                 road_address_fi=addr0.text+" "+road_address
                 print(road_address_fi)
-                sleep(2)
                 print(f"도로명 재시도1, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
+                sleep(2)
                 if geocoding(road_address_fi)[0]==0:
                     road = addr1[0].text 
                     road_address = road[3:-2].replace("\n", "")
@@ -170,7 +172,6 @@ def search_lnglat(key_word):
                             road_address = road[3:-2].replace("\n", "")
                             road_address_fi=addr0.text+" "+road_address
                             road_address_fi=remove_duplicate_words(road_address_fi)
-                            sleep(2)
                             print(f"도로명 재시도4, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
                             sleep(2)
                             if geocoding(road_address_fi)[0]==0:
@@ -197,14 +198,13 @@ def search_lnglat(key_word):
             print(dict_temp)  
               
         except Exception as e:        
-            # time_wait(10, 'iframe#entryIframe',driver)
+            # time_wait(5, 'iframe#entryIframe',driver)
             print("entryIframe")
             try:
                 try:
                     print("entryIframe_CSS")
                     switch_frame('entryIframe',driver) #entryIframe
-                    sleep(5)
-                    
+                    sleep(2)                    
                     store_name=key_word
                     print("entryIframe",store_name)
                     # 주소 버튼 누르기
@@ -224,6 +224,7 @@ def search_lnglat(key_word):
                     if geocoding(road_address_fi)[0]==0:
                         pattern = r"(\S+[로길])\s(\d+(-\d+)?)"
                         match = re.search(pattern, road_address_fi)
+                        sleep(2)
                         if match:
                             road = match.group(1)  # "일현로"
                             number = match.group(2)  # "89" 또는 "89-2"
@@ -289,19 +290,19 @@ def search_lnglat(key_word):
                     
                     except Exception as e: 
                         print("searchIframe_Script")
-                        time_wait(10, 'iframe#searchIframe',driver)
+                        time_wait(5, 'iframe#searchIframe',driver)
                         switch_frame('searchIframe',driver) #entryIframe
                         sleep(2)      
                         address_buttons = driver.find_element(By.CLASS_NAME, 'ApCpt').click() #ApCpt
                         sleep(2) 
                         driver.switch_to.default_content()
-                        time_wait(10, 'iframe#entryIframe', driver)
+                        time_wait(5, 'iframe#entryIframe', driver)
                         switch_frame('entryIframe', driver)
                         sleep(2)
                         # url = driver.current_url
                         # print("현재 URL:", url)
                         scripts = driver.find_elements(By.TAG_NAME, 'script')
-
+                        sleep(2)
                         lon, lat = None, None
 
                         for script in scripts:
@@ -353,9 +354,9 @@ def dismin(url):
     try:
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))  #ChromeDriverManager().install()
         driver.get(url) 
-        time_wait(10, 'div.route_summary_box > div.route_summary_info_duration',driver)
+        time_wait(5, 'div.route_summary_box > div.route_summary_info_duration',driver)
         dism1 = driver.find_element(By.CSS_SELECTOR, 'div.route_summary_box > div.route_summary_info_duration')
-        sleep(10)
+        sleep(5)
         dism1_text=dism1.text
 
         print(dism1_text)
