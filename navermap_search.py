@@ -91,7 +91,7 @@ def search_lnglat(key_word):
         try:
             store_name = key_word
             road_address_fi= key_word
-            print(f"도로명, 'title': '{key_word}', 'address':'{key_word}', 'lat':'{geocoding(key_word)[0]}','lng':'{geocoding(key_word)[1]}'")
+            print(f"도로명, 'title': '{key_word}', 'address':'{key_word}', 'lat':'{geocoding(key_word)[1]}','lng':'{geocoding(key_word)[0]}'")
             
             if geocoding(road_address_fi)[0]==0: 
             
