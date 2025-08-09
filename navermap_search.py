@@ -268,8 +268,8 @@ def search_lnglat(key_word):
                     inner = script.get_attribute("innerHTML")
                     print(inner)
                     if inner and '"lon":' in inner and '"lat":' in inner:
-                        # 정규식으로 "x":123.456789, "y":37.123456 같은 패턴 찾기
-                        match = re.search(r'"lon"\s*:\s*([\d.]+)\s*,\s*"lat"\s*:\s*([\d.]+)', inner)
+                        # 정규식으로 "lon":"126.7698144","lat":"37.6968808" 같은 패턴 찾기
+                        match = re.search(r'"lon":"(.*?)","lat":"(.*?)"', inner) #'"lon"\s*:\s*([\d.]+)\s*,\s*"lat"\s*:\s*([\d.]+)'
                         if match:
                             lat = float(match.group(1))  # 경도
                             lon = float(match.group(2))  # 위도
@@ -334,8 +334,8 @@ df=DataFrame()
 point_hist=DataFrame()
 # point_list=["엘지디스플레이 파주공장","일산동양아파트101동","대윤프라자","탄7현큰마을대림아파트 일현로 140",
 #             "광성교회","파리바게뜨 일산역점","탄현마을부영3단지아파트","일산에듀포레푸르지오아파트","SK엔크린 삼정셀프주유소"] #출근
-point_list=["탄현마을한신6단지아파트입구","엘지디스플레이 파주공장","컴포즈커피 일산하이파크시티점","일산탄현쌍용스윗닷홈아파트","마라공방 일산탄현점",
-            "대윤프라자","덕이동 318-9","메가MGC커피 일산한뫼초점","연세일등치과의원","링키영어 탄현점","제주진뒷고기탄현점"] #퇴근
+point_list=["엘지디스플레이 파주공장","컴포즈커피 일산하이파크시티점","일산탄현쌍용스윗닷홈아파트","마라공방 일산탄현점",
+            "대윤프라자","덕이동 318-9","메가MGC커피 일산한뫼초점","연세일등치과의원","링키영어 탄현점","탄현마을한신6단지아파트입구","제주진뒷고기탄현점"] #퇴근
 df=DataFrame(index=point_list,columns=point_list)
 point_hist=DataFrame(index=point_list,columns=["lat","lng"])
 
