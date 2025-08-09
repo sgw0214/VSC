@@ -255,79 +255,82 @@ def search_lnglat(key_word):
                     store_dict['가게 정보'].append(dict_temp)
                     
                 except Exception as e: 
-                    print("entryIframe_Script")
-                    scripts = driver.find_elements(By.TAG_NAME, 'script')
+                    try:
+                        print("entryIframe_Script")
+                        scripts = driver.find_elements(By.TAG_NAME, 'script')
 
-                    lon, lat = None, None
+                        lon, lat = None, None
 
-                    for script in scripts:
-                        inner = script.get_attribute("innerHTML")
-                        print(inner)
-                        sleep(2)
-                        if inner and '"lon":' in inner and '"lat":' in inner:
-                            # 정규식으로 "lon":"126.7698144","lat":"37.6968808" 같은 패턴 찾기
-                            match = re.search(r'"lon":"(.*?)","lat":"(.*?)"', inner) #'"lon"\s*:\s*([\d.]+)\s*,\s*"lat"\s*:\s*([\d.]+)'
+                        for script in scripts:
+                            inner = script.get_attribute("innerHTML")
+                            print(inner)
                             sleep(2)
-                            if match:
-                                lat = float(match.group(1))  # 경도
-                                lon = float(match.group(2))  # 위도
-                                break
+                            if inner and '"lon":' in inner and '"lat":' in inner:
+                                # 정규식으로 "lon":"126.7698144","lat":"37.6968808" 같은 패턴 찾기
+                                match = re.search(r'"lon":"(.*?)","lat":"(.*?)"', inner) #'"lon"\s*:\s*([\d.]+)\s*,\s*"lat"\s*:\s*([\d.]+)'
+                                sleep(2)
+                                if match:
+                                    lat = float(match.group(1))  # 경도
+                                    lon = float(match.group(2))  # 위도
+                                    break
 
-                    if lon and lat:
-                        print("📍 경도 (longitude):", lon)
-                        print("📍 위도 (latitude):", lat)
-                    else:
-                        print("❌ 좌표를 찾을 수 없습니다.")
-                    # dict에 데이터 집어넣기
-                    dict_temp = {
-                        'name': store_name,
-                        'road_address': road_address_fi,
-                        'latitude' : lat,
-                        'longitude' : lon}
-                    store_dict['가게 정보'].append(dict_temp)  
+                        if lon and lat:
+                            print("📍 경도 (longitude):", lon)
+                            print("📍 위도 (latitude):", lat)
+                        else:
+                            print("❌ 좌표를 찾을 수 없습니다.")
+                        # dict에 데이터 집어넣기
+                        dict_temp = {
+                            'name': store_name,
+                            'road_address': road_address_fi,
+                            'latitude' : lat,
+                            'longitude' : lon}
+                        store_dict['가게 정보'].append(dict_temp)  
                     
-            except Exception as e:  
-                print("searchIframe_Script")
-                time_wait(10, 'iframe#searchIframe',driver)
-                switch_frame('searchIframe',driver) #entryIframe
-                sleep(2)      
-                address_buttons = driver.find_element(By.CLASS_NAME, 'ApCpt').click() #ApCpt
-                sleep(2) 
-                driver.switch_to.default_content()
-                time_wait(10, 'iframe#entryIframe', driver)
-                switch_frame('entryIframe', driver)
-                sleep(2)
-                # url = driver.current_url
-                # print("현재 URL:", url)
-                scripts = driver.find_elements(By.TAG_NAME, 'script')
-
-                lon, lat = None, None
-
-                for script in scripts:
-                    inner = script.get_attribute("innerHTML")
-                    print(inner)
-                    sleep(2)
-                    if inner and '"lon":' in inner and '"lat":' in inner:
-                        # 정규식으로 "lon":"126.7698144","lat":"37.6968808" 같은 패턴 찾기
-                        match = re.search(r'"lon":"(.*?)","lat":"(.*?)"', inner) #'"lon"\s*:\s*([\d.]+)\s*,\s*"lat"\s*:\s*([\d.]+)'
+                    except Exception as e: 
+                        print("searchIframe_Script")
+                        time_wait(10, 'iframe#searchIframe',driver)
+                        switch_frame('searchIframe',driver) #entryIframe
+                        sleep(2)      
+                        address_buttons = driver.find_element(By.CLASS_NAME, 'ApCpt').click() #ApCpt
+                        sleep(2) 
+                        driver.switch_to.default_content()
+                        time_wait(10, 'iframe#entryIframe', driver)
+                        switch_frame('entryIframe', driver)
                         sleep(2)
-                        if match:
-                            lat = float(match.group(1))  # 경도
-                            lon = float(match.group(2))  # 위도
-                            break
+                        # url = driver.current_url
+                        # print("현재 URL:", url)
+                        scripts = driver.find_elements(By.TAG_NAME, 'script')
 
-                if lon and lat:
-                    print("📍 경도 (longitude):", lon)
-                    print("📍 위도 (latitude):", lat)
-                else:
-                    print("❌ 좌표를 찾을 수 없습니다.")
-                # dict에 데이터 집어넣기
-                dict_temp = {
-                    'name': store_name,
-                    'road_address': road_address_fi,
-                    'latitude' : lat,
-                    'longitude' : lon}
-                store_dict['가게 정보'].append(dict_temp)  
+                        lon, lat = None, None
+
+                        for script in scripts:
+                            inner = script.get_attribute("innerHTML")
+                            print(inner)
+                            sleep(2)
+                            if inner and '"lon":' in inner and '"lat":' in inner:
+                                # 정규식으로 "lon":"126.7698144","lat":"37.6968808" 같은 패턴 찾기
+                                match = re.search(r'"lon":"(.*?)","lat":"(.*?)"', inner) #'"lon"\s*:\s*([\d.]+)\s*,\s*"lat"\s*:\s*([\d.]+)'
+                                sleep(2)
+                                if match:
+                                    lat = float(match.group(1))  # 경도
+                                    lon = float(match.group(2))  # 위도
+                                    break
+
+                        if lon and lat:
+                            print("📍 경도 (longitude):", lon)
+                            print("📍 위도 (latitude):", lat)
+                        else:
+                            print("❌ 좌표를 찾을 수 없습니다.")
+                        # dict에 데이터 집어넣기
+                        dict_temp = {
+                            'name': store_name,
+                            'road_address': road_address_fi,
+                            'latitude' : lat,
+                            'longitude' : lon}
+                        store_dict['가게 정보'].append(dict_temp)   
+            except Exception as e:
+                print(e)  
 
     except Exception as e:
         print(e)
