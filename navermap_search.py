@@ -431,7 +431,7 @@ def time_filter(timetext):
 #     print(time.time()-start)   
 #     print(df)
     
-print(geocoding("경기 고양시 일산서구 고양대로 666"))
+print(geocoding("고양대로 666"))
 
 # df1=pd.read_csv("./거리산출결과_탄현_퇴근.csv" )
 # print(df1)
