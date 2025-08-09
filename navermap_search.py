@@ -92,7 +92,8 @@ def search_lnglat(key_word):
             store_name = key_word
             road_address_fi= key_word
             print(f"도로명, 'title': '{key_word}', 'address':'{key_word}', 'lat':'{geocoding(key_word)[1]}','lng':'{geocoding(key_word)[0]}'")
-            
+            # dictionary 생성
+            store_dict = {'가게 정보': []}
             if geocoding(road_address_fi)[0]==0: 
             
                 # frame 변경
@@ -188,7 +189,8 @@ def search_lnglat(key_word):
                 'latitude' : lat,
                 'longitude' : lon}
             store_dict['가게 정보'].append(dict_temp)
-                
+            print(dict_temp)  
+              
         except Exception as e:        
             # time_wait(10, 'iframe#entryIframe',driver)
             
@@ -267,7 +269,7 @@ def search_lnglat(key_word):
                     print(inner)
                     if inner and '"x":' in inner and '"y":' in inner:
                         # 정규식으로 "x":123.456789, "y":37.123456 같은 패턴 찾기
-                        match = re.search(r'"lat"\s*:\s*([\d.]+)\s*,\s*"lng"\s*:\s*([\d.]+)', inner)
+                        match = re.search(r'"x"\s*:\s*([\d.]+)\s*,\s*"y"\s*:\s*([\d.]+)', inner)
                         if match:
                             lat = float(match.group(1))  # 경도
                             lon = float(match.group(2))  # 위도
