@@ -201,7 +201,7 @@ def search_lnglat(key_word):
                 'latitude' : lat,
                 'longitude' : lon}
             store_dict['가게 정보'].append(dict_temp)
-            print(dict_temp)  
+            # print(dict_temp)  
               
         except Exception as e:        
             # time_wait(5, 'iframe#entryIframe',driver)
