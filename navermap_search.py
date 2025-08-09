@@ -150,9 +150,11 @@ def search_lnglat(key_word):
                     road_address_fi=road_address
                     road_address_fi=remove_duplicate_words(road_address_fi)
                     print(f"도로명 재시도2, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
+                    sleep(2)
                     if geocoding(road_address_fi)[0]==0:
                         pattern = r"(\S+[로길])\s(\d+(-\d+)?)"
                         match = re.search(pattern, road_address_fi)
+                        sleep(2)
                         if match:
                             road = match.group(1)  # "일현로"
                             number = match.group(2)  # "89" 또는 "89-2"
@@ -170,12 +172,14 @@ def search_lnglat(key_word):
                             road_address_fi=remove_duplicate_words(road_address_fi)
                             sleep(2)
                             print(f"도로명 재시도4, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
+                            sleep(2)
                             if geocoding(road_address_fi)[0]==0:
                                 road = addr1[1].text 
                                 road_address = road[3:-2].replace("\n", "")
                                 road_address_fi=road_address
                                 road_address_fi=remove_duplicate_words(road_address_fi)
                                 print(f"도로명 재시도5, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
+                                sleep(2)
                                 if geocoding(road_address_fi)[0]==0:
                                     store_name=key_word
                                     road_address_fi=key_word
@@ -215,8 +219,8 @@ def search_lnglat(key_word):
                     road_address = road[3:-2].replace("\n", "")
                     road_address_fi=road_address
                     print(road_address_fi)
-                    sleep(2)
                     print(f"도로명 재시도1, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{geocoding(road_address_fi)[1]}','lng':'{geocoding(road_address_fi)[0]}'")
+                    sleep(2)
                     if geocoding(road_address_fi)[0]==0:
                         pattern = r"(\S+[로길])\s(\d+(-\d+)?)"
                         match = re.search(pattern, road_address_fi)
@@ -259,9 +263,11 @@ def search_lnglat(key_word):
                     for script in scripts:
                         inner = script.get_attribute("innerHTML")
                         print(inner)
+                        sleep(2)
                         if inner and '"lon":' in inner and '"lat":' in inner:
                             # 정규식으로 "lon":"126.7698144","lat":"37.6968808" 같은 패턴 찾기
                             match = re.search(r'"lon":"(.*?)","lat":"(.*?)"', inner) #'"lon"\s*:\s*([\d.]+)\s*,\s*"lat"\s*:\s*([\d.]+)'
+                            sleep(2)
                             if match:
                                 lat = float(match.group(1))  # 경도
                                 lon = float(match.group(2))  # 위도
@@ -300,9 +306,11 @@ def search_lnglat(key_word):
                 for script in scripts:
                     inner = script.get_attribute("innerHTML")
                     print(inner)
+                    sleep(2)
                     if inner and '"lon":' in inner and '"lat":' in inner:
                         # 정규식으로 "lon":"126.7698144","lat":"37.6968808" 같은 패턴 찾기
                         match = re.search(r'"lon":"(.*?)","lat":"(.*?)"', inner) #'"lon"\s*:\s*([\d.]+)\s*,\s*"lat"\s*:\s*([\d.]+)'
+                        sleep(2)
                         if match:
                             lat = float(match.group(1))  # 경도
                             lon = float(match.group(2))  # 위도
@@ -367,8 +375,8 @@ df=DataFrame()
 point_hist=DataFrame()
 # point_list=["엘지디스플레이 파주공장","일산동양아파트101동","대윤프라자","탄7현큰마을대림아파트 일현로 140",
 #             "광성교회","파리바게뜨 일산역점","탄현마을부영3단지아파트","일산에듀포레푸르지오아파트","SK엔크린 삼정셀프주유소"] #출근
-point_list=["메가MGC커피 일산한뫼초점","엘지디스플레이 파주공장","컴포즈커피 일산하이파크시티점","일산탄현쌍용스윗닷홈아파트정문","마라공방 일산탄현점",
-            "대윤프라자","덕이동 318-9","e편한세상일산어반스카이상가D-2","링키영어 탄현점","탄현마을한신6단지아파트입구","탄현청해수산"] #퇴근
+point_list=["엘지디스플레이 파주공장","컴포즈커피 일산하이파크시티점","일산탄현쌍용스윗닷홈아파트정문","마라공방 일산탄현점",
+            "대윤프라자","덕이동 318-9","메가MGC커피 일산한뫼초점","e편한세상일산어반스카이상가D-2","링키영어 탄현점","탄현마을한신6단지아파트입구","탄현청해수산"] #퇴근
 df=DataFrame(index=point_list,columns=point_list)
 point_hist=DataFrame(index=point_list,columns=["lat","lng"])
 
