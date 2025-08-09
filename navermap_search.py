@@ -390,116 +390,116 @@ def time_filter(timetext):
     return h * 60 + m
     
 
-df=DataFrame()
-point_hist=DataFrame()
-# point_list=["엘지디스플레이 파주공장","일산동양아파트101동","대윤프라자","탄7현큰마을대림아파트 일현로 140",
-#             "광성교회","파리바게뜨 일산역점","탄현마을부영3단지아파트","일산에듀포레푸르지오아파트","SK엔크린 삼정셀프주유소"] #출근
-point_list=["엘지디스플레이 파주공장","컴포즈커피 일산하이파크시티점","일산탄현쌍용스윗닷홈아파트정문","마라공방 일산탄현점",
-            "대윤프라자","덕이동 318-9","메가MGC커피 일산한뫼초점","링키영어 탄현점","탄현마을한신6단지아파트입구","탄현청해수산"] #퇴근
-df=DataFrame(index=point_list,columns=point_list)
-point_hist=DataFrame(index=point_list,columns=["lat","lng"])
+# df=DataFrame()
+# point_hist=DataFrame()
+# # point_list=["엘지디스플레이 파주공장","일산동양아파트101동","대윤프라자","탄7현큰마을대림아파트 일현로 140",
+# #             "광성교회","파리바게뜨 일산역점","탄현마을부영3단지아파트","일산에듀포레푸르지오아파트","SK엔크린 삼정셀프주유소"] #출근
+# point_list=["엘지디스플레이 파주공장","컴포즈커피 일산하이파크시티점","일산탄현쌍용스윗닷홈아파트정문","마라공방 일산탄현점",
+#             "대윤프라자","덕이동 318-9","메가MGC커피 일산한뫼초점","링키영어 탄현점","탄현마을한신6단지아파트입구","e편한세상일산어반스카이상가D-2","탄현청해수산"] #퇴근
+# df=DataFrame(index=point_list,columns=point_list)
+# point_hist=DataFrame(index=point_list,columns=["lat","lng"])
 
-from itertools import combinations
-result = list(combinations(point_list, 2))  # 2개씩 순서 없이 뽑기
-print(result)
+# from itertools import combinations
+# result = list(combinations(point_list, 2))  # 2개씩 순서 없이 뽑기
+# print(result)
 
-for k in result:
-    key_word = list(k) #['대화마을 7단지','두산위브더제니스 일산'] # 검색어
-    my_list=[]
-    for i in key_word:
-        print(i)
+# for k in result:
+#     key_word = list(k) #['대화마을 7단지','두산위브더제니스 일산'] # 검색어
+#     my_list=[]
+#     for i in key_word:
+#         print(i)
 
-        if point_hist.loc[i,'lng']>=0:
-            my_list.append(point_hist.loc[i,'lat'])
-            my_list.append(point_hist.loc[i,'lng'])
-            print(f'print(my_list):{my_list}')
-        else:    
-            ml=search_lnglat(i)
-            point_hist.loc[i,'lat']=ml[0]
-            point_hist.loc[i,'lng']=ml[1]
-            print(f'point_hist:{point_hist},ml:{ml}')
-            my_list.extend(ml)
-            print(f'print(my_list):{my_list}')
+#         if point_hist.loc[i,'lng']>=0:
+#             my_list.append(point_hist.loc[i,'lat'])
+#             my_list.append(point_hist.loc[i,'lng'])
+#             print(f'print(my_list):{my_list}')
+#         else:    
+#             ml=search_lnglat(i)
+#             point_hist.loc[i,'lat']=ml[0]
+#             point_hist.loc[i,'lng']=ml[1]
+#             print(f'point_hist:{point_hist},ml:{ml}')
+#             my_list.extend(ml)
+#             print(f'print(my_list):{my_list}')
         
         
-    print(my_list)    
-    url="https://map.naver.com/p/directions/"+str(my_list[0])+","+str(my_list[1])+","+quote(key_word[0])+",/"+str(my_list[2])+","+str(my_list[3])+","+quote(key_word[1])+",/-/car/0?c=11.00,0,0,0,dh"
-    print(url)
+#     print(my_list)    
+#     url="https://map.naver.com/p/directions/"+str(my_list[0])+","+str(my_list[1])+","+quote(key_word[0])+",/"+str(my_list[2])+","+str(my_list[3])+","+quote(key_word[1])+",/-/car/0?c=11.00,0,0,0,dh"
+#     print(url)
     
-    df.loc[key_word[0],key_word[1]]= dismin(url)
-    df.to_csv("./거리산출결과_탄현_퇴근.csv")
-    print(time.time()-start)   
-    print(df)
+#     df.loc[key_word[0],key_word[1]]= dismin(url)
+#     df.to_csv("./거리산출결과_탄현_퇴근.csv")
+#     print(time.time()-start)   
+#     print(df)
     
-print(geocoding("파리바게뜨 일산역점"))
+print(geocoding("경기 고양시 일산서구 고양대로 666"))
 
-df1=pd.read_csv("./거리산출결과_탄현_퇴근.csv" )
-print(df1)
-# df1=df1.drop(columns=['Unnamed: 0'])
-df1=df1.set_index('Unnamed: 0')
-print(df1)
-print(df1.columns)
+# df1=pd.read_csv("./거리산출결과_탄현_퇴근.csv" )
+# print(df1)
+# # df1=df1.drop(columns=['Unnamed: 0'])
+# df1=df1.set_index('Unnamed: 0')
+# print(df1)
+# print(df1.columns)
 
-df1=df1[['엘지디스플레이 파주공장']+df1.loc['엘지디스플레이 파주공장'].dropna().sort_values(ascending=True).index.to_list()]
-df1=df1.reindex(['엘지디스플레이 파주공장']+df1.loc['엘지디스플레이 파주공장'].dropna().sort_values(ascending=True).index.to_list())
-print(df1)
+# df1=df1[['엘지디스플레이 파주공장']+df1.loc['엘지디스플레이 파주공장'].dropna().sort_values(ascending=True).index.to_list()]
+# df1=df1.reindex(['엘지디스플레이 파주공장']+df1.loc['엘지디스플레이 파주공장'].dropna().sort_values(ascending=True).index.to_list())
+# print(df1)
 
-point_cnt=6
-from itertools import combinations
-point_case = list(combinations(df1,point_cnt)) 
-point_case1=[ i for i in point_case if i[0]=="엘지디스플레이 파주공장"]
-print(point_case1)
+# point_cnt=6
+# from itertools import combinations
+# point_case = list(combinations(df1,point_cnt)) 
+# point_case1=[ i for i in point_case if i[0]=="엘지디스플레이 파주공장"]
+# print(point_case1)
        
     
-df2=pd.DataFrame()
-df2["경로"]=point_case1
+# df2=pd.DataFrame()
+# df2["경로"]=point_case1
 
 
-for i in range(len(point_case1)):
-    for k in range(point_cnt-1):
-        # print(df1.loc[point_case1[i][k],point_case1[i][k+1]])
-        if pd.isna(df1.loc[point_case1[i][k],point_case1[i][k+1]])==True:
-            df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i][k+1],point_case1[i][k]]
-        else:
-            df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i][k],point_case1[i][k+1]]
-print(df2)
-df2=df2.dropna()
-df2["시간합"]=df2["시간1"]+df2["시간2"]+df2["시간3"]+df2["시간4"]
-df2=df2.sort_values(by="시간합").reset_index(drop=True)
-print(df2)
+# for i in range(len(point_case1)):
+#     for k in range(point_cnt-1):
+#         # print(df1.loc[point_case1[i][k],point_case1[i][k+1]])
+#         if pd.isna(df1.loc[point_case1[i][k],point_case1[i][k+1]])==True:
+#             df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i][k+1],point_case1[i][k]]
+#         else:
+#             df2.loc[i,"시간"+str(k+1)]=df1.loc[point_case1[i][k],point_case1[i][k+1]]
+# print(df2)
+# df2=df2.dropna()
+# df2["시간합"]=df2["시간1"]+df2["시간2"]+df2["시간3"]+df2["시간4"]
+# df2=df2.sort_values(by="시간합").reset_index(drop=True)
+# print(df2)
 
-df2["라벨"]=0
-n=1
-for i,j in zip(range(len(df2)-1),df2["경로"]):
-    if df2.loc[i,"라벨"]==0:
-        df2.loc[i,"라벨"]=n
-        print("first")
-        print(i,df2.loc[i,"경로"],n)
+# df2["라벨"]=0
+# n=1
+# for i,j in zip(range(len(df2)-1),df2["경로"]):
+#     if df2.loc[i,"라벨"]==0:
+#         df2.loc[i,"라벨"]=n
+#         print("first")
+#         print(i,df2.loc[i,"경로"],n)
 
-    for k in range(1,len(df2)):
-        m=0
-        # print(k)
-        for l in range(point_cnt-1):
-            if df2.iloc[k,0][l+1] in j:
-                m+=1
-        if m==0:
-            if df2.loc[k,"라벨"]==0:
-                df2.loc[k,"라벨"]=n
-                print("against")
-                print(i,k,df2.loc[k,"경로"],n)
-                # n+=1
-        elif k==len(df2)-1:
-            n+=1
+#     for k in range(1,len(df2)):
+#         m=0
+#         # print(k)
+#         for l in range(point_cnt-1):
+#             if df2.iloc[k,0][l+1] in j:
+#                 m+=1
+#         if m==0:
+#             if df2.loc[k,"라벨"]==0:
+#                 df2.loc[k,"라벨"]=n
+#                 print("against")
+#                 print(i,k,df2.loc[k,"경로"],n)
+#                 # n+=1
+#         elif k==len(df2)-1:
+#             n+=1
      
-print(df2)
+# print(df2)
 
-# 라벨별 평균 계산
-avg_time = df2.groupby('라벨')['시간합'].mean()
+# # 라벨별 평균 계산
+# avg_time = df2.groupby('라벨')['시간합'].mean()
 
-# 평균값을 원래 데이터프레임에 매핑하여 새 컬럼 추가
-df2['라벨별_평균시간'] = df2['라벨'].map(avg_time)
-print(df2)
-df2.to_excel("./정렬결과_탄현_퇴근.xlsx",index=False)
+# # 평균값을 원래 데이터프레임에 매핑하여 새 컬럼 추가
+# df2['라벨별_평균시간'] = df2['라벨'].map(avg_time)
+# print(df2)
+# df2.to_excel("./정렬결과_탄현_퇴근.xlsx",index=False)
 
 
 
