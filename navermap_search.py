@@ -251,10 +251,10 @@ def search_lnglat(key_word):
                             lon,lat=geocoding(road_address_fi)
                             print(f"도로명 재시도3, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{lat}','lng':'{lon}'")
 
-                            if lat==0:
-                                road_address_fi=key_word
-                                lon,lat=geocoding(road_address_fi)
-                                print(f"도로명 재시도4, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{lat}','lng':'{lon}'")
+                            # if lat==0:
+                            #     road_address_fi=key_word
+                            #     lon,lat=geocoding(road_address_fi)
+                            #     print(f"도로명 재시도4, 'title': '{store_name}', 'address':'{road_address_fi}', 'lat':'{lat}','lng':'{lon}'")
 
                     # dict에 데이터 집어넣기
                     dict_temp = {
@@ -287,6 +287,7 @@ def search_lnglat(key_word):
                             print("📍 위도 (latitude):", lat)
                         else:
                             print("❌ 좌표를 찾을 수 없습니다.")
+                            raise Exception("❌ 경도/위도를 찾지 못했습니다.")
                         # dict에 데이터 집어넣기
                         dict_temp = {
                             'name': store_name,
