@@ -267,9 +267,9 @@ def search_lnglat(key_word):
                 for script in scripts:
                     inner = script.get_attribute("innerHTML")
                     print(inner)
-                    if inner and '"x":' in inner and '"y":' in inner:
+                    if inner and '"lon":' in inner and '"lat":' in inner:
                         # 정규식으로 "x":123.456789, "y":37.123456 같은 패턴 찾기
-                        match = re.search(r'"x"\s*:\s*([\d.]+)\s*,\s*"y"\s*:\s*([\d.]+)', inner)
+                        match = re.search(r'"lon"\s*:\s*([\d.]+)\s*,\s*"lat"\s*:\s*([\d.]+)', inner)
                         if match:
                             lat = float(match.group(1))  # 경도
                             lon = float(match.group(2))  # 위도
@@ -280,7 +280,7 @@ def search_lnglat(key_word):
                     print("📍 위도 (latitude):", lat)
                 else:
                     print("❌ 좌표를 찾을 수 없습니다.")
-                                    # dict에 데이터 집어넣기
+                # dict에 데이터 집어넣기
                 dict_temp = {
                     'name': store_name,
                     'road_address': road_address_fi,
