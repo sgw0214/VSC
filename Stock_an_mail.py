@@ -1,9 +1,5 @@
 #git push -u origin master
-<<<<<<< HEAD
 # -*- coding: utf-8 -*-
-=======
-
->>>>>>> d94d1e5bc2617341817aaa91149fa23bbc08a09b
 from os import kill
 from sched import scheduler
 from numpy.lib.shape_base import kron
@@ -26,15 +22,7 @@ import sched
 import time
 import smtplib
 from email.mime.text import MIMEText
-<<<<<<< HEAD
-import datetime
-import inspect
-# import pyautogui as pg
-import sys
-# from datetime import datetime,date
-=======
 import datetime  
->>>>>>> d94d1e5bc2617341817aaa91149fa23bbc08a09b
 start = time.time()
 
 def stock_an():
