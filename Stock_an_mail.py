@@ -22,7 +22,8 @@ import sched
 import time
 import smtplib
 from email.mime.text import MIMEText
-import datetime  
+import datetime 
+import inspect 
 start = time.time()
 
 def stock_an():
