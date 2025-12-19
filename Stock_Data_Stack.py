@@ -1,9 +1,6 @@
 #git push -u origin master
 <<<<<<< HEAD
 import sys
-=======
-
->>>>>>> d94d1e5bc2617341817aaa91149fa23bbc08a09b
 from pandas.core.frame import DataFrame
 from urllib.request import Request,urlopen
 import logging
@@ -18,16 +15,12 @@ from openpyxl import load_workbook
 from openpyxl import Workbook
 from io import BytesIO
 import requests as rq
-<<<<<<< HEAD
 from io import StringIO
-=======
-from io import BytesIO
->>>>>>> d94d1e5bc2617341817aaa91149fa23bbc08a09b
 import numpy as np
 from datetime import datetime,date
 from datetime import timedelta
 import os
-<<<<<<< HEAD
+
 import sys
 import pypdfium2
 from pypdf import PdfReader
@@ -49,7 +42,6 @@ path = 'E:/VSC/CODE/Stock/'
 def data(date):
     #전종목시세
     gen_otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd' 
-=======
 
 start = time.time() 
 print(start)               
@@ -57,14 +49,12 @@ print(start)
 path = 'E:/VSC/CODE/Stock/'
 def data(date):
     gen_otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
->>>>>>> d94d1e5bc2617341817aaa91149fa23bbc08a09b
     gen_otp_data = {
     'mktId': 'STK',
     'trdDd': date,
     'money': '1',
     'csvxls_isNo': 'false',
     'name': 'fileDown',
-<<<<<<< HEAD
     'url': 'dbms/MDC/STAT/standard/MDCSTAT01501' #MDCSTAT0391
     }     
     headers = {'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020101', "User-Agent" : "Mozilla/5.0"} 
@@ -79,62 +69,18 @@ def data(date):
        
     
     file_name = 'basic_'+ str(date) + '.xlsx'    
-=======
-    'url': 'dbms/MDC/STAT/standard/MDCSTAT01501'
-    }
-    headers = {'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader'}
-    otp = rq.post(gen_otp_url, gen_otp_data, headers=headers).text
-    # print(otp)
-    
-    down_url = 'http://data.krx.co.kr/comm/fileDn/download_csv/download.cmd'
-    down_sector_KS  = rq.post(down_url, {'code':otp}, headers=headers)
-    sector_KS = pd.read_csv(BytesIO(down_sector_KS.content), encoding='EUC-KR')
-    
-    sector_KS['일자'] = str(date)
-    file_name = 'basic_'+ str(date) + '.xlsx'
-    
-    ##### 시장구분, 업종명 추가 ####
-    gen_otp_url1 = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
-    gen_otp_data1 = {
-    'mktId': 'STK',
-    'trdDd': date,
-    'money': '1',
-    'csvxls_isNo': 'false',
-    'name': 'fileDown',
-    'url': 'dbms/MDC/STAT/standard/MDCSTAT03901'
-    }
-    headers = {'Referer': 'http://data.krx.co.kr/contents/MDC/MDI/mdiLoader'}
-    otp1 = rq.post(gen_otp_url1, gen_otp_data1, headers=headers).text
-    down_url1 = 'http://data.krx.co.kr/comm/fileDn/download_csv/download.cmd'
-    down_sector_KS1  = rq.post(down_url1, {'code':otp1}, headers=headers)
-    sector_KS1 = pd.read_csv(BytesIO(down_sector_KS1.content), encoding='EUC-KR')
-    sector_KS1=sector_KS1[["시장구분","업종명"]]
-    ##### 시장구분, 업종명 추가 ####
-    sector_KS=pd.concat([sector_KS,sector_KS1],axis=1)
-    
->>>>>>> d94d1e5bc2617341817aaa91149fa23bbc08a09b
     sector_KS.to_excel(path+file_name, index=False, index_label=None)
     print('KRX crawling completed :', date)
 
 def Total_Stack(): 
-<<<<<<< HEAD
     for year in range(2024, 2025):
         for month in range(8, 13):
-=======
-    for year in range(2020, 2023):
-        for month in range(1, 13):
->>>>>>> d94d1e5bc2617341817aaa91149fa23bbc08a09b
             for day in range(1, 32):
                 tdate = year * 10000 + month * 100 + day * 1
                 try:
                     file_size = os.path.getsize(path + 'basic_' + str(tdate) + '.xlsx') 
-<<<<<<< HEAD
                     print('File Size:', file_size, 'bytes',"date1 >=date2",int(datetime.strftime(datetime.today() ,'%Y%m%d')),tdate) 
                     if file_size<70000 and  int(datetime.strftime(datetime.today() ,'%Y%m%d'))>=tdate :
-=======
-                    print('File Size:', file_size, 'bytes',"date",tdate) 
-                    if file_size<7000 and  int(datetime.strftime(datetime.today() ,'%Y%m%d'))>=tdate :
->>>>>>> d94d1e5bc2617341817aaa91149fa23bbc08a09b
                         data(tdate)
                     else: 
                         print("Pass")
@@ -142,7 +88,6 @@ def Total_Stack():
                     
                 except:
                     data(tdate)
-<<<<<<< HEAD
  
 #개별종목종합정보                   
 def UNITSTOCKINFO(x):
@@ -266,34 +211,12 @@ def add_stock(x):
                     if int(datetime.strftime(datetime.today() ,'%Y%m%d')) >= tdate :
                         startday = pd.read_excel(path + 'basic_' + str(tdate) + '.xlsx')
                         df = pd.concat([df, startday], sort=False)
-=======
-
-def add_stock():
-    df = pd.read_excel(path + 'Total.xlsx')
-    print(df.size)
-    if df.size==0:
-        max_date="20200101"
-        yesterday = pd.read_excel(path + 'basic_' + max_date + '.xlsx')
-        df = pd.concat([df, yesterday], sort=False)
-        for year in range(2020, 2023):
-            for month in range(1, 13):
-                for day in range(1, 32):
-                    tdate = year * 10000 + month * 100 + day * 1
-                    print(max_date,tdate,int(datetime.strftime(datetime.today() ,'%Y%m%d')))
-                    if int(datetime.strftime(datetime.today() ,'%Y%m%d')) >= tdate :
-                        yesterday = pd.read_excel(path + 'basic_' + str(tdate) + '.xlsx')
-                        df = pd.concat([df, yesterday], sort=False)
->>>>>>> d94d1e5bc2617341817aaa91149fa23bbc08a09b
                         print("concatenate completed :", tdate,"Last Date:",np.array(df["일자"])[-1])
                     else: pass
 
     else:
         max_date=np.array(df["일자"])[-1]
-<<<<<<< HEAD
         for year in range(x,x+1):
-=======
-        for year in range(2020, 2023):
->>>>>>> d94d1e5bc2617341817aaa91149fa23bbc08a09b
             for month in range(1, 13):
                 for day in range(1, 32):
                     tdate = year * 10000 + month * 100 + day * 1
@@ -306,7 +229,6 @@ def add_stock():
                     
     WIP = df.drop_duplicates()
     # WIP = WIP[WIP["종가"]== None].dropna(axis=0)
-<<<<<<< HEAD
     WIP.to_excel(path + str(x)+'.xlsx', index=False, index_label=None)
 
 
@@ -317,7 +239,7 @@ def add_stock():
 # add_stock(2021)
 # add_stock(2022)
 # add_stock(2023)
-# add_stock(2024)
+add_stock(2025)
 
 # # pip install -U pypdfium2
 # df=DataFrame()
@@ -328,13 +250,6 @@ def add_stock():
 #     # WIP = WIP[WIP["종가"]== None].dropna(axis=0)
 #     WIP.to_excel(path + 'Total.xlsx', index=False, index_label=None)
 #     print(df.size)
-=======
-    WIP.to_excel(path + 'Total.xlsx', index=False, index_label=None)
-
-# Total_Stack()
-add_stock()
-
->>>>>>> d94d1e5bc2617341817aaa91149fa23bbc08a09b
 print(time.time()-start)
 
 ################################## 이전code##########################################
