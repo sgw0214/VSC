@@ -1,5 +1,5 @@
 #git push -u origin master
-<<<<<<< HEAD
+
 import sys
 from pandas.core.frame import DataFrame
 from urllib.request import Request,urlopen
@@ -39,14 +39,7 @@ print("start")
 print(start)               
 #http://data.krx.co.kr/contents/MDC/MDI/mdiLoader/index.cmd?menuId=MDC0201020101
 path = 'E:/VSC/CODE/Stock/'
-def data(date):
-    #전종목시세
-    gen_otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd' 
 
-start = time.time() 
-print(start)               
-
-path = 'E:/VSC/CODE/Stock/'
 def data(date):
     gen_otp_url = 'http://data.krx.co.kr/comm/fileDn/GenerateOTP/generate.cmd'
     gen_otp_data = {
@@ -73,8 +66,8 @@ def data(date):
     print('KRX crawling completed :', date)
 
 def Total_Stack(): 
-    for year in range(2024, 2025):
-        for month in range(8, 13):
+    for year in range(2025, 2026):
+        for month in range(1, 9):
             for day in range(1, 32):
                 tdate = year * 10000 + month * 100 + day * 1
                 try:
@@ -239,6 +232,7 @@ def add_stock(x):
 # add_stock(2021)
 # add_stock(2022)
 # add_stock(2023)
+add_stock(2024)
 add_stock(2025)
 
 # # pip install -U pypdfium2
