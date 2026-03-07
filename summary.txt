@@ -1,0 +1,236 @@
+○df=pd.read_csv(url,header=None,names=cols,na_values="?")
+  df=df.dropna()
+
+○전처리1 : 범주형 처리
+ 1. Label Encoding(DT OR RFC)
+   모듈: from sklearn.preprocessing import LabelEncoder
+   encoding_col=["",""]
+   not_encoding_col=["",""]
+   enc_classes={}
+   def encoding_label(x):
+      le=LabelEncoder()
+      le.fit(x) 
+      le_fitted=le.transform(x)
+
+   d1=df[encoding_col].apply(encoding_label)
+   d2=df[not_encoding_col]
+   data=d1.join(d2)
+
+ 2. One Hot Encoding
+  x=pd.get_dummies(df[df.columns[:-1]])
+  y=df[""]
+
+○전처리2 : 연속형 처리(분리하기전에 전처리)
+  1. StandardScaler(평균0편차1 범위내)
+   모듈: from sklearn.preprocessing import StandardScaler
+   scaler=StandardScaler()
+   scaler.fit(df)
+   scaled=scaler.transform(df)
+   scaled_df=pd.DataFrame(scaled)
+   
+
+  2. MinMax Scaler
+   모듈: from sklearn.preprocessing import MinMaxScaler
+   scaler=MinMaxScaler()
+   scaler.fit(x_train)
+   scaled=scaler.transform(x_train)
+   scaled_df=pd.DataFrame(scaled)
+
+○전처리3 : 데이터셋 분리
+  모듈: from sklearn.model_selection import train_test_split
+  y=data["Y"]
+  x=data.drop[columns="Y"]
+  x_train,x_test,y_train,y_test = train_test_split(x,y,test_size=0.3,stratify=y,random_state=1)
+
+
+○분류평가지표
+  정확도,정밀도,재현률,f1 score,AUC
+
+○회귀평가지표
+  RMSE,MSE,R2
+
+○평가 지표(분류) 
+
+  모듈: from sklearn.metrics import ____
+
+  1. 혼동행렬반환 : confusion_matrix(y실제값,y예측값)
+  2. accuracy(정확도) : accuracy_score(y실제값,y예측값)
+  3. recall(재현율) 점수 반환(Positive중  Positive로 예측한 비율(TPR)) : recall_score(y실제값,y예측값)
+  4. precision(정밀도) 점수 반환(Positive로 예측한것중 Positive 인것의 비율(PPV)) : precision_score(y실제값,y예측값)
+  5. F1점수 반환(recall과 precision의 조화 평균값) : f1_score(y실제값,y예측값)
+  6. 클래스 별로 recall,precision,f1 score와 accuracy를 종합해서 보여준다 : classification_report(y실제값,y예측값)
+
+○평가 지표(회귀) 
+
+  모듈: from sklearn.metrics import ____
+
+  1. MSE : mean_squared_error(y_test,y_pred)
+  2. RMSE : np.sqrt(mean_squared_error(y_test,y_pred))
+  3. R2 : r2_score(y_test,y_pred)
+  4. 회귀계수 lr.coef_  절편 lr.intercept
+
+○머신러닝 모델
+
+  모듈
+
+  from sklearn.tree import DecisionTreeClassifier
+  from sklearn.ensemble import RandomForestClassifier
+  from sklearn.linear_model import LogisticRegression
+
+  dt=DecisionTreeClassifier(max_depth=3)
+  rfc=RandomForestClassifier(n_estimators=100)
+  lt=LogisticRegression(max_iter=500)
+
+  predict(x_test)
+
+○ROC곡선 AUC점수
+
+  모듈: from sklearn.metrics import roc_curve,roc_auc_score
+
+  TPR(Y),FPR(X) : 1에가까울수록 좋음
+
+  rfc_pos=rfc.predict_proba(x_test)[:,1]
+  fpr,tpr,th = roc_curve(y_test,rfc_pos)
+  plt.figure(7,7)
+  plt.plot(fpr,tpr)
+  plt.show()
+
+  roc_curve(y_test,rfc.predict_proba(x_test)[:,1])
+  roc_auc_score(y_test,rfc.predict_proba(x_test)[:,1]])
+
+○과적합 확인
+
+  모듈: from sklearn.metrics import accuracy_score
+  
+  accuracy_score(y_train,pred_train)
+  accuracy_score(y_test,pred_test)
+
+
+
+○List
+
+ del a[],a.sort(),a.revers()
+ a.append(),a.insert(,),a.remove()
+ a.count(),a.extend()
+
+
+ 
+○DF
+ 
+ isnull(),notnull(),fillna(),dropna()
+ sort_‌index(),sort_values()
+
+ df.apply(lambda x: x.mean() - x.min())
+ df.value_counts()
+ df["User_Mean"] = df.groupby('User_ID')["Purchase"].transform('mean')
+ df['d'] = df.apply(lambda row: row.a + row.b + row.c, axis=1)
+
+○차트그리기
+from elice_utils import EliceUtils
+import pandas as pd
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+elice_utils = EliceUtils()
+train= pd.read_csv('data/train.csv')
+
+
+
+
+def main():
+    mpl.rc('font',family='NanumGothic')
+    figure, ((ax1,ax2,ax3),(ax4,ax5,ax6))=plt.subplots(nrows=2,ncols=3)
+    figure.set_size_inches(18,12)
+    
+    bar_chart('Sex',ax1)
+    bar_chart('Pclass',ax2)
+    bar_chart('SibSp',ax3)
+    # bar_chart('Cabin',ax4)
+    bar_chart('Parch',ax5)
+    bar_chart('Embarked',ax6)
+    ax1.set(title='성별')
+    ax2.set(title='티켓class')
+    ax3.set(title='형제수')
+    ax4.set(title='Cabin')
+    ax5.set(title='부모자식수')
+    ax6.set(title='승선장소')
+    plt.savefig("image.svg", format="svg")
+    elice_utils.send_image("image.svg")
+
+
+def bar_chart(feature, ax):
+    survived=train[train['Survived']==1][feature].value_counts()
+    dead=train[train['Survived']==0][feature].value_counts()
+    df=pd.DataFrame([survived,dead])
+    df.index=['Survived','Dead']
+    df.plot(kind='bar',stacked=True, ax=ax)
+    
+  
+if __name__ == "__main__":
+    main()
+
+import pandas as pd
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
+
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.svm import SVC
+from sklearn.ensemble import BaggingClassifier, ExtraTreesClassifier, GradientBoostingClassifier, VotingClassifier, RandomForestClassifier, AdaBoostClassifier
+
+from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import RandomForestRegressor
+
+from sklearn.metrics import make_scorer
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import r2_score
+from sklearn.metrics import root_mean_squared_error
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import recall_score
+from sklearn.metrics import precision_score
+from sklearn.metrics import f1_score
+from sklearn.metrics import classification_report
+from sklearn.metrics import roc_curve,roc_auc_score
+
+from sklearn.decomposition import PCA, KernelPCA
+from sklearn.cross_validation import KFold, cross_val_score
+
+from sklearn.grid_search import GridSearchCV
+from sklearn.feature_selection import VarianceThreshold, RFE, SelectKBest, chi2
+from sklearn.pipeline import Pipeline, FeatureUnion
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

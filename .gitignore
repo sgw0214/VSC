@@ -1,0 +1,6 @@
+.autogit
+.autogitStock/
+Stock/
+VR/
+__pycache__/
+*.pyc
