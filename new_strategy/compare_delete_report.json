@@ -1,0 +1,212 @@
+[
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\dart_continuous.log",
+        "rel":  "dart_continuous.log",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\dart_continuous.log",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\dart_corp_codes.csv",
+        "rel":  "dart_corp_codes.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\dart_corp_codes.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\fundamental_quarterly_multi.backup_20260305_230548.csv",
+        "rel":  "fundamental_quarterly_multi.backup_20260305_230548.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\fundamental_quarterly_multi.backup_20260305_230548.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\fundamental_quarterly_multi.csv",
+        "rel":  "fundamental_quarterly_multi.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\fundamental_quarterly_multi.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\fundamental_quarterly_multi_request_log.csv",
+        "rel":  "fundamental_quarterly_multi_request_log.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\fundamental_quarterly_multi_request_log.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\fundamental_quarterly_raw.csv",
+        "rel":  "fundamental_quarterly_raw.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\fundamental_quarterly_raw.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\gold_kr_daily.xlsx",
+        "rel":  "gold_kr_daily.xlsx",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\gold_kr_daily.xlsx",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\macro_coverage_report.csv",
+        "rel":  "macro_coverage_report.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\macro_coverage_report.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\macro_daily.csv",
+        "rel":  "macro_daily.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\macro_daily.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\macro_regime.csv",
+        "rel":  "macro_regime.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\macro_regime.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\macro_regime_aggressive.csv",
+        "rel":  "macro_regime_aggressive.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\macro_regime_aggressive.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\macro_regime_defensive.csv",
+        "rel":  "macro_regime_defensive.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\macro_regime_defensive.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\macro_regime_no_kospi200.csv",
+        "rel":  "macro_regime_no_kospi200.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\macro_regime_no_kospi200.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\macro_regime_v2.csv",
+        "rel":  "macro_regime_v2.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\macro_regime_v2.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\macro_regime_v3_rec.csv",
+        "rel":  "macro_regime_v3_rec.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\macro_regime_v3_rec.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\market_data.db",
+        "rel":  "market_data.db",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\market_data.db",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\price_panel.csv",
+        "rel":  "price_panel.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\price_panel.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\data\\price_panel_sample.csv",
+        "rel":  "price_panel_sample.csv",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\price_panel_sample.csv",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\cache\\features\\features.pkl",
+        "rel":  "features\\features.pkl",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\cache\\features\\features.pkl",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\cache\\yearly\\2015.pkl",
+        "rel":  "yearly\\2015.pkl",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\cache\\yearly\\2015.pkl",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\cache\\yearly\\2016.pkl",
+        "rel":  "yearly\\2016.pkl",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\cache\\yearly\\2016.pkl",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\cache\\yearly\\2017.pkl",
+        "rel":  "yearly\\2017.pkl",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\cache\\yearly\\2017.pkl",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\cache\\yearly\\2018.pkl",
+        "rel":  "yearly\\2018.pkl",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\cache\\yearly\\2018.pkl",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\cache\\yearly\\2019.pkl",
+        "rel":  "yearly\\2019.pkl",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\cache\\yearly\\2019.pkl",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\cache\\yearly\\2020.pkl",
+        "rel":  "yearly\\2020.pkl",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\cache\\yearly\\2020.pkl",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\cache\\yearly\\2021.pkl",
+        "rel":  "yearly\\2021.pkl",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\cache\\yearly\\2021.pkl",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\cache\\yearly\\2022.pkl",
+        "rel":  "yearly\\2022.pkl",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\cache\\yearly\\2022.pkl",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\cache\\yearly\\2023.pkl",
+        "rel":  "yearly\\2023.pkl",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\cache\\yearly\\2023.pkl",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\cache\\yearly\\2024.pkl",
+        "rel":  "yearly\\2024.pkl",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\cache\\yearly\\2024.pkl",
+        "exists":  true,
+        "same":  true
+    },
+    {
+        "repo":  "E:\\VSC\\CODE\\new_strategy\\cache\\yearly\\2025.pkl",
+        "rel":  "yearly\\2025.pkl",
+        "one":  "C:\\Users\\sgw02\\OneDrive\\python\\new_strategy\\cache\\yearly\\2025.pkl",
+        "exists":  true,
+        "same":  true
+    }
+]
