@@ -6,18 +6,23 @@
   <title>해커톤 제안 요약 - PLC 접점 기반 데이터 품질 혁신</title>
   <style>
     :root {
-      --bg: #f3f6f4;
-      --paper: #fffdf8;
-      --ink: #182126;
-      --muted: #5e6a71;
-      --line: #d8e0dc;
-      --accent: #006d77;
-      --accent-soft: #d9f0ed;
-      --warm: #f0b429;
-      --danger: #c44536;
-      --ok: #2a9d64;
-      --shadow: 0 18px 40px rgba(20, 31, 38, 0.08);
-      --radius: 24px;
+      --bg: #eef2ed;
+      --paper: #fcfbf7;
+      --ink: #172027;
+      --muted: #5b6972;
+      --line: #d7e0db;
+      --line-strong: #bfcfc7;
+      --accent: #0f766e;
+      --accent-strong: #0a5d57;
+      --accent-soft: #dcf3ef;
+      --warm: #f4b740;
+      --warm-soft: #fff2d5;
+      --ok: #248a57;
+      --danger: #c14b3c;
+      --shadow: 0 20px 50px rgba(18, 30, 36, 0.08);
+      --radius-xl: 28px;
+      --radius-lg: 22px;
+      --radius-md: 18px;
     }
 
     * {
@@ -26,82 +31,111 @@
 
     body {
       margin: 0;
-      font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
-      color: var(--ink);
+      min-height: 100vh;
       background:
-        radial-gradient(circle at top left, rgba(0, 109, 119, 0.08), transparent 22%),
-        linear-gradient(180deg, #edf3ef 0%, #f6f8f7 100%);
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.09), transparent 20%),
+        radial-gradient(circle at 100% 0%, rgba(244, 183, 64, 0.12), transparent 18%),
+        linear-gradient(180deg, #edf2ee 0%, #f5f7f5 100%);
+      color: var(--ink);
+      font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+    }
+
+    h1, h2, h3, h4, p {
+      margin: 0;
     }
 
     .page {
-      width: min(calc(100% - 32px), 1180px);
-      margin: 24px auto 36px;
+      width: min(calc(100% - 28px), 1320px);
+      margin: 14px auto;
     }
 
     .sheet {
-      background: var(--paper);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(252, 251, 247, 0.98));
       border: 1px solid var(--line);
-      border-radius: 32px;
+      border-radius: 34px;
       box-shadow: var(--shadow);
-      overflow: hidden;
+      padding: 18px;
     }
 
     .hero {
-      padding: 36px 36px 28px;
+      display: grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .hero__main,
+    .hero__side,
+    .panel,
+    .mini,
+    .step,
+    .chipline,
+    .timeline__item {
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+    }
+
+    .hero__main {
+      padding: 26px 28px;
       background:
-        linear-gradient(135deg, rgba(0, 109, 119, 0.08), rgba(240, 180, 41, 0.08)),
-        var(--paper);
-      border-bottom: 1px solid var(--line);
+        linear-gradient(135deg, rgba(15, 118, 110, 0.08), rgba(244, 183, 64, 0.08)),
+        rgba(255, 255, 255, 0.88);
     }
 
     .eyebrow {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
       padding: 8px 12px;
       border-radius: 999px;
       background: var(--accent-soft);
       color: var(--accent);
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
     }
 
-    h1,
-    h2,
-    h3,
-    p {
-      margin: 0;
+    .eyebrow::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
     }
 
-    h1 {
-      margin-top: 16px;
-      font-size: clamp(32px, 5vw, 56px);
-      line-height: 1.02;
-      letter-spacing: -0.04em;
-      max-width: 11ch;
+    .hero__main h1 {
+      margin-top: 14px;
+      font-size: clamp(32px, 4.2vw, 54px);
+      line-height: 0.98;
+      letter-spacing: -0.05em;
+      max-width: 12ch;
     }
 
-    .hero-summary {
-      margin-top: 16px;
-      max-width: 62ch;
+    .hero__main p {
+      margin-top: 14px;
+      max-width: 64ch;
       color: var(--muted);
-      line-height: 1.75;
-      font-size: 17px;
+      line-height: 1.65;
+      font-size: 15px;
     }
 
     .shift {
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
-      gap: 12px;
-      margin-top: 20px;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 18px;
     }
 
     .tag {
-      padding: 10px 16px;
+      padding: 10px 15px;
       border-radius: 999px;
       border: 1px solid var(--line);
       background: #ffffff;
-      font-weight: 700;
+      font-weight: 800;
+      font-size: 14px;
     }
 
     .tag--accent {
@@ -112,182 +146,319 @@
 
     .arrow {
       color: var(--warm);
+      font-weight: 900;
       font-size: 20px;
-      font-weight: 700;
     }
 
-    .grid {
+    .hero__side {
+      padding: 20px;
       display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 18px;
-      padding: 22px 22px 0;
-    }
-
-    .card {
-      padding: 24px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: #ffffff;
-    }
-
-    .card h2 {
-      margin-bottom: 14px;
-      font-size: 22px;
-      letter-spacing: -0.03em;
-    }
-
-    .card p {
-      color: var(--muted);
-      line-height: 1.75;
-    }
-
-    .bullet-list {
-      display: grid;
-      gap: 10px;
-      margin-top: 16px;
-    }
-
-    .bullet {
-      padding: 13px 14px;
-      border-radius: 16px;
-      background: #f7f9f8;
-      border: 1px solid #e4eae6;
-      line-height: 1.6;
-    }
-
-    .bullet strong {
-      color: var(--ink);
-    }
-
-    .status-row {
-      display: grid;
+      grid-template-rows: auto auto 1fr;
       gap: 12px;
     }
 
-    .status {
-      padding: 18px;
-      border-radius: 18px;
-      border: 1px solid var(--line);
-      background: #fafcfa;
+    .side-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
     }
 
-    .status strong {
-      display: block;
-      margin-bottom: 8px;
+    .side-title h2 {
       font-size: 18px;
+      letter-spacing: -0.03em;
     }
 
-    .status p {
-      color: var(--muted);
-      line-height: 1.7;
-    }
-
-    .status--bad strong {
-      color: var(--danger);
-    }
-
-    .status--good strong {
-      color: var(--ok);
-    }
-
-    .wide {
-      padding: 22px;
-    }
-
-    .four-up {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 14px;
-      margin-top: 16px;
-    }
-
-    .mini {
-      padding: 18px;
-      border: 1px solid var(--line);
-      border-radius: 20px;
-      background: #ffffff;
-    }
-
-    .mini h3 {
-      margin-bottom: 10px;
-      font-size: 17px;
-    }
-
-    .mini p {
-      color: var(--muted);
-      line-height: 1.7;
-      font-size: 14px;
-    }
-
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 14px;
-      margin-top: 16px;
-    }
-
-    .step {
-      padding: 18px;
-      border-radius: 20px;
-      border: 1px solid var(--line);
-      background: #fff;
-    }
-
-    .num {
-      display: inline-grid;
-      place-items: center;
-      width: 36px;
-      height: 36px;
-      margin-bottom: 12px;
-      border-radius: 12px;
-      background: var(--accent-soft);
-      color: var(--accent);
+    .side-title span {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: var(--warm-soft);
+      color: #8d6200;
+      font-size: 12px;
       font-weight: 800;
     }
 
-    .step strong {
+    .side-card {
+      padding: 16px 17px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--line);
+      background: #fbfcfb;
+    }
+
+    .side-card strong {
       display: block;
-      margin-bottom: 8px;
+      margin-bottom: 7px;
+      font-size: 15px;
+    }
+
+    .side-card p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .side-card--bad strong {
+      color: var(--danger);
+    }
+
+    .side-card--good strong {
+      color: var(--ok);
+    }
+
+    .chip-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .chipline {
+      padding: 14px;
+      border-radius: 18px;
+      background: #ffffff;
+    }
+
+    .chipline strong {
+      display: block;
+      margin-bottom: 5px;
+      font-size: 13px;
+      color: var(--accent-strong);
+    }
+
+    .chipline span {
+      display: block;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 12px;
+    }
+
+    .dashboard {
+      display: grid;
+      grid-template-columns: 1.04fr 0.96fr;
+      gap: 14px;
+    }
+
+    .stack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel {
+      padding: 18px;
+    }
+
+    .panel__head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .panel__head h2 {
+      font-size: 21px;
+      letter-spacing: -0.04em;
+    }
+
+    .panel__head span {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .problem-solution {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .box {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid var(--line);
+      background: #fbfcfb;
+    }
+
+    .box h3 {
+      margin-bottom: 10px;
       font-size: 16px;
     }
 
+    .box ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 13px;
+    }
+
+    .box li + li {
+      margin-top: 7px;
+    }
+
+    .box--problem h3 {
+      color: var(--danger);
+    }
+
+    .box--solution h3 {
+      color: var(--ok);
+    }
+
+    .timeline {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .timeline__item {
+      padding: 12px;
+      border-radius: 18px;
+      text-align: center;
+      background: linear-gradient(180deg, #ffffff, #f7faf8);
+    }
+
+    .timeline__item strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--accent-strong);
+    }
+
+    .timeline__item span {
+      display: block;
+      color: var(--muted);
+      line-height: 1.4;
+      font-size: 12px;
+    }
+
+    .trend-grid,
+    .value-grid,
+    .step-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .mini,
+    .step {
+      padding: 16px;
+      border-radius: 20px;
+    }
+
+    .mini h3,
+    .step h3 {
+      margin-bottom: 8px;
+      font-size: 15px;
+      letter-spacing: -0.02em;
+    }
+
+    .mini p,
     .step p {
       color: var(--muted);
-      line-height: 1.65;
-      font-size: 14px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .mini__label {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .num {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 12px;
+      background: var(--accent);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 800;
+      flex: 0 0 auto;
     }
 
     .footer {
-      margin: 22px;
-      padding: 24px;
+      margin-top: 14px;
+      padding: 18px 22px;
       border-radius: 24px;
-      background: var(--accent);
+      background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.94), rgba(13, 94, 88, 0.98));
       color: #ffffff;
     }
 
     .footer strong {
       display: block;
-      margin-bottom: 8px;
-      font-size: 26px;
-      line-height: 1.3;
+      margin-bottom: 6px;
+      font-size: 24px;
       letter-spacing: -0.03em;
+      line-height: 1.25;
     }
 
     .footer p {
-      line-height: 1.7;
-      max-width: 60ch;
-      color: rgba(255, 255, 255, 0.9);
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 14px;
+      line-height: 1.55;
+      max-width: 70ch;
     }
 
-    @media (max-width: 980px) {
-      .grid,
-      .four-up,
-      .steps {
+    @media (max-width: 1180px) {
+      .hero,
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .page {
+        width: min(calc(100% - 20px), 1320px);
+        margin: 10px auto;
+      }
+
+      .sheet {
+        padding: 12px;
+        border-radius: 24px;
+      }
+
+      .hero__main,
+      .hero__side,
+      .panel,
+      .footer {
+        padding: 16px;
+      }
+
+      .problem-solution,
+      .trend-grid,
+      .value-grid,
+      .step-grid,
+      .chip-grid,
+      .timeline {
         grid-template-columns: 1fr;
       }
 
-      h1 {
+      .hero__main h1 {
         max-width: none;
+        font-size: 34px;
+      }
+
+      .footer strong {
+        font-size: 20px;
       }
     }
   </style>
@@ -296,101 +467,207 @@
   <main class="page">
     <section class="sheet">
       <header class="hero">
-        <span class="eyebrow">Hackathon One-Page Summary</span>
-        <h1>PLC 접점 기반 장비 이벤트 데이터로 제조 데이터 품질 혁신</h1>
-        <p class="hero-summary">
-          현재 제조 데이터는 패널 결과나 In~Out 통계량 중심이라 장비 내부의 실제 동작을 충분히 설명하지 못합니다.
-          해법은 장비가 동작할 때마다 발생하는 PLC 접점 신호를 이벤트 데이터로 표준화해, 공정을 결과 중심 데이터에서 행위 중심 데이터로 전환하는 것입니다.
-        </p>
-        <div class="shift">
-          <span class="tag">패널 기준 데이터</span>
-          <span class="arrow">→</span>
-          <span class="tag tag--accent">장비 기준 이벤트 데이터</span>
-        </div>
-      </header>
-
-      <section class="grid">
-        <article class="card">
-          <h2>왜 필요한가</h2>
+        <article class="hero__main">
+          <span class="eyebrow">Hackathon One-Page</span>
+          <h1>장비가 실제로 한 일을 데이터로 남기자</h1>
           <p>
-            SPC는 패널 배출 시점의 결과를, FDC는 패널 In~Out 구간의 통계값을 보여줍니다.
-            하지만 장비 안에서는 이송, 정렬, 클램프, 진공 형성, 공정 시작/종료, 알람 발생 같은 세부 이벤트가 연속적으로 일어납니다.
-            이 정보가 빠지면 데이터와 실제 공정 간 정합성이 낮아지고, 원인 분석과 AI 적용에 한계가 생깁니다.
+            현재 제조 데이터는 패널 결과와 In~Out 통계는 보여주지만, 장비 내부에서 실제로 어떤 상태 전이와 작업 순서가 있었는지는 충분히 설명하지 못합니다.
+            해법은 PLC 접점을 기준으로 장비 동작을 이벤트 데이터로 표준화해, 결과 중심 데이터 위에 장비 행위 레이어를 추가하는 것입니다.
           </p>
-          <div class="bullet-list">
-            <div class="bullet"><strong>현재 한계:</strong> 실제 작업 순서와 상태 전이를 데이터로 보기 어렵다</div>
-            <div class="bullet"><strong>핵심 아이디어:</strong> PLC 접점을 기준으로 이벤트 단위 데이터를 생성한다</div>
-            <div class="bullet"><strong>관점 전환:</strong> 패널이 무엇이었는지뿐 아니라 장비가 무엇을 했는지 본다</div>
+          <div class="shift">
+            <span class="tag">SPC / FDC 중심</span>
+            <span class="arrow">→</span>
+            <span class="tag tag--accent">PLC Event Layer</span>
+            <span class="arrow">→</span>
+            <span class="tag">AI-Ready Manufacturing Data</span>
           </div>
         </article>
 
-        <aside class="status-row">
-          <div class="status status--bad">
-            <strong>지금</strong>
-            <p>결과와 통계는 있지만, 공정 내부 흐름은 불명확합니다.</p>
+        <aside class="hero__side">
+          <div class="side-title">
+            <h2>핵심 요약</h2>
+            <span>Why Now</span>
           </div>
-          <div class="status status--good">
-            <strong>제안 후</strong>
-            <p>장비 동작 시점이 보이므로 이상 구간 추적력과 설명력이 올라갑니다.</p>
+          <div class="side-card side-card--bad">
+            <strong>현재</strong>
+            <p>결과 데이터는 있지만 장비 내부 흐름이 안 보여, 정합성·원인 분석·AI 활용이 모두 제한됩니다.</p>
+          </div>
+          <div class="side-card side-card--good">
+            <strong>제안</strong>
+            <p>SPC/FDC 사이의 빈칸을 PLC 이벤트로 채워, 제조 AI가 이해할 수 있는 공정 맥락을 만듭니다.</p>
+          </div>
+          <div class="chip-grid">
+            <div class="chipline">
+              <strong>Physical AI</strong>
+              <span>상태 전이와 시점 데이터가 있어야 물리 세계를 이해합니다.</span>
+            </div>
+            <div class="chipline">
+              <strong>Manufacturing AI</strong>
+              <span>공정 특화 AI는 고해상도 현장 맥락 데이터가 필요합니다.</span>
+            </div>
+            <div class="chipline">
+              <strong>Digital Twin</strong>
+              <span>실제 장비 이벤트가 있어야 시뮬레이션이 현실과 연결됩니다.</span>
+            </div>
+            <div class="chipline">
+              <strong>현장 AI Assistant</strong>
+              <span>엔지니어가 자연어로 이상 구간과 원인 후보를 질의할 수 있습니다.</span>
+            </div>
           </div>
         </aside>
-      </section>
+      </header>
 
-      <section class="wide">
-        <article class="card">
-          <h2>기대 효과</h2>
-          <div class="four-up">
-            <div class="mini">
-              <h3>정합성 향상</h3>
-              <p>실제 장비 동작을 기준으로 데이터를 만들기 때문에 공정과 데이터의 불일치를 줄일 수 있습니다.</p>
+      <section class="dashboard">
+        <div class="stack">
+          <article class="panel">
+            <div class="panel__head">
+              <h2>문제 -> 해법</h2>
+              <span>From Summary To Sequence</span>
             </div>
-            <div class="mini">
-              <h3>원인 분석 강화</h3>
-              <p>불량과 이상 발생 시 어느 이벤트 구간에서 문제가 시작됐는지 더 정확히 볼 수 있습니다.</p>
+            <div class="problem-solution">
+              <div class="box box--problem">
+                <h3>현재 구조</h3>
+                <ul>
+                  <li>SPC: 패널 배출 시점 결과 중심</li>
+                  <li>FDC: In~Out 구간 통계 중심</li>
+                  <li>장비 내부 상태 전이와 작업 순서 누락</li>
+                </ul>
+              </div>
+              <div class="box box--solution">
+                <h3>제안 구조</h3>
+                <ul>
+                  <li>PLC 접점 기반 이벤트 생성</li>
+                  <li>장비 기준 타임라인 구성</li>
+                  <li>SPC/FDC와 연결되는 맥락 레이어 확보</li>
+                </ul>
+              </div>
             </div>
-            <div class="mini">
-              <h3>Vertical AI 준비</h3>
-              <p>공정 특화 AI에 필요한 세분화된 고품질 학습 데이터 기반을 확보할 수 있습니다.</p>
+            <div class="timeline">
+              <div class="timeline__item">
+                <strong>Transfer</strong>
+                <span>이송 시작/완료</span>
+              </div>
+              <div class="timeline__item">
+                <strong>Align</strong>
+                <span>정렬 이벤트</span>
+              </div>
+              <div class="timeline__item">
+                <strong>Clamp</strong>
+                <span>상태 전이 기록</span>
+              </div>
+              <div class="timeline__item">
+                <strong>Process</strong>
+                <span>실가동 구간 추적</span>
+              </div>
+              <div class="timeline__item">
+                <strong>Alarm</strong>
+                <span>이상 시점 명확화</span>
+              </div>
             </div>
-            <div class="mini">
-              <h3>End-to-End 확장</h3>
-              <p>결과 예측을 넘어 공정 흐름 전체를 연결해 최적화하는 구조로 발전할 수 있습니다.</p>
-            </div>
-          </div>
-        </article>
-      </section>
+          </article>
 
-      <section class="wide">
-        <article class="card">
-          <h2>해커톤 PoC 범위</h2>
-          <div class="steps">
-            <div class="step">
-              <span class="num">01</span>
-              <strong>대상 선정</strong>
-              <p>특정 공정 또는 대표 장비 1대를 선정합니다.</p>
+          <article class="panel">
+            <div class="panel__head">
+              <h2>기대 효과</h2>
+              <span>Impact</span>
             </div>
-            <div class="step">
-              <span class="num">02</span>
-              <strong>이벤트 표준화</strong>
-              <p>PLC 접점을 추출해 이벤트 테이블로 정의합니다.</p>
+            <div class="value-grid">
+              <div class="mini">
+                <span class="mini__label">Quality</span>
+                <h3>정합성 향상</h3>
+                <p>실제 장비 동작 기준으로 데이터를 만들기 때문에 공정과 데이터 간 불일치를 줄일 수 있습니다.</p>
+              </div>
+              <div class="mini">
+                <span class="mini__label">Analysis</span>
+                <h3>원인 분석 강화</h3>
+                <p>불량과 이상 발생 시 어느 이벤트 구간에서 시작됐는지 더 정밀하게 추적할 수 있습니다.</p>
+              </div>
+              <div class="mini">
+                <span class="mini__label">AI</span>
+                <h3>AI 학습 품질 향상</h3>
+                <p>예측만이 아니라 설명과 권고까지 가능한 공정 문맥 데이터가 만들어집니다.</p>
+              </div>
+              <div class="mini">
+                <span class="mini__label">Scale</span>
+                <h3>확장 가능한 구조</h3>
+                <p>Digital Twin, 현장 AI Assistant, End-to-End 최적화로 이어질 수 있는 backbone을 확보합니다.</p>
+              </div>
             </div>
-            <div class="step">
-              <span class="num">03</span>
-              <strong>기존 데이터 연계</strong>
-              <p>SPC, FDC와 시간축 기준으로 매핑합니다.</p>
+          </article>
+        </div>
+
+        <div class="stack">
+          <article class="panel">
+            <div class="panel__head">
+              <h2>왜 지금 중요한가</h2>
+              <span>Trend Fit</span>
             </div>
-            <div class="step">
-              <span class="num">04</span>
-              <strong>효과 검증</strong>
-              <p>실제 이상 사례 1~2건으로 기존 대비 개선 효과를 보여줍니다.</p>
+            <div class="trend-grid">
+              <div class="mini">
+                <span class="mini__label">Physical AI</span>
+                <h3>물리 세계 이해</h3>
+                <p>AI가 장비를 이해하고 제어 판단까지 하려면 시점, 상태 전이, 이벤트 이력이 먼저 필요합니다.</p>
+              </div>
+              <div class="mini">
+                <span class="mini__label">Manufacturing AI</span>
+                <h3>공정 특화 학습</h3>
+                <p>범용 AI가 아니라 제조 특화 AI로 가려면 현장 맥락이 반영된 세분화 데이터가 필요합니다.</p>
+              </div>
+              <div class="mini">
+                <span class="mini__label">Digital Twin</span>
+                <h3>현실 연결</h3>
+                <p>실제 장비 동작과 연결된 이벤트 데이터가 있어야 시뮬레이션과 최적화가 현실성을 가집니다.</p>
+              </div>
+              <div class="mini">
+                <span class="mini__label">현장 AI Assistant</span>
+                <h3>자연어 질의</h3>
+                <p>엔지니어가 “이상은 어느 이벤트에서 시작됐나?”를 묻고 바로 답을 받는 기반이 됩니다.</p>
+              </div>
             </div>
-          </div>
-        </article>
+          </article>
+
+          <article class="panel">
+            <div class="panel__head">
+              <h2>해커톤 PoC</h2>
+              <span>4 Moves</span>
+            </div>
+            <div class="step-grid">
+              <div class="step">
+                <div class="num">01</div>
+                <div>
+                  <h3>대상 선정</h3>
+                  <p>대표 장비 1대 또는 특정 공정 1개를 선정합니다.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="num">02</div>
+                <div>
+                  <h3>이벤트 표준화</h3>
+                  <p>주요 PLC 접점을 추출해 이벤트 테이블로 정의합니다.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="num">03</div>
+                <div>
+                  <h3>기존 데이터 연계</h3>
+                  <p>SPC/FDC와 시간축 기준으로 매핑해 비교합니다.</p>
+                </div>
+              </div>
+              <div class="step">
+                <div class="num">04</div>
+                <div>
+                  <h3>효과 검증</h3>
+                  <p>실제 이상 사례 1~2건으로 분석력 차이를 보여줍니다.</p>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
       </section>
 
       <section class="footer">
         <strong>결과 데이터만 보는 제조에서, 장비 행위 데이터까지 보는 제조로 전환하겠습니다.</strong>
-        <p>이 제안은 데이터 수집 항목을 조금 늘리는 수준이 아니라, 제조 데이터를 AI 친화적인 구조로 재설계하는 시작점입니다.</p>
+        <p>이 제안은 데이터 수집 항목을 조금 늘리는 일이 아니라, 피지컬 AI와 제조 AI 시대에 맞는 제조 데이터 backbone을 만드는 시작점입니다.</p>
       </section>
     </section>
   </main>
