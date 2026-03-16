@@ -5,21 +5,28 @@ import pandas as pd
 
 from new_strategy.paths import data_path, output_path
 
-from strategy_rules import StrategyConfig, add_features, pick_candidates
+from new_strategy.strategy_rules import StrategyConfig, add_features, pick_candidates
 
 
 def load_price_panel(path: Path) -> pd.DataFrame:
     if path.suffix.lower() == ".parquet":
         df = pd.read_parquet(path)
+    elif path.suffix.lower() == ".pkl":
+        df = pd.read_pickle(path)
     else:
         df = pd.read_csv(path, dtype={"code": str}, low_memory=False)
     df["date"] = pd.to_datetime(df["date"])
     return df
 
 
+def is_feature_dataset(df: pd.DataFrame) -> bool:
+    required = {"quality_score", "momentum_score", "ma_short", "ma_mid", "ma_long", "atr20"}
+    return required.issubset(set(df.columns))
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Generate latest stock picks from strategy rules.")
-    p.add_argument("--price-panel", default=str(data_path("price_panel.csv")))
+    p.add_argument("--price-panel", default=str(data_path("feature_daily.pkl")))
     p.add_argument("--date", default="", help="Optional date (YYYY-MM-DD). default=latest available date")
     p.add_argument("--top-n", type=int, default=10)
     p.add_argument("--macro", default="", help="Optional macro regime csv with date,exposure")
@@ -33,7 +40,7 @@ def main() -> None:
     df = load_price_panel(Path(args.price_panel))
 
     cfg = StrategyConfig(top_n=args.top_n, stop_mode="fixed", fixed_stop_loss=-0.08)
-    feat = add_features(df, cfg)
+    feat = df.copy() if is_feature_dataset(df) else add_features(df, cfg)
     selected = pick_candidates(feat, cfg)
 
     target_date = pd.to_datetime(args.date) if args.date else selected["date"].max()

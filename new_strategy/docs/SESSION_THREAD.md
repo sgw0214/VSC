@@ -12,6 +12,8 @@ This file summarizes the working thread for the KOSPI strategy and DART fundamen
   - `E:\VSC\CODE\new_strategy`
 - Data path:
   - `C:\Users\sgw02\OneDrive\python\new_strategy`
+- Raw stock source path:
+  - `C:\Users\sgw02\OneDrive\python\Stock`
 - Objective:
   - build and maintain KOSPI stock data
   - collect DART quarterly fundamentals
@@ -29,13 +31,13 @@ This file summarizes the working thread for the KOSPI strategy and DART fundamen
 ## Final Fundamental Files
 
 - Final stock-level file:
-  - `new_strategy/data/fundamental_quarterly_multi.csv`
+  - `C:\Users\sgw02\OneDrive\python\new_strategy\fundamental_quarterly_multi.csv`
 - Raw accumulated DART response file:
-  - `new_strategy/data/fundamental_quarterly_raw.csv`
+  - `C:\Users\sgw02\OneDrive\python\new_strategy\fundamental_quarterly_raw.csv`
 - Request log:
-  - `new_strategy/data/fundamental_quarterly_multi_request_log.csv`
+  - `C:\Users\sgw02\OneDrive\python\new_strategy\fundamental_quarterly_multi_request_log.csv`
 - Corp-code cache:
-  - `new_strategy/data/dart_corp_codes.csv`
+  - `C:\Users\sgw02\OneDrive\python\new_strategy\dart_corp_codes.csv`
 
 ## Current Fundamental State
 
@@ -120,7 +122,7 @@ Example for latest annual refresh:
 ```powershell
 python new_strategy/fetch_fundamental_dart.py `
   --api-key "DART_API_KEY" `
-  --price-panel new_strategy/data/price_panel.csv `
+  --price-panel C:\Users\sgw02\OneDrive\python\new_strategy\price_panel.csv `
   --start-year 2025 `
   --end-year 2025 `
   --report-codes 11011 `
@@ -128,14 +130,14 @@ python new_strategy/fetch_fundamental_dart.py `
   --rpm 90 `
   --sleep-sec 0 `
   --max-requests 2000 `
-  --raw-output new_strategy/data/fundamental_quarterly_raw.csv `
-  --output new_strategy/data/fundamental_quarterly_multi.csv
+  --raw-output C:\Users\sgw02\OneDrive\python\new_strategy\fundamental_quarterly_raw.csv `
+  --output C:\Users\sgw02\OneDrive\python\new_strategy\fundamental_quarterly_multi.csv
 ```
 
 After raw update, rebuild final aggregate if needed:
 
 ```powershell
-python -c "import pandas as pd; import new_strategy.fetch_fundamental_dart as m; raw=pd.read_csv('new_strategy/data/fundamental_quarterly_raw.csv', low_memory=False); q=m.build_quarterly(raw); q['code']=q['code'].astype(str).str.zfill(6); q['bsns_year']=pd.to_numeric(q['bsns_year'], errors='coerce'); q['reprt_code']=q['reprt_code'].map(m._norm_reprt_code); q=q.sort_values(['code','bsns_year','reprt_code','rcept_no']).drop_duplicates(subset=['code','bsns_year','reprt_code'], keep='last').reset_index(drop=True); q.rename(columns=m.KR_COLS).to_csv('new_strategy/data/fundamental_quarterly_multi.csv', index=False, encoding='utf-8-sig')"
+python -c "import pandas as pd; import new_strategy.fetch_fundamental_dart as m; raw=pd.read_csv(r'C:\Users\sgw02\OneDrive\python\new_strategy\fundamental_quarterly_raw.csv', low_memory=False); q=m.build_quarterly(raw); q['code']=q['code'].astype(str).str.zfill(6); q['bsns_year']=pd.to_numeric(q['bsns_year'], errors='coerce'); q['reprt_code']=q['reprt_code'].map(m._norm_reprt_code); q=q.sort_values(['code','bsns_year','reprt_code','rcept_no']).drop_duplicates(subset=['code','bsns_year','reprt_code'], keep='last').reset_index(drop=True); q.rename(columns=m.KR_COLS).to_csv(r'C:\Users\sgw02\OneDrive\python\new_strategy\fundamental_quarterly_multi.csv', index=False, encoding='utf-8-sig')"
 ```
 
 ## Natural Next Steps

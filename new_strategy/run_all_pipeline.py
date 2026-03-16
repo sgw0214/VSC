@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 from typing import List
 
-from new_strategy.paths import data_path
+from new_strategy.paths import data_path, stock_root
 
 
 def _run(cmd: List[str]) -> None:
@@ -16,7 +16,7 @@ def _run(cmd: List[str]) -> None:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Run integrated market data pipeline end-to-end.")
-    p.add_argument("--stock-dir", default="stock")
+    p.add_argument("--stock-dir", default=str(stock_root()))
     p.add_argument("--start-year", type=int, default=2015)
     p.add_argument("--end-year", type=int, default=2025)
     p.add_argument("--price-output", default=str(data_path("price_panel.csv")))

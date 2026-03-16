@@ -7,16 +7,23 @@ import pandas as pd
 
 from new_strategy.paths import cache_path, data_path, output_path
 
-from strategy_rules import StrategyConfig, add_features, build_ranked_signals
+from new_strategy.strategy_rules import StrategyConfig, add_features, build_ranked_signals
 
 
 def load_price_panel(path: Path) -> pd.DataFrame:
     if path.suffix.lower() == ".parquet":
         df = pd.read_parquet(path)
+    elif path.suffix.lower() == ".pkl":
+        df = pd.read_pickle(path)
     else:
         df = pd.read_csv(path, dtype={"code": str}, low_memory=False)
     df["date"] = pd.to_datetime(df["date"])
     return df.sort_values(["date", "code"]).reset_index(drop=True)
+
+
+def is_feature_dataset(df: pd.DataFrame) -> bool:
+    required = {"quality_score", "momentum_score", "ma_short", "ma_mid", "ma_long", "atr20"}
+    return required.issubset(set(df.columns))
 
 
 def load_macro_exposure(path: Optional[Path]) -> Optional[pd.Series]:
@@ -305,7 +312,7 @@ def run_walkforward(
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Signal-based walk-forward backtest with dynamic rebalancing.")
-    p.add_argument("--price-panel", default=str(data_path("price_panel.csv")))
+    p.add_argument("--price-panel", default=str(data_path("feature_daily.pkl")))
     p.add_argument("--macro", default="", help="Optional macro regime csv with date,exposure")
     p.add_argument("--train-years", type=int, default=6)
     p.add_argument("--test-years", type=int, default=1)
@@ -332,7 +339,10 @@ def main() -> None:
     )
 
     feature_cache = Path(args.feature_cache)
-    if (not args.no_feature_cache) and feature_cache.exists():
+    if is_feature_dataset(price_df):
+        feature_df = price_df.copy()
+        print("[feature] using prebuilt feature dataset")
+    elif (not args.no_feature_cache) and feature_cache.exists():
         print(f"[feature-cache] {feature_cache}")
         feature_df = pd.read_pickle(feature_cache)
     else:
