@@ -223,6 +223,13 @@ def build_macro(
     allow_local_proxy: bool = True,
 ) -> pd.DataFrame:
     dates = pd.DataFrame({"date": pd.date_range(start=start, end=end, freq="D")})
+    existing_base: pd.DataFrame | None = None
+    if merge_existing and output.exists():
+        try:
+            existing_base = pd.read_csv(output)
+            existing_base["date"] = pd.to_datetime(existing_base["date"], errors="coerce")
+        except Exception:
+            existing_base = None
 
     chains: Dict[str, List[Tuple[str, Callable[[], pd.DataFrame]]]] = {
         "vix": [
@@ -259,7 +266,20 @@ def build_macro(
     out = dates.copy()
     source_meta = {}
     for col in MACRO_COLS:
-        s, src = _try_chain(chains[col], col)
+        try:
+            s, src = _try_chain(chains[col], col)
+        except Exception:
+            if existing_base is not None and col in existing_base.columns:
+                cached = existing_base[["date", col]].copy()
+                cached[col] = pd.to_numeric(cached[col], errors="coerce")
+                cached = cached.dropna(subset=["date", col])
+                if not cached.empty:
+                    s, src = cached.rename(columns={col: "value"}), "existing_macro_cache"
+                    print(f"[ok] {col}: {len(s)} rows (source={src})")
+                else:
+                    raise
+            else:
+                raise
         source_meta[col] = src
         s = s.rename(columns={"value": col})
         out = out.merge(s[["date", col]], on="date", how="left")

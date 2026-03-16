@@ -486,7 +486,7 @@ def parse_args() -> argparse.Namespace:
         help="Comma-separated report codes to fetch. Default is all report codes.",
     )
     p.add_argument("--raw-output", default=str(data_path("fundamental_quarterly_raw_retry.csv")))
-    p.add_argument("--output", default=str(data_path("fundamental_quarterly.csv")))
+    p.add_argument("--output", default=str(data_path("fundamental_quarterly_multi.csv")))
     p.add_argument("--corp-map-cache", default=str(data_path("dart_corp_codes.csv")))
     p.add_argument("--no-korean-columns", action="store_true", help="Save output with English columns.")
     return p.parse_args()

@@ -4,9 +4,29 @@ from pathlib import Path
 
 import pandas as pd
 
-from new_strategy.paths import cache_path, data_path
+from new_strategy.paths import cache_path, data_path, stock_root
 
-from build_price_panel import build_panel
+from new_strategy.build_price_panel import build_panel
+
+
+FUND_COL_MAP = {
+    "종목코드": "code",
+    "법인코드": "corp_code",
+    "법인명": "corp_name",
+    "사업연도": "bsns_year",
+    "보고서코드": "reprt_code",
+    "접수번호": "rcept_no",
+    "공시일": "rcept_dt",
+    "기간": "period",
+    "분기매출액": "revenue",
+    "분기영업이익": "op_income",
+    "분기당기순이익": "net_income",
+    "자산총계": "total_assets",
+    "부채총계": "total_liab",
+    "자본총계": "total_equity",
+    "분기영업이익률": "op_margin",
+    "분기ROE(단순)": "roe_simple",
+}
 
 
 def _connect(db_path: Path) -> sqlite3.Connection:
@@ -59,6 +79,10 @@ def create_tables(conn: sqlite3.Connection) -> None:
             usdkrw REAL,
             us10y REAL,
             kr10y REAL,
+            gold_kr_close REAL,
+            gold_kr_ret REAL,
+            gold_kr_volume REAL,
+            gold_kr_trading_value REAL,
             kospi_source TEXT,
             vix_source TEXT,
             usdkrw_source TEXT,
@@ -117,16 +141,9 @@ def load_price(conn: sqlite3.Connection, price_df: pd.DataFrame, source: str) ->
     symbols.to_sql("tmp_dim_symbol", conn, if_exists="replace", index=False)
     conn.executescript(
         """
-        INSERT INTO dim_symbol(code, name, market, industry, first_seen, last_seen, updated_at)
+        INSERT OR REPLACE INTO dim_symbol(code, name, market, industry, first_seen, last_seen, updated_at)
         SELECT code, name, market, industry, first_seen, last_seen, datetime('now')
-        FROM tmp_dim_symbol
-        ON CONFLICT(code) DO UPDATE SET
-            name=excluded.name,
-            market=excluded.market,
-            industry=excluded.industry,
-            first_seen=excluded.first_seen,
-            last_seen=excluded.last_seen,
-            updated_at=datetime('now');
+        FROM tmp_dim_symbol;
         DROP TABLE tmp_dim_symbol;
         """
     )
@@ -148,22 +165,11 @@ def load_price(conn: sqlite3.Connection, price_df: pd.DataFrame, source: str) ->
     price.to_sql("tmp_price", conn, if_exists="replace", index=False)
     conn.executescript(
         """
-        INSERT INTO fact_price_daily(
+        INSERT OR REPLACE INTO fact_price_daily(
             date, code, open, high, low, close, volume, trading_value, market_cap, shares_outstanding, source, loaded_at
         )
         SELECT date, code, open, high, low, close, volume, trading_value, market_cap, shares_outstanding, source, datetime('now')
-        FROM tmp_price
-        ON CONFLICT(date, code) DO UPDATE SET
-            open=excluded.open,
-            high=excluded.high,
-            low=excluded.low,
-            close=excluded.close,
-            volume=excluded.volume,
-            trading_value=excluded.trading_value,
-            market_cap=excluded.market_cap,
-            shares_outstanding=excluded.shares_outstanding,
-            source=excluded.source,
-            loaded_at=datetime('now');
+        FROM tmp_price;
         DROP TABLE tmp_price;
         """
     )
@@ -184,6 +190,10 @@ def load_macro(conn: sqlite3.Connection, macro_csv: Path, source: str) -> None:
         "usdkrw",
         "us10y",
         "kr10y",
+        "gold_kr_close",
+        "gold_kr_ret",
+        "gold_kr_volume",
+        "gold_kr_trading_value",
         "kospi_source",
         "vix_source",
         "usdkrw_source",
@@ -199,26 +209,16 @@ def load_macro(conn: sqlite3.Connection, macro_csv: Path, source: str) -> None:
     macro.to_sql("tmp_macro", conn, if_exists="replace", index=False)
     conn.executescript(
         """
-        INSERT INTO fact_macro_daily(
+        INSERT OR REPLACE INTO fact_macro_daily(
             date, kospi, vix, usdkrw, us10y, kr10y,
+            gold_kr_close, gold_kr_ret, gold_kr_volume, gold_kr_trading_value,
             kospi_source, vix_source, usdkrw_source, us10y_source, kr10y_source, loaded_at
         )
         SELECT
             date, kospi, vix, usdkrw, us10y, kr10y,
+            gold_kr_close, gold_kr_ret, gold_kr_volume, gold_kr_trading_value,
             kospi_source, vix_source, usdkrw_source, us10y_source, kr10y_source, datetime('now')
-        FROM tmp_macro
-        ON CONFLICT(date) DO UPDATE SET
-            kospi=excluded.kospi,
-            vix=excluded.vix,
-            usdkrw=excluded.usdkrw,
-            us10y=excluded.us10y,
-            kr10y=excluded.kr10y,
-            kospi_source=excluded.kospi_source,
-            vix_source=excluded.vix_source,
-            usdkrw_source=excluded.usdkrw_source,
-            us10y_source=excluded.us10y_source,
-            kr10y_source=excluded.kr10y_source,
-            loaded_at=datetime('now');
+        FROM tmp_macro;
         DROP TABLE tmp_macro;
         """
     )
@@ -234,6 +234,8 @@ def load_fundamental(conn: sqlite3.Connection, fundamental_csv: Path, source: st
     if f.empty:
         print(f"[skip] fundamental file is empty: {fundamental_csv}")
         return
+
+    f = f.rename(columns={k: v for k, v in FUND_COL_MAP.items() if k in f.columns})
 
     f["code"] = f["code"].astype(str).str.zfill(6)
     needed = [
@@ -264,7 +266,7 @@ def load_fundamental(conn: sqlite3.Connection, fundamental_csv: Path, source: st
     f.to_sql("tmp_fund", conn, if_exists="replace", index=False)
     conn.executescript(
         """
-        INSERT INTO fact_fundamental_quarterly(
+        INSERT OR REPLACE INTO fact_fundamental_quarterly(
             code, corp_code, corp_name, bsns_year, reprt_code, rcept_no, rcept_dt, period,
             revenue, op_income, net_income, total_assets, total_liab, total_equity, op_margin, roe_simple,
             source, loaded_at
@@ -273,23 +275,7 @@ def load_fundamental(conn: sqlite3.Connection, fundamental_csv: Path, source: st
             code, corp_code, corp_name, bsns_year, reprt_code, rcept_no, rcept_dt, period,
             revenue, op_income, net_income, total_assets, total_liab, total_equity, op_margin, roe_simple,
             source, datetime('now')
-        FROM tmp_fund
-        ON CONFLICT(code, bsns_year, reprt_code) DO UPDATE SET
-            corp_code=excluded.corp_code,
-            corp_name=excluded.corp_name,
-            rcept_no=excluded.rcept_no,
-            rcept_dt=excluded.rcept_dt,
-            period=excluded.period,
-            revenue=excluded.revenue,
-            op_income=excluded.op_income,
-            net_income=excluded.net_income,
-            total_assets=excluded.total_assets,
-            total_liab=excluded.total_liab,
-            total_equity=excluded.total_equity,
-            op_margin=excluded.op_margin,
-            roe_simple=excluded.roe_simple,
-            source=excluded.source,
-            loaded_at=datetime('now');
+        FROM tmp_fund;
         DROP TABLE tmp_fund;
         """
     )
@@ -299,7 +285,7 @@ def load_fundamental(conn: sqlite3.Connection, fundamental_csv: Path, source: st
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Build integrated SQLite DB for price, macro, and fundamentals.")
     p.add_argument("--db-path", default=str(data_path("market_data.db")))
-    p.add_argument("--stock-dir", default="stock")
+    p.add_argument("--stock-dir", default=str(stock_root()))
     p.add_argument("--start-year", type=int, default=2015)
     p.add_argument("--end-year", type=int, default=2025)
     p.add_argument("--market", default="KOSPI")

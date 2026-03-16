@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from new_strategy.paths import data_path
+from new_strategy.paths import cache_path, data_path, stock_root
 
 
 RAW_COLUMNS = [
@@ -62,7 +62,7 @@ def build_panel(
     end_year: int,
     market: str = "KOSPI",
     trading_only: bool = True,
-    cache_dir: Path = Path("new_strategy/cache/yearly"),
+    cache_dir: Path = cache_path("yearly"),
     use_cache: bool = True,
 ) -> pd.DataFrame:
     frames = []
@@ -135,12 +135,16 @@ def save_panel(df: pd.DataFrame, output: Path) -> None:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build KOSPI price panel from yearly xlsx files.")
-    parser.add_argument("--stock-dir", default="stock", help="Directory containing 2015.xlsx ... 2025.xlsx")
+    parser.add_argument(
+        "--stock-dir",
+        default=str(stock_root()),
+        help="Directory containing 2015.xlsx ... 2025.xlsx",
+    )
     parser.add_argument("--start-year", type=int, default=2015)
     parser.add_argument("--end-year", type=int, default=2025)
     parser.add_argument("--market", default="KOSPI")
     parser.add_argument("--include-non-trading", action="store_true")
-    parser.add_argument("--cache-dir", default="new_strategy/cache/yearly")
+    parser.add_argument("--cache-dir", default=str(cache_path("yearly")))
     parser.add_argument("--no-cache", action="store_true")
     parser.add_argument("--output", default=str(data_path("price_panel.parquet")))
     return parser.parse_args()

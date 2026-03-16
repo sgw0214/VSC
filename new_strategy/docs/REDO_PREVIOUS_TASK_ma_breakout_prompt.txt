@@ -1,0 +1,31 @@
+Use the MA breakout simulation handoff before doing anything:
+
+- `E:\VSC\CODE\new_strategy\docs\SESSION_2026-03-16_ma_breakout_simulation.md`
+
+Primary raw input for cross-mode ranking:
+
+- `C:\Users\sgw02\OneDrive\python\new_strategy\output\ma_breakout_research\all_action_modes_returns_by_stock.csv`
+
+Reference files:
+
+- `C:\Users\sgw02\OneDrive\python\new_strategy\output\ma_breakout_research\native_timeframe_close_returns_by_stock.csv`
+- `C:\Users\sgw02\OneDrive\python\new_strategy\output\ma_breakout_research\daily_close_action_returns_by_stock.csv`
+- `C:\Users\sgw02\OneDrive\python\new_strategy\output\ma_breakout_research\best_window_distribution.csv`
+- `E:\VSC\CODE\new_strategy\ma_breakout_research\backtest_ma_breakout_modes.py`
+- `E:\VSC\CODE\new_strategy\ma_breakout_research\build_strategy_ma_selection.py`
+
+Important context:
+
+- `best_window_distribution.csv` is a summary table.
+- `stock_count` there means the number of stocks for which that window was the best result within a grouped universe.
+- `stock_share` there is not a direct safe-stock ratio.
+- A reviewed user-added safety column exists in the distribution file, but it is group-level, not stock-level.
+- The prior strategy-selection outputs based on global safe windows should be treated as an intermediate experiment.
+
+If the next task is to rank the best historical condition per stock:
+
+1. use `all_action_modes_returns_by_stock.csv`
+2. compare all rows per stock across both action modes, all MA timeframes, and all MA windows
+3. pick the top row using the metric the user requests
+4. state the tie-break rules clearly if ties occur
+5. keep outputs in a separate folder and do not touch live strategy logic unless explicitly asked
