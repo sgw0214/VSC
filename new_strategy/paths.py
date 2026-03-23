@@ -6,6 +6,7 @@ import os
 CODE_ROOT = Path(__file__).resolve().parent
 DEFAULT_DATA_ROOT = Path(r"C:\Users\sgw02\OneDrive\python\new_strategy")
 DEFAULT_STOCK_ROOT = Path(r"C:\Users\sgw02\OneDrive\python\Stock")
+DEFAULT_STRATEGY_OUTPUT_SUBDIR = "strategy_v2"
 
 
 def data_root() -> Path:
@@ -34,6 +35,15 @@ def data_path(*parts: str) -> Path:
 
 def output_path(*parts: str) -> Path:
     return output_root().joinpath(*parts)
+
+
+def strategy_output_subdir() -> str:
+    value = str(os.getenv("NEW_STRATEGY_OUTPUT_SUBDIR_NAME", DEFAULT_STRATEGY_OUTPUT_SUBDIR)).strip()
+    return value or DEFAULT_STRATEGY_OUTPUT_SUBDIR
+
+
+def strategy_output_path(*parts: str) -> Path:
+    return output_path(strategy_output_subdir(), *parts)
 
 
 def cache_path(*parts: str) -> Path:

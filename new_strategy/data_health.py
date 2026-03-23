@@ -7,7 +7,7 @@ from typing import Dict, List
 
 import pandas as pd
 
-from new_strategy.paths import data_path, output_path
+from new_strategy.paths import data_path, strategy_output_path
 
 
 def _summarize_csv(
@@ -84,7 +84,7 @@ def _summarize_sqlite(path: Path) -> Dict[str, object]:
 
 
 def build_data_health(output_dir: Path | None = None) -> Dict[str, Path]:
-    output_dir = output_dir or output_path("strategy_v1")
+    output_dir = output_dir or strategy_output_path()
     output_dir.mkdir(parents=True, exist_ok=True)
 
     rows = [

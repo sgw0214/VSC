@@ -26,8 +26,21 @@ def parse_intent(text: str) -> BridgeIntent:
     if not raw:
         return BridgeIntent("show_help")
 
+    if lower == "/note":
+        return BridgeIntent("note_prompt")
+
+    if lower == "/notecancel":
+        return BridgeIntent("note_cancel")
+
+    for prefix in ("기록_", "기록]", "기록:", "기록 "):
+        if raw.startswith(prefix):
+            note_text = raw[len(prefix) :].strip()
+            return BridgeIntent("note_direct", {"text": note_text})
+
     trade = parse_trade_text(raw)
     if trade is not None:
+        if trade.blocked_reason:
+            return BridgeIntent("record_manual_trade_blocked", {"message": trade.blocked_reason})
         return BridgeIntent(
             "record_manual_trade",
             {
@@ -63,6 +76,10 @@ def parse_intent(text: str) -> BridgeIntent:
         return BridgeIntent("run_streamlit_on")
     if lower in {"/streamlitoff", "streamlitoff"} or _contains_any(raw, ["스트림릿 꺼줘", "대시보드 꺼줘", "streamlit off"]):
         return BridgeIntent("run_streamlit_off")
+    if lower in {"/refreshinc", "refreshinc"} or _contains_any(raw, ["증분최신화", "증분 최신화"]):
+        return BridgeIntent("run_refresh_incremental")
+    if lower in {"/refreshfull", "refreshfull"} or _contains_any(raw, ["전체증분최신화", "전체 증분 최신화"]):
+        return BridgeIntent("run_refresh_full_incremental")
 
     if lower in {"/buy", "buy"} or _contains_any(raw, ["매수 후보", "매수 신호", "살만한 종목"]):
         return BridgeIntent("buy_query")

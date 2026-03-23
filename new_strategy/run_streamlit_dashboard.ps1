@@ -1,7 +1,7 @@
 Set-Location "E:\VSC\CODE"
 
-$stdout = "C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v1\streamlit_stdout.log"
-$stderr = "C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v1\streamlit_stderr.log"
+$stdout = "C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2\streamlit_stdout.log"
+$stderr = "C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2\streamlit_stderr.log"
 
 $existing = Get-NetTCPConnection -LocalPort 8501 -State Listen -ErrorAction SilentlyContinue
 

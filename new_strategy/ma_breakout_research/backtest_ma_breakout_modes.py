@@ -63,18 +63,7 @@ def build_completed_period_frame(
     return agg[["decision_date", "close"]].reset_index(drop=True)
 
 
-def _compute_trade_returns(prices: np.ndarray, signal: np.ndarray) -> tuple[int, int, float]:
-    entries = np.flatnonzero(signal & ~np.roll(signal, 1))
-    if signal.size:
-        if signal[0]:
-            entries = np.insert(entries[entries != 0], 0, 0)
-        else:
-            entries = entries[entries != 0]
-
-    exits = np.flatnonzero((~signal) & np.roll(signal, 1))
-    if signal.size and signal[0]:
-        exits = exits
-
+def _compute_trade_returns(prices: np.ndarray, entries: np.ndarray, exits: np.ndarray) -> tuple[int, int, float]:
     completed = 0
     wins = 0
     for entry in entries:
@@ -90,6 +79,18 @@ def _compute_trade_returns(prices: np.ndarray, signal: np.ndarray) -> tuple[int,
     return int(len(entries)), int(completed), float(win_rate) if not np.isnan(win_rate) else np.nan
 
 
+def _decision_state_from_crosses(length: int, cross_up: np.ndarray, cross_down: np.ndarray) -> np.ndarray:
+    state_after_close = np.zeros(length, dtype=float)
+    event_idx = np.flatnonzero(cross_up | cross_down)
+    if event_idx.size == 0:
+        return state_after_close
+    event_values = np.where(cross_up[event_idx], 1.0, 0.0)
+    starts = np.r_[0, event_idx]
+    values = np.r_[0.0, event_values]
+    lengths = np.diff(np.r_[starts, length])
+    return np.repeat(values, lengths).astype(float, copy=False)
+
+
 def backtest_from_signal(
     dates: np.ndarray,
     prices: np.ndarray,
@@ -101,16 +102,26 @@ def backtest_from_signal(
     if not np.any(valid):
         return {}
 
+    above_full = np.zeros(len(prices), dtype=bool)
+    above_full[valid] = prices[valid] > ma[valid]
+    prev_valid = np.roll(valid, 1)
+    prev_valid[0] = False
+    prev_above = np.roll(above_full, 1)
+    prev_above[0] = False
+    cross_up_full = valid & prev_valid & above_full & (~prev_above)
+    cross_down_full = valid & prev_valid & (~above_full) & prev_above
+
     start_idx = int(np.flatnonzero(valid)[0])
     px = prices[start_idx:].astype(float, copy=False)
     dt = dates[start_idx:]
-    ma_sub = ma[start_idx:].astype(float, copy=False)
     if len(px) < 2:
         return {}
 
-    signal = px > ma_sub
+    cross_up = cross_up_full[start_idx:]
+    cross_down = cross_down_full[start_idx:]
+    state_after_close = _decision_state_from_crosses(len(px), cross_up, cross_down)
     position = np.zeros(len(px), dtype=float)
-    position[1:] = signal[:-1].astype(float)
+    position[1:] = state_after_close[:-1]
 
     bar_ret = np.zeros(len(px), dtype=float)
     bar_ret[1:] = position[1:] * (px[1:] / px[:-1] - 1.0)
@@ -123,7 +134,9 @@ def backtest_from_signal(
     excess_return = total_return - buy_hold_return
     intervals = max(len(px) - 1, 1)
     annualized_return = float(equity[-1] ** (periods_per_year / intervals) - 1.0) if equity[-1] > 0 else -1.0
-    trade_count, completed_trade_count, win_rate = _compute_trade_returns(px, signal)
+    entry_idx = np.flatnonzero(cross_up)
+    exit_idx = np.flatnonzero(cross_down)
+    trade_count, completed_trade_count, win_rate = _compute_trade_returns(px, entry_idx, exit_idx)
 
     return {
         "test_start": pd.Timestamp(dt[0]).date().isoformat(),
@@ -301,7 +314,8 @@ def build_markdown_report(
     lines.append(f"- daily candidate windows: `{meta['daily_range']}`")
     lines.append(f"- weekly candidate windows: `{meta['weekly_range']}`")
     lines.append(f"- monthly candidate windows: `{meta['monthly_range']}`")
-    lines.append("- signal rule: buy when close > moving average, sell when close <= moving average")
+    lines.append("- action rule: buy on upward crossover of close vs moving average, sell on downward crossover")
+    lines.append("- crossover requires both current and previous completed periods to have a valid moving average")
     lines.append("- execution assumption: decision is made at close, position applies from the next bar")
     lines.append("- action mode A: monthly at month-end, weekly at week-end, daily at daily close")
     lines.append("- action mode B: evaluate monthly/weekly/daily moving averages at each daily close")
@@ -421,6 +435,7 @@ def main() -> None:
 
     native_df.to_csv(out_dir / "native_timeframe_close_returns_by_stock.csv", index=False, encoding="utf-8-sig")
     daily_df.to_csv(out_dir / "daily_close_action_returns_by_stock.csv", index=False, encoding="utf-8-sig")
+    combined_df.to_csv(out_dir / "all_action_modes_returns_by_stock.csv", index=False, encoding="utf-8-sig")
     best_df.to_csv(out_dir / "best_window_by_stock.csv", index=False, encoding="utf-8-sig")
     dist_df.to_csv(out_dir / "best_window_distribution.csv", index=False, encoding="utf-8-sig")
 

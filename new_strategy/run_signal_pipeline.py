@@ -25,7 +25,7 @@ from new_strategy.earnings_signal_engine import (
     write_fast_alert_outputs,
     write_strategy_outputs,
 )
-from new_strategy.notifiers import AlertEvent, build_notifiers, dispatch_alerts
+from new_strategy.notifiers import AlertEvent, TelegramNotifier, build_notifiers, dispatch_alerts
 from new_strategy.paths import data_path
 from new_strategy.refresh_runtime_data import run_refresh_pipeline
 
@@ -49,18 +49,39 @@ def _write_progress(progress_file: Path | None, *, status: str, percent: int, st
         duration_seconds = int((end_dt - start_dt).total_seconds())
     except Exception:
         duration_seconds = None
-    payload = {
-        "pid": os.getpid(),
-        "started_at": started_at,
-        "updated_at": datetime.now().isoformat(timespec="seconds"),
-        "finished_at": finished_at,
-        "status": status,
-        "percent": int(percent),
-        "stage": stage,
-        "detail": detail,
-        "duration_seconds": duration_seconds,
-    }
+    payload = dict(existing)
+    payload.update(
+        {
+            "pid": os.getpid(),
+            "started_at": started_at,
+            "updated_at": datetime.now().isoformat(timespec="seconds"),
+            "finished_at": finished_at,
+            "status": status,
+            "percent": int(percent),
+            "stage": stage,
+            "detail": detail,
+            "duration_seconds": duration_seconds,
+        }
+    )
     progress_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _send_job_feedback(label: str, status: str, detail: str = "") -> None:
+    title = str(label or "").strip()
+    if not title:
+        return
+    notifier = TelegramNotifier()
+    if not notifier.is_configured():
+        return
+    message = f"{title} 완료" if status == "completed" else f"{title} 실패"
+    if status != "completed":
+        short_detail = str(detail or "").strip()
+        if short_detail:
+            message = f"{message}\n{short_detail[:180]}"
+    try:
+        notifier.send("Strategy Report", message)
+    except Exception:
+        pass
 
 
 def _build_alert_events(signal_df: pd.DataFrame, decision_df: pd.DataFrame, cfg: EarningsStrategyConfig) -> List[AlertEvent]:
@@ -167,6 +188,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output-dir", default=str(out_dir))
     p.add_argument("--send-alerts", action="store_true")
     p.add_argument("--strategy-id", default=defaults.strategy_id)
+    p.add_argument("--trend-mode", default=defaults.trend_mode)
     p.add_argument("--min-adv20", type=float, default=defaults.min_adv20)
     p.add_argument("--recent-filing-days", type=int, default=defaults.recent_filing_days)
     p.add_argument("--watchlist-size", type=int, default=defaults.watchlist_size)
@@ -189,6 +211,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--ml-train-window-days", type=int, default=defaults.ml_train_window_days)
     p.add_argument("--ml-horizon-days", type=int, default=defaults.ml_horizon_days)
     p.add_argument("--riskoff-exposure-cutoff", type=float, default=defaults.riskoff_exposure_cutoff)
+    p.add_argument("--monthly-buy-threshold", type=float, default=defaults.monthly_buy_threshold)
+    p.add_argument("--weekly-sell-threshold", type=float, default=defaults.weekly_sell_threshold)
     p.add_argument("--fast-alerts", action="store_true")
     p.add_argument("--refresh-data", action="store_true")
     p.add_argument("--refresh-macro", action="store_true")
@@ -197,6 +221,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--prefer-kiwoom-eod", action="store_true")
     p.add_argument("--live-quotes", default=str(data_path("live_quotes.csv")))
     p.add_argument("--progress-file", default="")
+    p.add_argument("--job-feedback-label", default="")
     return p.parse_args()
 
 
@@ -204,8 +229,10 @@ def main() -> None:
     args = parse_args()
     progress_file = Path(args.progress_file) if str(args.progress_file).strip() else None
     output_dir = Path(args.output_dir)
+    job_feedback_label = str(args.job_feedback_label or "").strip()
     cfg = EarningsStrategyConfig(
         strategy_id=args.strategy_id,
+        trend_mode=args.trend_mode,
         min_adv20=args.min_adv20,
         recent_filing_days=args.recent_filing_days,
         watchlist_size=args.watchlist_size,
@@ -228,6 +255,8 @@ def main() -> None:
         ml_train_window_days=args.ml_train_window_days,
         ml_horizon_days=args.ml_horizon_days,
         riskoff_exposure_cutoff=args.riskoff_exposure_cutoff,
+        monthly_buy_threshold=args.monthly_buy_threshold,
+        weekly_sell_threshold=args.weekly_sell_threshold,
     )
     try:
         _write_progress(progress_file, status="running", percent=1, stage="시작", detail="파이프라인을 시작했습니다.")
@@ -293,6 +322,7 @@ def main() -> None:
             for key, path in written.items():
                 print(f"[saved] {key}={path}")
             _write_progress(progress_file, status="completed", percent=100, stage="완료", detail="fast alert 실행을 마쳤습니다.")
+            _send_job_feedback(job_feedback_label, "completed")
             return
 
         _write_progress(progress_file, status="running", percent=25, stage="데이터 상태 점검", detail="데이터 상태 요약을 생성합니다.")
@@ -339,8 +369,10 @@ def main() -> None:
         for key, path in written.items():
             print(f"[saved] {key}={path}")
         _write_progress(progress_file, status="completed", percent=100, stage="완료", detail="전체 재계산을 마쳤습니다.")
+        _send_job_feedback(job_feedback_label, "completed")
     except Exception as exc:
         _write_progress(progress_file, status="failed", percent=100, stage="실패", detail=f"{type(exc).__name__}: {exc}")
+        _send_job_feedback(job_feedback_label, "failed", f"{type(exc).__name__}: {exc}")
         traceback.print_exc()
         raise
 

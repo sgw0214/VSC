@@ -13,6 +13,13 @@ DEFAULT_STATE = {
     "offset": None,
     "next_job_id": 1000,
     "pending_confirmations": {},
+    "pending_notes": {},
+    "scheduled_briefs": {},
+    "last_loop_at": "",
+    "last_incoming_at": "",
+    "last_outgoing_at": "",
+    "last_error_at": "",
+    "last_early_session_brief_at": "",
 }
 
 
@@ -125,6 +132,26 @@ def append_unhandled_log(
     )
 
 
+def append_note_log(
+    path: Path,
+    *,
+    chat_id: str,
+    text: str,
+    note_type: str = "record",
+) -> None:
+    row = {
+        "created_at": datetime.now().isoformat(),
+        "chat_id": str(chat_id),
+        "note_type": note_type,
+        "text": text,
+    }
+    _append_csv(
+        path,
+        row,
+        ["created_at", "chat_id", "note_type", "text"],
+    )
+
+
 def load_recent_messages(path: Path, chat_id: str, limit: int) -> list[dict[str, Any]]:
     if not path.exists():
         return []
@@ -136,6 +163,16 @@ def load_recent_messages(path: Path, chat_id: str, limit: int) -> list[dict[str,
 
 
 def load_recent_unhandled(path: Path, chat_id: str, limit: int) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    df = pd.read_csv(path, dtype={"chat_id": str}, low_memory=False)
+    if df.empty:
+        return []
+    view = df[df["chat_id"] == str(chat_id)].tail(limit)
+    return view.to_dict(orient="records")
+
+
+def load_recent_notes(path: Path, chat_id: str, limit: int) -> list[dict[str, Any]]:
     if not path.exists():
         return []
     df = pd.read_csv(path, dtype={"chat_id": str}, low_memory=False)

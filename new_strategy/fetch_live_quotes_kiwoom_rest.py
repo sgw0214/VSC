@@ -9,11 +9,11 @@ import pandas as pd
 import re
 
 from new_strategy.kiwoom_rest_client import DEFAULT_KIWOOM_API_ROOT, fetch_current_quotes, save_live_quotes
-from new_strategy.paths import data_path, output_path
+from new_strategy.paths import data_path, strategy_output_path
 
 
-PORTFOLIO_PATH = output_path("strategy_v1", "telegram_bridge", "manual_portfolio_positions.csv")
-SIGNAL_LATEST_PATH = output_path("strategy_v1", "signal_daily_fast_latest.csv")
+PORTFOLIO_PATH = strategy_output_path("telegram_bridge", "manual_portfolio_positions.csv")
+SIGNAL_LATEST_PATH = strategy_output_path("signal_daily_fast_latest.csv")
 VALID_CODE_RE = re.compile(r"^[0-9A-Za-z]{6}$")
 
 

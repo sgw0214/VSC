@@ -5,11 +5,11 @@ import json
 import subprocess
 import sys
 import time
+import traceback
 from dataclasses import asdict, dataclass
 from datetime import datetime
-from pathlib import Path
 
-from new_strategy.paths import data_path, output_path
+from new_strategy.paths import data_path, strategy_output_path
 
 
 def _parse_hhmm(value: str) -> int:
@@ -32,34 +32,31 @@ def _run_command(cmd: list[str]) -> None:
     subprocess.run(cmd, check=True)
 
 
-def _run_live_quote_fetch() -> None:
-    _run_command([sys.executable, "-m", "new_strategy.fetch_live_quotes_kiwoom_rest", "--once"])
-
-
-def _run_fast_alert(live_quotes: Path) -> None:
-    cmd = [
-        sys.executable,
-        "-m",
-        "new_strategy.run_signal_pipeline",
-        "--fast-alerts",
-        "--send-alerts",
-        "--live-quotes",
-        str(live_quotes),
-    ]
-    _run_command(cmd)
-
-
-def _run_eod_refresh() -> None:
+def _run_intraday_full_refresh_fast_alert() -> None:
+    # Use a non-existent live quote path so fast mode uses the freshly rebuilt
+    # full-universe price panel instead of an older subset live_quotes overlay.
     cmd = [
         sys.executable,
         "-m",
         "new_strategy.run_signal_pipeline",
         "--refresh-data",
-        "--refresh-macro",
-        "--refresh-gold",
         "--prefer-kiwoom-eod",
         "--send-alerts",
         "--fast-alerts",
+        "--live-quotes",
+        str(data_path("_disabled_live_quotes.csv")),
+    ]
+    _run_command(cmd)
+
+
+def _run_eod_refresh_summary() -> None:
+    cmd = [
+        sys.executable,
+        "-m",
+        "new_strategy.run_signal_pipeline",
+        "--refresh-data",
+        "--prefer-kiwoom-eod",
+        "--send-alerts",
     ]
     _run_command(cmd)
 
@@ -70,8 +67,6 @@ def _run_krx_reconcile() -> None:
         "-m",
         "new_strategy.run_signal_pipeline",
         "--refresh-data",
-        "--prefer-kiwoom-eod",
-        "--fast-alerts",
     ]
     _run_command(cmd)
 
@@ -84,6 +79,9 @@ class SchedulerState:
     last_krx_reconcile_date: str = ""
     last_action: str = ""
     last_run_at: str = ""
+    last_error_action: str = ""
+    last_error_at: str = ""
+    last_error_message: str = ""
 
 
 def _load_state(path: Path) -> SchedulerState:
@@ -111,26 +109,25 @@ def _intraday_slot_key(now: datetime, open_minutes: int, close_minutes: int, int
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Market schedule service for intraday/live risk check and end-of-day refresh.")
+    p = argparse.ArgumentParser(description="Market schedule service for 30-minute full-universe Kiwoom refresh and fast alerts.")
     p.add_argument("--poll-seconds", type=int, default=60)
-    p.add_argument("--intraday-open", default="08:00")
+    p.add_argument("--intraday-open", default="08:10")
     p.add_argument("--intraday-close", default="20:00")
     p.add_argument("--intraday-interval-minutes", type=int, default=30)
+    # Deprecated compatibility arguments: kept so existing launch scripts do not break.
     p.add_argument("--preclose-time", default="15:20")
-    p.add_argument("--eod-time", default="16:10")
-    p.add_argument("--krx-reconcile-time", default="21:00")
+    p.add_argument("--eod-time", default="20:10")
+    p.add_argument("--krx-reconcile-time", default="07:00")
     p.add_argument("--live-quotes", default=str(data_path("live_quotes.csv")))
     return p.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    state_path = output_path("strategy_v1", "market_schedule_state.json")
+    state_path = strategy_output_path("market_schedule_state.json")
     state = _load_state(state_path)
-    live_quotes = Path(args.live_quotes)
     intraday_open = _parse_hhmm(args.intraday_open)
     intraday_close = _parse_hhmm(args.intraday_close)
-    preclose_time = _parse_hhmm(args.preclose_time)
     eod_time = _parse_hhmm(args.eod_time)
     krx_reconcile_time = _parse_hhmm(args.krx_reconcile_time)
 
@@ -145,41 +142,48 @@ def main() -> None:
         action = None
         marker = None
 
-        if current >= eod_time and state.last_eod_date != today:
-            action = "eod_refresh"
-            marker = today
-        elif current >= krx_reconcile_time and state.last_krx_reconcile_date != today and state.last_eod_date == today:
+        if current >= krx_reconcile_time and state.last_krx_reconcile_date != today:
             action = "krx_reconcile"
             marker = today
-        elif current >= preclose_time and state.last_preclose_date != today:
-            action = "preclose_risk"
+        elif current >= eod_time and state.last_eod_date != today:
+            action = "eod_refresh_summary"
             marker = today
         else:
             slot_key = _intraday_slot_key(now, intraday_open, intraday_close, args.intraday_interval_minutes)
             if slot_key and state.last_intraday_slot != slot_key:
-                action = "intraday_fast_alert"
+                action = "intraday_full_refresh_fast_alert"
                 marker = slot_key
 
         if action is None:
             time.sleep(max(30, args.poll_seconds))
             continue
 
-        if action in {"intraday_fast_alert", "preclose_risk"}:
-            _run_live_quote_fetch()
-            _run_fast_alert(live_quotes)
-            if action == "intraday_fast_alert":
+        try:
+            if action == "intraday_full_refresh_fast_alert":
+                _run_intraday_full_refresh_fast_alert()
                 state.last_intraday_slot = marker or ""
-            else:
-                state.last_preclose_date = marker or ""
-        elif action == "eod_refresh":
-            _run_eod_refresh()
-            state.last_eod_date = marker or ""
-        elif action == "krx_reconcile":
-            _run_krx_reconcile()
-            state.last_krx_reconcile_date = marker or ""
+            elif action == "krx_reconcile":
+                _run_krx_reconcile()
+                state.last_krx_reconcile_date = marker or ""
+            elif action == "eod_refresh_summary":
+                _run_eod_refresh_summary()
+                state.last_eod_date = marker or ""
 
-        state.last_action = action
-        state.last_run_at = datetime.now().isoformat()
+            state.last_action = action
+            state.last_run_at = datetime.now().isoformat()
+            state.last_error_action = ""
+            state.last_error_at = ""
+            state.last_error_message = ""
+        except Exception as exc:
+            state.last_error_action = action
+            state.last_error_at = datetime.now().isoformat()
+            state.last_error_message = f"{type(exc).__name__}: {exc}"
+            print(
+                f"[scheduler-error] action={action} marker={marker or '-'} "
+                f"error={type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            )
+            traceback.print_exc()
         _save_state(state_path, state)
         time.sleep(max(30, args.poll_seconds))
 

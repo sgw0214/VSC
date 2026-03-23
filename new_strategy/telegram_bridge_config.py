@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from new_strategy.paths import output_path
+from new_strategy.paths import strategy_output_path
 
 
 def _parse_chat_ids(raw: str) -> list[str]:
@@ -24,11 +24,12 @@ class TelegramBridgeConfig:
     message_log_path: Path
     job_log_path: Path
     unhandled_log_path: Path
+    notes_log_path: Path
     jobs_dir: Path
 
 
 def load_bridge_config() -> TelegramBridgeConfig:
-    bridge_dir = output_path("strategy_v1", "telegram_bridge")
+    bridge_dir = strategy_output_path("telegram_bridge")
     bridge_dir.mkdir(parents=True, exist_ok=True)
 
     allowed = os.getenv("NEW_STRATEGY_TELEGRAM_BRIDGE_ALLOWED_CHAT_IDS", "").strip()
@@ -47,6 +48,7 @@ def load_bridge_config() -> TelegramBridgeConfig:
         message_log_path=bridge_dir / "telegram_bridge_message_log.csv",
         job_log_path=bridge_dir / "telegram_bridge_job_log.csv",
         unhandled_log_path=bridge_dir / "telegram_bridge_unhandled_log.csv",
+        notes_log_path=bridge_dir / "telegram_bridge_notes.csv",
         jobs_dir=bridge_dir / "jobs",
     )
     cfg.jobs_dir.mkdir(parents=True, exist_ok=True)

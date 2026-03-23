@@ -112,11 +112,11 @@ python new_strategy/run_all_pipeline.py --stock-dir C:\Users\sgw02\OneDrive\pyth
   - `ma_mid=50` (10-week)
   - `ma_long=100` (20-week)
 
-## 9) Earnings Signal Pipeline v1
+## 9) Earnings Signal Pipeline v2
 
 Outputs are written under:
 
-- `C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v1`
+- `C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2`
 
 Run once:
 
@@ -337,7 +337,7 @@ reject 1001
 
 Bridge logs are written under:
 
-- `C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v1\telegram_bridge`
+- `C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2\telegram_bridge`
 
 Supported portfolio commands:
 

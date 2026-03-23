@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from new_strategy.paths import output_path
+from new_strategy.paths import strategy_output_path
 
 
 def _market_hours(now: datetime, open_hhmm: str, close_hhmm: str) -> bool:
@@ -64,7 +64,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    state_path = output_path("strategy_v1", "service_state.txt")
+    state_path = strategy_output_path("service_state.txt")
     state_path.parent.mkdir(parents=True, exist_ok=True)
 
     if args.mode == "once":

@@ -76,29 +76,21 @@ def build_macro_features(raw: pd.DataFrame) -> pd.DataFrame:
 
     df["cond_vix_high"] = df["vix"] > (df["vix_ma60"] * 1.2)
     df["cond_fx_risk"] = df["usdkrw"] > df["usdkrw_ma60"]
-    df["cond_rate_risk"] = (df["us10y"] > df["us10y_ma60"]) | (df["kr10y"] > df["kr10y_ma60"])
+
+    # Keep the extra columns for continuity in downstream files, but exclude them
+    # from regime construction so the market state is driven only by VIX and USD/KRW.
+    df["cond_rate_risk"] = False
     df["cond_gold_risk"] = False
-    if has_gold and int(df["gold_kr_close"].notna().sum()) > 0:
-        # Rising gold above trend often aligns with a defensive regime.
-        df["cond_gold_risk"] = df["gold_kr_close"] > (df["gold_kr_ma60"] * 1.05)
 
-    signal_cols = ["cond_vix_high", "cond_fx_risk", "cond_rate_risk"]
-    if has_gold and int(df["gold_kr_close"].notna().sum()) > 0:
-        signal_cols.append("cond_gold_risk")
-
+    signal_cols = ["cond_vix_high", "cond_fx_risk"]
     df["risk_count"] = sum(df[c].astype(int) for c in signal_cols)
-    n_signals = len(signal_cols)
-    if n_signals == 3:
-        risk_on = df["risk_count"] == 0
-        neutral = df["risk_count"] == 1
-        risk_off = df["risk_count"] >= 2
-    else:
-        risk_on = df["risk_count"] <= 1
-        neutral = df["risk_count"] == 2
-        risk_off = df["risk_count"] >= 3
+    risk_on = df["risk_count"] == 0
+    neutral = df["risk_count"] == 1
+    risk_off = df["risk_count"] == 2
 
     df["regime"] = np.select([risk_on, neutral, risk_off], ["risk_on", "neutral", "risk_off"], default="neutral")
-    df["exposure"] = df["regime"].map({"risk_on": 1.0, "neutral": 0.3, "risk_off": 0.1}).astype(float)
+    # V2 uses macro as an operating-intensity control, not a hard buy-ban.
+    df["exposure"] = df["regime"].map({"risk_on": 1.0, "neutral": 0.7, "risk_off": 0.4}).astype(float)
     df.attrs["coverage_report"] = pd.DataFrame(coverage_rows)
     return df
 

@@ -26,7 +26,7 @@ from new_strategy.gold_kr_api import update_gold_excel_daily
 from new_strategy.kiwoom_rest_client import fetch_current_quotes
 from new_strategy.macro_pipeline import build_macro_features
 from new_strategy.merge_gold_to_macro import merge_gold_into_macro
-from new_strategy.paths import cache_path, data_path, output_path, stock_root
+from new_strategy.paths import cache_path, data_path, output_path, stock_root, strategy_output_path
 from new_strategy.update_yearly_stock_files import update_yearly_files
 
 
@@ -618,7 +618,7 @@ def run_refresh_pipeline(
     )
     meta["run_finished_at"] = datetime.now().isoformat()
 
-    refresh_meta_path = output_path("strategy_v1", "refresh_runtime_metadata.json")
+    refresh_meta_path = strategy_output_path("refresh_runtime_metadata.json")
     refresh_meta_path.parent.mkdir(parents=True, exist_ok=True)
     refresh_meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     meta["refresh_meta"] = str(refresh_meta_path)

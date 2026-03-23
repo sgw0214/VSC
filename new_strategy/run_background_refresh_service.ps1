@@ -19,7 +19,7 @@ if (-not $env:NEW_STRATEGY_TELEGRAM_BRIDGE_ALLOWED_CHAT_IDS) {
 }
 $env:NEW_STRATEGY_NOTIFIER_CHANNELS = "telegram"
 
-$logDir = "C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v1"
+$logDir = "C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
-python -m new_strategy.run_market_schedule_service --poll-seconds 60 --intraday-open 08:00 --intraday-close 20:00 --intraday-interval-minutes 30 --preclose-time 15:20 --eod-time 16:10 --krx-reconcile-time 21:00 --live-quotes "C:\Users\sgw02\OneDrive\python\new_strategy\live_quotes.csv" *>> (Join-Path $logDir "background_refresh_service.log")
+python -m new_strategy.run_market_schedule_service --poll-seconds 60 --intraday-open 08:10 --intraday-close 20:00 --intraday-interval-minutes 30 --eod-time 20:10 *>> (Join-Path $logDir "background_refresh_service.log")

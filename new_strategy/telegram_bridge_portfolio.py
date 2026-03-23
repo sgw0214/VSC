@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 import csv
+import json
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -9,17 +10,18 @@ from typing import Any
 
 import pandas as pd
 
-from new_strategy.paths import data_path, output_path
+from new_strategy.paths import data_path, strategy_output_path
 
 
-APP_DIR = output_path("strategy_v1")
+APP_DIR = strategy_output_path()
 BRIDGE_DIR = APP_DIR / "telegram_bridge"
 POSITIONS_PATH = BRIDGE_DIR / "manual_portfolio_positions.csv"
 TRADES_PATH = BRIDGE_DIR / "manual_portfolio_trades.csv"
 PRICE_SNAPSHOT_PATH = APP_DIR / "price_panel_latest_snapshot.csv"
+STRATEGY_META_PATH = APP_DIR / "strategy_metadata.json"
 
 _NUMERIC_CODE_RE = re.compile(r"^\d+$")
-_TRADE_RE = re.compile(r"^\s*(매수|매도|buy|sell)\b", flags=re.IGNORECASE)
+_TRADE_RE = re.compile(r"^\s*(매수|매도|buy|sell)(?:\s+|$)", flags=re.IGNORECASE)
 
 
 @dataclass
@@ -28,6 +30,7 @@ class ParsedTrade:
     code: str
     quantity: float
     price: float
+    blocked_reason: str = ""
 
 
 def normalize_code(code: str) -> str:
@@ -92,7 +95,9 @@ def parse_trade_text(text: str) -> ParsedTrade | None:
 
     if not quantity or not price or quantity <= 0 or price <= 0:
         return None
-    return ParsedTrade(side=side, code=code, quantity=quantity, price=price)
+    name = _lookup_name(code)
+    blocked_reason = _trade_guard_reason(side, code, name, price, quantity)
+    return ParsedTrade(side=side, code=code, quantity=quantity, price=price, blocked_reason=blocked_reason)
 
 
 def _write_csv(path: Path, fieldnames: list[str], rows: list[dict[str, Any]]) -> None:
@@ -183,7 +188,54 @@ def _lookup_name(code: str) -> str:
     return norm
 
 
+def _lookup_reference_price(code: str) -> float | None:
+    norm = normalize_code(code)
+    price_df = _get_latest_price_snapshot()
+    if price_df.empty:
+        return None
+    hit = price_df[price_df["code"] == norm]
+    if hit.empty or pd.isna(hit.iloc[0].get("close")):
+        return None
+    return float(hit.iloc[0]["close"])
+
+
+def _is_integer_like(value: float) -> bool:
+    return abs(value - round(value)) < 1e-9
+
+
+def _trade_guard_reason(side: str, code: str, name: str, price: float, quantity: float) -> str:
+    reference_price = _lookup_reference_price(code)
+    if reference_price is None:
+        return ""
+
+    entered_gap = abs(price / reference_price - 1.0)
+    swapped_price = quantity
+    swapped_qty = price
+    swapped_gap = abs(swapped_price / reference_price - 1.0) if swapped_price > 0 else float("inf")
+
+    looks_swapped = (
+        entered_gap >= 0.80
+        and swapped_gap <= 0.30
+        and quantity >= 100
+        and _is_integer_like(swapped_qty)
+        and swapped_qty >= 1
+    )
+    if not looks_swapped:
+        return ""
+
+    side_label = "매수" if side == "BUY" else "매도"
+    return (
+        f"{name}({code}) 입력을 그대로 해석하면 가격 {price:,.0f}원, 수량 {quantity:,.0f}주입니다.\n"
+        f"- 최근 기준가: {reference_price:,.0f}원\n"
+        f"- 가격과 수량 순서가 바뀐 것으로 보입니다.\n"
+        f"- 다시 입력: `{side_label} {name} {swapped_price:,.0f} {int(round(swapped_qty))}`"
+    )
+
+
 def record_manual_trade(chat_id: str, parsed: ParsedTrade) -> str:
+    if parsed.blocked_reason:
+        return parsed.blocked_reason
+
     positions = _read_positions()
     code = normalize_code(parsed.code)
     name = _lookup_name(code)
@@ -267,6 +319,49 @@ def record_manual_trade(chat_id: str, parsed: ParsedTrade) -> str:
     return "\n".join(lines)
 
 
+def _read_strategy_meta() -> dict[str, Any]:
+    if not STRATEGY_META_PATH.exists():
+        return {}
+    try:
+        return json.loads(STRATEGY_META_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _display_sell_threshold() -> float:
+    meta = _read_strategy_meta()
+    try:
+        return float(meta.get("config", {}).get("sell_threshold", 0.35))
+    except Exception:
+        return 0.35
+
+
+def _display_signal(signal: Any, conviction_score: Any, risk_flag: Any) -> str:
+    signal_text = str(signal or "").upper()
+    score = pd.to_numeric(pd.Series([conviction_score]), errors="coerce").iloc[0]
+    risk_text = "" if pd.isna(risk_flag) else str(risk_flag).strip()
+    if signal_text == "BUY":
+        return "BUY"
+    if signal_text == "SELL":
+        return "SELL"
+    if signal_text == "WATCH":
+        return "BUY_WATCH"
+    if signal_text == "HOLD" and (risk_text or (pd.notna(score) and float(score) <= (_display_sell_threshold() + 0.12))):
+        return "SELL_WATCH"
+    return "HOLD"
+
+
+def _signal_label(signal: Any) -> str:
+    mapping = {
+        "BUY": "매수",
+        "BUY_WATCH": "소액매수검토",
+        "HOLD": "보유유지",
+        "SELL_WATCH": "비중축소검토",
+        "SELL": "매도",
+    }
+    return mapping.get(str(signal or "").upper(), str(signal or "n/a"))
+
+
 def portfolio_snapshot(chat_id: str) -> pd.DataFrame:
     positions = _read_positions()
     if positions.empty:
@@ -287,6 +382,12 @@ def portfolio_snapshot(chat_id: str) -> pd.DataFrame:
     if not signals.empty:
         merge_cols = [col for col in ["code", "signal", "conviction_score", "reason_1", "reason_2", "reason_3", "risk_flag", "stop_rule", "target_exit_rule"] if col in signals.columns]
         positions = positions.merge(signals[merge_cols], on="code", how="left")
+        positions["display_signal"] = positions.apply(
+            lambda row: _display_signal(row.get("signal"), row.get("conviction_score"), row.get("risk_flag")),
+            axis=1,
+        )
+    else:
+        positions["display_signal"] = pd.NA
 
     positions["market_value"] = positions["quantity"] * pd.to_numeric(positions["close"], errors="coerce")
     positions["cost_value"] = positions["quantity"] * pd.to_numeric(positions["avg_price"], errors="coerce")
@@ -304,7 +405,8 @@ def portfolio_summary_text(chat_id: str) -> str:
     total_value = pd.to_numeric(snap["market_value"], errors="coerce").sum()
     total_unrealized = pd.to_numeric(snap["unrealized_pnl"], errors="coerce").sum()
     total_realized = pd.to_numeric(snap["realized_pnl"], errors="coerce").sum()
-    sell_warn = int((snap.get("signal", pd.Series(dtype=str)).fillna("").astype(str).str.upper() == "SELL").sum())
+    display_signal = snap.get("display_signal", snap.get("signal", pd.Series(dtype=str))).fillna("").astype(str).str.upper()
+    sell_warn = int(display_signal.isin(["SELL", "SELL_WATCH"]).sum())
 
     lines = [
         f"실보유 {len(snap)}종목",
@@ -312,12 +414,12 @@ def portfolio_summary_text(chat_id: str) -> str:
         f"- 평가금액: {total_value:,.0f}원" if pd.notna(total_value) else "- 평가금액: n/a",
         f"- 평가손익: {total_unrealized:,.0f}원" if pd.notna(total_unrealized) else "- 평가손익: n/a",
         f"- 누적 실현손익: {total_realized:,.0f}원",
-        f"- 전략 SELL 경고: {sell_warn}종목",
+        f"- 전략 매도/축소 신호: {sell_warn}종목",
     ]
     for _, row in snap.head(10).iterrows():
         now_price = "n/a" if pd.isna(row.get("close")) else f"{float(row['close']):,.0f}원"
         now_ret = "n/a" if pd.isna(row.get("unrealized_return")) else f"{float(row['unrealized_return']):+.2%}"
-        signal = str(row.get("signal") or "n/a")
+        signal = _signal_label(row.get("display_signal") or row.get("signal") or "n/a")
         lines.append(
             f"- {row['code']} {row['name']} | {float(row['quantity']):g}주 | 평균 {float(row['avg_price']):,.0f}원 | 현재 {now_price} | 수익률 {now_ret} | 전략신호 {signal}"
         )
@@ -329,8 +431,9 @@ def portfolio_status_line(chat_id: str) -> str:
     if snap.empty:
         return "실보유 없음"
     total_unrealized = pd.to_numeric(snap["unrealized_pnl"], errors="coerce").sum()
-    sell_warn = int((snap.get("signal", pd.Series(dtype=str)).fillna("").astype(str).str.upper() == "SELL").sum())
-    return f"실보유 {len(snap)}종목, 평가손익 {total_unrealized:,.0f}원, 전략 SELL 경고 {sell_warn}종목"
+    display_signal = snap.get("display_signal", snap.get("signal", pd.Series(dtype=str))).fillna("").astype(str).str.upper()
+    sell_warn = int(display_signal.isin(["SELL", "SELL_WATCH"]).sum())
+    return f"실보유 {len(snap)}종목, 평가손익 {total_unrealized:,.0f}원, 전략 매도/축소 신호 {sell_warn}종목"
 
 
 def manual_trade_history_text(chat_id: str, limit: int = 8) -> str:

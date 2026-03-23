@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -11,19 +12,24 @@ from new_strategy.ma_breakout_research.backtest_ma_breakout_modes import (
     _rolling_mean,
     build_completed_period_frame,
 )
-from new_strategy.paths import data_path, output_path
+from new_strategy.optimal_ma_publish_contract import (
+    ACTION_MODE_LABELS,
+    OPTIMAL_MA_META_PATH,
+    OPTIMAL_MA_REQUIRED_COLUMNS,
+    OPTIMAL_MA_SCHEMA_VERSION,
+    OPTIMAL_MA_SELECTION_COLUMNS,
+    OPTIMAL_MA_SELECTION_PATH,
+    TIMEFRAME_LABELS,
+    normalize_optimal_ma_code,
+)
+from new_strategy.paths import data_path, output_path, strategy_output_path
 
 
-APP_DIR = output_path("strategy_v1")
+APP_DIR = strategy_output_path()
 PRICE_PANEL_PATH = data_path("price_panel.csv")
 MA_RAW_PATH = output_path("ma_breakout_research", "all_action_modes_returns_by_stock.csv")
 OVERLAY_SNAPSHOT_PATH = APP_DIR / "optimal_ma_monthly_weekly_snapshot.pkl"
-
-TIMEFRAME_LABELS = {"monthly": "월봉", "weekly": "주봉", "daily": "일봉"}
-ACTION_MODE_LABELS = {
-    "native_timeframe_close": "봉마감형",
-    "daily_close_action": "일별판정형",
-}
+MA_SELECTION_PATH = OPTIMAL_MA_SELECTION_PATH
 
 
 def _action_mode_priority(series: pd.Series) -> pd.Series:
@@ -34,30 +40,45 @@ def _timeframe_priority(series: pd.Series) -> pd.Series:
     return series.map({"monthly": 0, "weekly": 1, "daily": 2}).fillna(9).astype(int)
 
 
-def load_optimal_ma_selection(
-    path: Path = MA_RAW_PATH,
-    allowed_timeframes: tuple[str, ...] = ("monthly", "weekly"),
-) -> pd.DataFrame:
+def _read_selection_frame(path: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
     df = pd.read_csv(path, dtype={"code": str}, low_memory=False)
     if df.empty:
         return df
-    df["code"] = df["code"].astype(str).str.zfill(6)
+    df["code"] = df["code"].astype(str).map(normalize_optimal_ma_code)
+    return df
+
+
+def _published_schema_ready(
+    selection_path: Path = OPTIMAL_MA_SELECTION_PATH,
+    meta_path: Path = OPTIMAL_MA_META_PATH,
+) -> bool:
+    if not selection_path.exists() or not meta_path.exists():
+        return False
+    try:
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    return str(meta.get("schema_version") or "") == OPTIMAL_MA_SCHEMA_VERSION
+
+
+def _selection_from_raw(df: pd.DataFrame, allowed_timeframes: tuple[str, ...]) -> pd.DataFrame:
     allowed = {str(x).strip().lower() for x in allowed_timeframes}
-    df = df.loc[df["ma_timeframe"].astype(str).str.lower().isin(allowed)].copy()
-    if df.empty:
-        return df
-    df["action_mode_priority"] = _action_mode_priority(df["action_mode"])
-    df["timeframe_priority"] = _timeframe_priority(df["ma_timeframe"])
-    ranked = df.sort_values(
+    scoped = df.loc[df["ma_timeframe"].astype(str).str.lower().isin(allowed)].copy()
+    scoped = scoped.loc[pd.to_numeric(scoped["ma_window"], errors="coerce").ge(2)].copy()
+    if scoped.empty:
+        return scoped
+    scoped["action_mode_priority"] = _action_mode_priority(scoped["action_mode"])
+    scoped["timeframe_priority"] = _timeframe_priority(scoped["ma_timeframe"])
+    ranked = scoped.sort_values(
         [
             "code",
-            "excess_return",
-            "annualized_return",
+            "total_return",
             "max_drawdown",
-            "win_rate",
             "completed_trade_count",
+            "annualized_return",
+            "win_rate",
             "action_mode_priority",
             "timeframe_priority",
             "ma_window",
@@ -65,22 +86,23 @@ def load_optimal_ma_selection(
         ascending=[True, False, False, False, False, False, True, True, True],
     )
     selected = ranked.groupby("code", as_index=False).head(1).reset_index(drop=True)
-    return selected[
-        [
-            "code",
-            "name",
-            "ma_timeframe",
-            "action_mode",
-            "ma_window",
-            "excess_return",
-            "annualized_return",
-            "max_drawdown",
-            "win_rate",
-            "completed_trade_count",
-            "trade_count",
-            "exposure_ratio",
-        ]
-    ].copy()
+    return selected[OPTIMAL_MA_SELECTION_COLUMNS].copy()
+
+
+def load_optimal_ma_selection(
+    path: Path = OPTIMAL_MA_SELECTION_PATH,
+    allowed_timeframes: tuple[str, ...] = ("monthly", "weekly"),
+) -> pd.DataFrame:
+    selection_path = path if _published_schema_ready(path, OPTIMAL_MA_META_PATH) else MA_RAW_PATH
+    df = _read_selection_frame(selection_path)
+    if df.empty:
+        return df
+    if all(col in df.columns for col in OPTIMAL_MA_REQUIRED_COLUMNS):
+        out = df[OPTIMAL_MA_SELECTION_COLUMNS].copy()
+    else:
+        out = _selection_from_raw(df, allowed_timeframes)
+    out["code"] = out["code"].astype(str).map(normalize_optimal_ma_code)
+    return out
 
 
 def _load_price_history_for_codes(price_path: Path, codes: set[str]) -> pd.DataFrame:
@@ -95,7 +117,7 @@ def _load_price_history_for_codes(price_path: Path, codes: set[str]) -> pd.DataF
         chunksize=300_000,
     )
     for chunk in reader:
-        chunk["code"] = chunk["code"].astype(str).str.zfill(6)
+        chunk["code"] = chunk["code"].astype(str).map(normalize_optimal_ma_code)
         chunk = chunk.loc[chunk["code"].isin(codes)].copy()
         if chunk.empty:
             continue
@@ -119,8 +141,14 @@ def _latest_valid(values: np.ndarray) -> int | None:
 
 def _build_row_for_code(code: str, grp: pd.DataFrame, selected: dict[str, Any], today: pd.Timestamp) -> dict[str, Any]:
     grp = grp.sort_values("date").reset_index(drop=True)
-    code = str(code).zfill(6)
-    name = str(selected.get("name") or grp["name"].dropna().iloc[-1] if grp["name"].notna().any() else code)
+    code = normalize_optimal_ma_code(code)
+    if selected.get("name"):
+        name = str(selected["name"])
+    elif grp["name"].notna().any():
+        name = str(grp["name"].dropna().iloc[-1])
+    else:
+        name = code
+
     timeframe = str(selected["ma_timeframe"]).strip().lower()
     action_mode = str(selected["action_mode"]).strip()
     window = int(selected["ma_window"])
@@ -181,6 +209,8 @@ def _build_row_for_code(code: str, grp: pd.DataFrame, selected: dict[str, Any], 
         "optimal_ma_basis_date": basis_date.isoformat() if pd.notna(basis_date) else "",
         "optimal_ma_line_price": ma_value,
         "optimal_ma_rule_text": rule_text,
+        "optimal_ma_total_return": selected.get("total_return"),
+        "optimal_ma_buy_hold_return": selected.get("buy_hold_return"),
         "optimal_ma_excess_return": selected.get("excess_return"),
         "optimal_ma_annualized_return": selected.get("annualized_return"),
         "optimal_ma_max_drawdown": selected.get("max_drawdown"),
@@ -193,13 +223,13 @@ def _build_row_for_code(code: str, grp: pd.DataFrame, selected: dict[str, Any], 
 
 def build_latest_optimal_ma_snapshot(
     price_path: Path = PRICE_PANEL_PATH,
-    selection_path: Path = MA_RAW_PATH,
+    selection_path: Path = OPTIMAL_MA_SELECTION_PATH,
     snapshot_path: Path = OVERLAY_SNAPSHOT_PATH,
 ) -> pd.DataFrame:
     selection_df = load_optimal_ma_selection(selection_path, allowed_timeframes=("monthly", "weekly"))
     if selection_df.empty:
         return selection_df
-    codes = set(selection_df["code"].astype(str).str.zfill(6))
+    codes = set(selection_df["code"].astype(str).map(normalize_optimal_ma_code))
     price_df = _load_price_history_for_codes(price_path, codes)
     if price_df.empty:
         return pd.DataFrame()
@@ -218,7 +248,7 @@ def build_latest_optimal_ma_snapshot(
 
 def load_latest_optimal_ma_snapshot(
     price_path: Path = PRICE_PANEL_PATH,
-    selection_path: Path = MA_RAW_PATH,
+    selection_path: Path = OPTIMAL_MA_SELECTION_PATH,
     snapshot_path: Path = OVERLAY_SNAPSHOT_PATH,
 ) -> pd.DataFrame:
     needs_rebuild = not snapshot_path.exists()
@@ -235,7 +265,7 @@ def load_latest_optimal_ma_snapshot(
     except Exception:
         return build_latest_optimal_ma_snapshot(price_path, selection_path, snapshot_path)
     if not df.empty:
-        df["code"] = df["code"].astype(str).str.zfill(6)
+        df["code"] = df["code"].astype(str).map(normalize_optimal_ma_code)
     return df
 
 

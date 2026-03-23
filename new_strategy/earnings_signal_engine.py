@@ -9,8 +9,12 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from new_strategy.paths import data_path, output_path
+from new_strategy.paths import data_path, output_path, strategy_output_path
 from new_strategy.strategy_rules import StrategyConfig, add_features
+
+
+EXCLUDED_SECURITY_CODES = {"005390"}
+V2_OPTIMAL_MA_RAW_PATH = output_path("ma_breakout_research", "native_timeframe_close_returns_by_stock.csv")
 
 
 FEATURE_COLUMNS = [
@@ -96,8 +100,8 @@ QUARTER_ORDER = {"11013": 1, "11012": 2, "11014": 3, "11011": 4}
 
 @dataclass
 class EarningsStrategyConfig:
-    strategy_id: str = "earnings_pti_v1"
-    trend_mode: str = "legacy_mid"
+    strategy_id: str = "earnings_pti_v2"
+    trend_mode: str = "optimal_ma_v2"
     min_adv20: float = 1_000_000_000.0
     recent_filing_days: int = 90
     watchlist_size: int = 12
@@ -123,6 +127,8 @@ class EarningsStrategyConfig:
     daily_ma_window: int = 20
     weekly_ma_window: int = 10
     monthly_ma_window: int = 10
+    monthly_buy_threshold: float = 0.00
+    weekly_sell_threshold: float = -0.05
 
 
 def _clip_z(series: pd.Series, lower: float = -5.0, upper: float = 5.0) -> pd.Series:
@@ -143,7 +149,170 @@ def _bool_score(series: pd.Series) -> pd.Series:
 
 
 def _ma_min_periods(window: int, *, floor: int = 5) -> int:
-    return max(floor, int(np.ceil(window * 0.6)))
+    return min(window, max(1, max(floor, int(np.ceil(window * 0.6)))))
+
+
+def _optimal_ma_sort_values(df: pd.DataFrame) -> pd.DataFrame:
+    ranked = df.copy()
+    ranked["ma_window"] = pd.to_numeric(ranked["ma_window"], errors="coerce")
+    ranked["total_return"] = pd.to_numeric(ranked["total_return"], errors="coerce")
+    ranked["max_drawdown"] = pd.to_numeric(ranked["max_drawdown"], errors="coerce")
+    ranked["completed_trade_count"] = pd.to_numeric(ranked["completed_trade_count"], errors="coerce")
+    ranked["annualized_return"] = pd.to_numeric(ranked["annualized_return"], errors="coerce")
+    ranked["win_rate"] = pd.to_numeric(ranked["win_rate"], errors="coerce")
+    return ranked
+
+
+def load_v2_optimal_ma_pairs(path: Path = V2_OPTIMAL_MA_RAW_PATH) -> pd.DataFrame:
+    if not path.exists():
+        return pd.DataFrame(columns=["code", "v2_month_window", "v2_week_window"])
+    df = pd.read_csv(path, dtype={"code": str}, low_memory=False)
+    if df.empty:
+        return pd.DataFrame(columns=["code", "v2_month_window", "v2_week_window"])
+    df["code"] = df["code"].astype(str).str.zfill(6)
+    df = df.loc[df["action_mode"].astype(str).str.lower() == "native_timeframe_close"].copy()
+    df = df.loc[df["ma_timeframe"].astype(str).str.lower().isin(["monthly", "weekly"])].copy()
+    df = df.loc[pd.to_numeric(df["ma_window"], errors="coerce").ge(2)].copy()
+    if df.empty:
+        return pd.DataFrame(columns=["code", "v2_month_window", "v2_week_window"])
+
+    ranked = _optimal_ma_sort_values(df).sort_values(
+        [
+            "code",
+            "ma_timeframe",
+            "total_return",
+            "max_drawdown",
+            "completed_trade_count",
+            "annualized_return",
+            "win_rate",
+            "ma_window",
+        ],
+        ascending=[True, True, False, False, False, False, False, True],
+    )
+    selected = ranked.groupby(["code", "ma_timeframe"], as_index=False).head(1).reset_index(drop=True)
+    pivot = (
+        selected.pivot(index="code", columns="ma_timeframe", values="ma_window")
+        .rename(columns={"monthly": "v2_month_window", "weekly": "v2_week_window"})
+        .reset_index()
+    )
+    for col in ["v2_month_window", "v2_week_window"]:
+        if col in pivot.columns:
+            pivot[col] = pd.to_numeric(pivot[col], errors="coerce")
+    return pivot
+
+
+def _merge_variable_period_state(
+    frame: pd.DataFrame,
+    *,
+    period_alias: str,
+    window_map: dict[str, int],
+    prefix: str,
+) -> pd.DataFrame:
+    merged_parts: List[pd.DataFrame] = []
+    base_df = frame.sort_values(["code", "date"]).reset_index(drop=True)
+
+    for code, grp in base_df.groupby("code", sort=False):
+        window = int(window_map.get(str(code).zfill(6), 0) or 0)
+        block = grp.copy()
+        block[f"{prefix}_window"] = np.nan if window < 2 else float(window)
+        block[f"{prefix}_close"] = np.nan
+        block[f"{prefix}_ma"] = np.nan
+        block[f"{prefix}_period_dist"] = np.nan
+        block[f"{prefix}_period_above"] = False
+        block[f"{prefix}_prev_period_dist"] = np.nan
+        block[f"{prefix}_prev_period_above"] = False
+        block[f"{prefix}_live_dist"] = np.nan
+        if window < 2:
+            merged_parts.append(block)
+            continue
+
+        period_key = grp["date"].dt.to_period(period_alias)
+        period_state = (
+            grp.assign(_period_key=period_key)
+            .groupby("_period_key", as_index=False)
+            .agg(state_date=("date", "max"), state_close=("close", "last"))
+        )
+        period_state[f"{prefix}_close"] = period_state["state_close"]
+        period_state[f"{prefix}_ma"] = period_state["state_close"].rolling(
+            window,
+            min_periods=_ma_min_periods(window),
+        ).mean()
+        period_state[f"{prefix}_period_dist"] = period_state["state_close"] / period_state[f"{prefix}_ma"] - 1.0
+        period_state[f"{prefix}_period_above"] = period_state[f"{prefix}_period_dist"] >= 0.0
+        period_state[f"{prefix}_prev_period_dist"] = period_state[f"{prefix}_period_dist"].shift(1)
+        period_state[f"{prefix}_prev_period_above"] = period_state[f"{prefix}_period_above"].shift(1).fillna(False)
+
+        block = pd.merge_asof(
+            grp.sort_values("date").reset_index(drop=True),
+            period_state[
+                [
+                    "state_date",
+                    f"{prefix}_close",
+                    f"{prefix}_ma",
+                    f"{prefix}_period_dist",
+                    f"{prefix}_period_above",
+                    f"{prefix}_prev_period_dist",
+                    f"{prefix}_prev_period_above",
+                ]
+            ],
+            left_on="date",
+            right_on="state_date",
+            direction="backward",
+            allow_exact_matches=True,
+        ).drop(columns=["state_date"], errors="ignore")
+        block[f"{prefix}_window"] = float(window)
+        block[f"{prefix}_live_dist"] = block["close"] / block[f"{prefix}_ma"] - 1.0
+        merged_parts.append(block)
+
+    return pd.concat(merged_parts, ignore_index=True)
+
+
+def add_v2_optimal_ma_features(frame: pd.DataFrame, cfg: EarningsStrategyConfig) -> pd.DataFrame:
+    df = frame.sort_values(["code", "date"]).reset_index(drop=True).copy()
+    selection = load_v2_optimal_ma_pairs()
+    if selection.empty:
+        df["v2_month_window"] = np.nan
+        df["v2_week_window"] = np.nan
+        df["v2_month_close"] = np.nan
+        df["v2_month_ma"] = np.nan
+        df["v2_month_period_dist"] = np.nan
+        df["v2_month_period_above"] = False
+        df["v2_month_prev_period_dist"] = np.nan
+        df["v2_month_prev_period_above"] = False
+        df["v2_month_live_dist"] = np.nan
+        df["v2_week_close"] = np.nan
+        df["v2_week_ma"] = np.nan
+        df["v2_week_period_dist"] = np.nan
+        df["v2_week_period_above"] = False
+        df["v2_week_prev_period_dist"] = np.nan
+        df["v2_week_prev_period_above"] = False
+        df["v2_week_live_dist"] = np.nan
+        df["v2_month_buy_ready"] = False
+        df["v2_month_prev_ready"] = False
+        df["v2_month_buy_cross"] = False
+        df["v2_month_above_maintain"] = False
+        df["v2_month_sell_cross"] = False
+        df["v2_week_sell_trigger"] = False
+        df["v2_week_sell_watch"] = False
+        return df
+
+    selection["code"] = selection["code"].astype(str).str.zfill(6)
+    window_map_month = selection.set_index("code")["v2_month_window"].dropna().astype(int).to_dict()
+    window_map_week = selection.set_index("code")["v2_week_window"].dropna().astype(int).to_dict()
+
+    df = _merge_variable_period_state(df, period_alias="M", window_map=window_map_month, prefix="v2_month")
+    df = _merge_variable_period_state(df, period_alias="W-FRI", window_map=window_map_week, prefix="v2_week")
+    df["v2_month_buy_ready"] = df["v2_month_period_dist"] >= cfg.monthly_buy_threshold
+    df["v2_month_prev_ready"] = df["v2_month_prev_period_dist"] >= cfg.monthly_buy_threshold
+    df["v2_month_buy_cross"] = df["v2_month_buy_ready"] & (~df["v2_month_prev_ready"].fillna(False))
+    df["v2_month_above_maintain"] = df["v2_month_buy_ready"] & df["v2_month_prev_ready"].fillna(False)
+    df["v2_month_sell_cross"] = (~df["v2_month_buy_ready"]) & df["v2_month_prev_ready"].fillna(False)
+    df["v2_week_sell_trigger"] = df["v2_week_period_dist"] <= cfg.weekly_sell_threshold
+    df["v2_week_sell_watch"] = (
+        df["v2_week_period_dist"].gt(cfg.weekly_sell_threshold)
+        & df["v2_week_period_dist"].lt(0.0)
+    )
+    return df
 
 
 def _merge_period_state(
@@ -213,86 +382,73 @@ def add_multi_timeframe_ma_features(frame: pd.DataFrame, cfg: EarningsStrategyCo
     )
     df["dist_ma_day_20"] = df["close"] / df["ma_day_20"] - 1.0
 
-    df = _merge_period_state(
-        df,
-        period_alias="W-FRI",
-        window=cfg.weekly_ma_window,
-        prefix="week_10",
-    )
-    df = _merge_period_state(
-        df,
-        period_alias="M",
-        window=cfg.monthly_ma_window,
-        prefix="month_10",
-    )
-    df["weekly_aux_ok"] = df["week_10_above"].fillna(False)
-    df["monthly_main_ok"] = df["month_10_above"].fillna(False)
-    df["dist_month_10"] = df["close"] / df["month_10_ma"] - 1.0
+    trend_mode = str(cfg.trend_mode or "optimal_ma_v2").strip().lower()
+    if trend_mode == "optimal_ma_v2":
+        df = add_v2_optimal_ma_features(df, cfg)
+        df["week_10_ma"] = df["v2_week_ma"]
+        df["week_10_above"] = df["v2_week_period_above"].fillna(False)
+        df["month_10_ma"] = df["v2_month_ma"]
+        df["month_10_above"] = df["v2_month_period_above"].fillna(False)
+        df["weekly_aux_ok"] = (~df["v2_week_sell_trigger"]).fillna(False)
+        df["monthly_main_ok"] = df["v2_month_buy_ready"].fillna(False)
+        df["dist_month_10"] = df["v2_month_live_dist"]
+    else:
+        df = _merge_period_state(
+            df,
+            period_alias="W-FRI",
+            window=cfg.weekly_ma_window,
+            prefix="week_10",
+        )
+        df = _merge_period_state(
+            df,
+            period_alias="M",
+            window=cfg.monthly_ma_window,
+            prefix="month_10",
+        )
+        df["weekly_aux_ok"] = df["week_10_above"].fillna(False)
+        df["monthly_main_ok"] = df["month_10_above"].fillna(False)
+        df["dist_month_10"] = df["close"] / df["month_10_ma"] - 1.0
     return df
 
 
 def _apply_trend_logic(df: pd.DataFrame, cfg: EarningsStrategyConfig, *, include_ml: bool) -> pd.DataFrame:
-    trend_mode = str(cfg.trend_mode or "legacy_mid").strip().lower()
-    if trend_mode == "legacy_mid":
-        legacy_above = df["close"] > df["ma_mid"]
-        df["timing_ok"] = (
-            legacy_above.fillna(False)
-            & (df["ret_5"] <= cfg.max_ret_5)
-            & (df["atr_ratio"] <= cfg.max_atr_ratio)
-            & (df["dist_ma_mid"] <= cfg.max_dist_ma_mid)
-        )
-        df["timing_score"] = (
-            0.50 * _bool_score(legacy_above)
-            + 0.20 * _bool_score(df["ret_5"] <= cfg.max_ret_5)
-            + 0.15 * _bool_score(df["atr_ratio"] <= cfg.max_atr_ratio)
-            + 0.15 * _bool_score(df["dist_ma_mid"] <= cfg.max_dist_ma_mid)
-        )
-    else:
-        df["timing_ok"] = (
-            df["monthly_main_ok"].fillna(False)
-            & (df["ret_5"] <= cfg.max_ret_5)
-            & (df["atr_ratio"] <= cfg.max_atr_ratio)
-            & (df["dist_month_10"] <= cfg.max_dist_ma_mid)
-        )
-        df["timing_score"] = (
-            0.45 * _bool_score(df["monthly_main_ok"])
-            + 0.20 * _bool_score(df["weekly_aux_ok"])
-            + 0.15 * _bool_score(df["ret_5"] <= cfg.max_ret_5)
-            + 0.10 * _bool_score(df["atr_ratio"] <= cfg.max_atr_ratio)
-            + 0.10 * _bool_score(df["dist_month_10"] <= cfg.max_dist_ma_mid)
-        )
+    monthly_ready = df.get("v2_month_buy_ready", pd.Series(False, index=df.index)).fillna(False)
+    monthly_new_buy = df.get("v2_month_buy_cross", pd.Series(False, index=df.index)).fillna(False)
+    monthly_above_maintain = df.get("v2_month_above_maintain", pd.Series(False, index=df.index)).fillna(False)
+    weekly_exit = df.get("v2_week_sell_trigger", pd.Series(False, index=df.index)).fillna(False)
+    weekly_watch = df.get("v2_week_sell_watch", pd.Series(False, index=df.index)).fillna(False)
+    month_live_dist = df.get("v2_month_live_dist", pd.Series(np.nan, index=df.index))
+    price_ok = (
+        (df["ret_5"] <= cfg.max_ret_5)
+        & (df["atr_ratio"] <= cfg.max_atr_ratio)
+        & (month_live_dist <= cfg.max_dist_ma_mid)
+    ).fillna(False)
+    fundamental_ok = (
+        df["quality_gate_ok"].fillna(False)
+        & (df["op_income_pti"] > 0)
+        & (df["net_income_pti"] > 0)
+        & (df["op_margin_pti"] > 0)
+    ).fillna(False)
 
-    if include_ml:
-        df["conviction_raw"] = 0.75 * df["fundamental_score"] + 0.20 * df["timing_score"] + 0.05 * df["ml_assist_score"]
-    else:
-        df["conviction_raw"] = 0.80 * df["fundamental_score"] + 0.20 * df["timing_score"]
-    df["conviction_score"] = df.groupby("date")["conviction_raw"].rank(method="average", pct=True).fillna(0.0)
-    df["watch_candidate"] = df["core_candidate"] & (df["conviction_score"] >= cfg.watch_threshold)
-    if trend_mode == "legacy_mid":
-        legacy_above = df["close"] > df["ma_mid"]
-        df["buy_candidate"] = (
-            df["watch_candidate"]
-            & legacy_above.fillna(False)
-            & (df["conviction_score"] >= cfg.buy_threshold)
-            & (df["timing_score"] >= cfg.min_timing_score)
-        )
-        df["sell_candidate"] = (
-            (~df["quality_gate_ok"].fillna(False))
-            | (df["conviction_score"] <= cfg.sell_threshold)
-            | (~legacy_above.fillna(True))
-        )
-    else:
-        df["buy_candidate"] = (
-            df["watch_candidate"]
-            & df["monthly_main_ok"].fillna(False)
-            & (df["conviction_score"] >= cfg.buy_threshold)
-            & (df["timing_score"] >= cfg.min_timing_score)
-        )
-        df["sell_candidate"] = (
-            (~df["quality_gate_ok"].fillna(False))
-            | (df["conviction_score"] <= cfg.sell_threshold)
-            | (~df["monthly_main_ok"].fillna(True))
-        )
+    df["timing_ok"] = monthly_ready & price_ok & (~weekly_exit)
+    df["timing_score"] = (
+        0.60 * _bool_score(monthly_ready)
+        + 0.20 * _bool_score(price_ok)
+        + 0.20 * _bool_score(~weekly_exit)
+    )
+    df["watch_candidate"] = df["core_candidate"] & monthly_ready & (~weekly_exit)
+    df["buy_candidate"] = df["watch_candidate"] & monthly_new_buy & price_ok & fundamental_ok & (~weekly_watch)
+    df["sell_candidate"] = weekly_exit | (~df["quality_gate_ok"].fillna(False))
+    df["conviction_score"] = 0.25
+    df.loc[df["watch_candidate"], "conviction_score"] = 0.60
+    df.loc[df["watch_candidate"] & monthly_new_buy, "conviction_score"] = 0.66
+    df.loc[df["watch_candidate"] & fundamental_ok, "conviction_score"] = 0.68
+    df.loc[df["watch_candidate"] & price_ok, "conviction_score"] = 0.72
+    df.loc[df["buy_candidate"], "conviction_score"] = 0.90
+    df.loc[monthly_above_maintain & df["watch_candidate"] & (~df["buy_candidate"]), "conviction_score"] = 0.62
+    df.loc[weekly_watch & (~df["buy_candidate"]), "conviction_score"] = 0.45
+    df.loc[df["sell_candidate"], "conviction_score"] = 0.20
+    df["conviction_raw"] = df["conviction_score"]
     return df
 
 
@@ -720,12 +876,6 @@ def prepare_strategy_frame(
     df["core_candidate"] = (
         df["is_trading_day"].fillna(False)
         & (df["adv20"] >= cfg.min_adv20)
-        & df["fresh_filing"].fillna(False)
-        & df["macro_gate_ok"].fillna(False)
-        & df["quality_gate_ok"].fillna(False)
-        & (df["op_income_pti"] > 0)
-        & (df["net_income_pti"] > 0)
-        & (df["op_margin_pti"] > 0)
     )
 
     score_map = {
@@ -787,7 +937,19 @@ def prepare_strategy_frame(
 
 def _row_reasons(row: pd.Series, signal: str) -> Tuple[str, str, str]:
     reasons: List[str] = []
+    month_window = _coerce_float(row.get("v2_month_window"))
+    week_window = _coerce_float(row.get("v2_week_window"))
+    month_dist = _coerce_float(row.get("v2_month_period_dist"))
+    week_dist = _coerce_float(row.get("v2_week_period_dist"))
     if signal in {"BUY", "WATCH", "HOLD"}:
+        if bool(row.get("v2_month_buy_cross", False)):
+            reasons.append("월봉 신규 상향돌파")
+        elif bool(row.get("v2_month_above_maintain", False)):
+            reasons.append("월봉 유지상방")
+        if np.isfinite(month_window) and pd.notna(month_dist):
+            reasons.append(f"최적 월이평 {int(month_window)} / 이격 {month_dist:.1%}")
+        if np.isfinite(week_window) and pd.notna(week_dist):
+            reasons.append(f"최적 주이평 {int(week_window)} / 이격 {week_dist:.1%}")
         if pd.notna(row.get("op_margin_pti")):
             reasons.append(f"영업이익률 {row['op_margin_pti']:.1%}")
         if pd.notna(row.get("net_margin_pti")):
@@ -798,17 +960,13 @@ def _row_reasons(row: pd.Series, signal: str) -> Tuple[str, str, str]:
             reasons.append(f"순이익 QoQ {_format_amount(row['net_income_qoq_pti'])}")
         if pd.notna(row.get("op_income_q_ttm")):
             reasons.append(f"최근4Q 영업이익 {_format_amount(row['op_income_q_ttm'])}")
-        if bool(row.get("monthly_main_ok", False)):
-            reasons.append("월/주 보조 추세 양호")
-        elif pd.notna(row.get("month_10_ma")):
-            reasons.append("월/주 보조 추세 약화")
-        if bool(row.get("weekly_aux_ok", False)):
-            reasons.append("주봉 보조 추세 확인")
         if row.get("timing_score", 0) >= 0.75:
             reasons.append("중기 타이밍 양호")
         if row.get("ml_assist_score", 0) > 0:
             reasons.append(f"ML 보조점수 {row['ml_assist_score']:.2f}")
     else:
+        if np.isfinite(week_window) and pd.notna(week_dist):
+            reasons.append(f"최적 주이평 {int(week_window)} / 이격 {week_dist:.1%}")
         if row.get("_exit_reason"):
             reasons.append(str(row["_exit_reason"]))
         if row.get("_realized_return") is not None and not pd.isna(row.get("_realized_return")):
@@ -828,6 +986,10 @@ def _risk_flag(row: pd.Series) -> str:
         flags.append("earnings_exception")
     if pd.notna(row.get("atr_ratio")) and row.get("atr_ratio", 0) > 0.10:
         flags.append("high_volatility")
+    if bool(row.get("v2_week_sell_watch", False)):
+        flags.append("weekly_sell_watch")
+    if pd.notna(row.get("v2_month_live_dist")) and row.get("v2_month_live_dist", 0) > 0.18:
+        flags.append("monthly_overheat")
     return "|".join(flags)
 
 
@@ -887,6 +1049,20 @@ def _signal_context_fields(row: pd.Series) -> Dict[str, object]:
         "month_10_ma": _coerce_float(row.get("month_10_ma")),
         "weekly_aux_ok": bool(row.get("weekly_aux_ok", False)),
         "monthly_main_ok": bool(row.get("monthly_main_ok", False)),
+        "v2_month_window": _coerce_float(row.get("v2_month_window")),
+        "v2_week_window": _coerce_float(row.get("v2_week_window")),
+        "v2_month_ma": _coerce_float(row.get("v2_month_ma")),
+        "v2_week_ma": _coerce_float(row.get("v2_week_ma")),
+        "v2_month_period_dist": _coerce_float(row.get("v2_month_period_dist")),
+        "v2_month_prev_period_dist": _coerce_float(row.get("v2_month_prev_period_dist")),
+        "v2_week_period_dist": _coerce_float(row.get("v2_week_period_dist")),
+        "v2_month_live_dist": _coerce_float(row.get("v2_month_live_dist")),
+        "v2_week_live_dist": _coerce_float(row.get("v2_week_live_dist")),
+        "v2_month_buy_cross": bool(row.get("v2_month_buy_cross", False)),
+        "v2_month_above_maintain": bool(row.get("v2_month_above_maintain", False)),
+        "v2_month_sell_cross": bool(row.get("v2_month_sell_cross", False)),
+        "v2_week_sell_trigger": bool(row.get("v2_week_sell_trigger", False)),
+        "v2_week_sell_watch": bool(row.get("v2_week_sell_watch", False)),
     }
     return fields
 
@@ -905,23 +1081,19 @@ def _effective_stop_price(row: pd.Series, position: Dict[str, object]) -> float:
 
 
 def _trend_break(row: pd.Series, cfg: EarningsStrategyConfig) -> bool:
-    trend_mode = str(cfg.trend_mode or "legacy_mid").strip().lower()
-    if trend_mode == "legacy_mid":
-        ma_mid = _coerce_float(row.get("ma_mid"))
-        close = _coerce_float(row.get("close"))
-        if np.isfinite(ma_mid) and np.isfinite(close):
-            return close < ma_mid
-        return False
+    dist = _coerce_float(row.get("v2_week_period_dist"))
+    if np.isfinite(dist):
+        return bool(dist <= cfg.weekly_sell_threshold)
     return not bool(row.get("monthly_main_ok", True))
 
 
 def _target_positions(exposure: float, cfg: EarningsStrategyConfig) -> int:
     exposure = float(np.clip(exposure, 0.0, 1.0))
-    if exposure <= cfg.riskoff_exposure_cutoff:
+    if exposure <= 0.0:
         return 0
-    if exposure < 0.99:
-        return max(1, int(np.floor(cfg.max_positions * cfg.neutral_target_ratio)))
-    return cfg.max_positions
+    if exposure >= 0.99:
+        return cfg.max_positions
+    return max(1, int(np.floor(cfg.max_positions * exposure)))
 
 
 def simulate_signals(strategy_df: pd.DataFrame, cfg: EarningsStrategyConfig) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -944,6 +1116,7 @@ def simulate_signals(strategy_df: pd.DataFrame, cfg: EarningsStrategyConfig) -> 
         regime_series = today["regime"].dropna()
         regime = str(regime_series.iloc[0]) if not regime_series.empty else "unknown"
         target_positions = _target_positions(exposure, cfg)
+        trend_mode = str(cfg.trend_mode or "optimal_ma_v2").strip().lower()
 
         if prev_date is not None and positions:
             prev = by_date.get(prev_date)
@@ -998,7 +1171,7 @@ def simulate_signals(strategy_df: pd.DataFrame, cfg: EarningsStrategyConfig) -> 
             stop_hit = low <= effective_stop_price
             stale = hold_bars >= cfg.max_holding_days
             quality_drop = bool((not bool(row["quality_gate_ok"])) or (hold_bars >= cfg.min_hold_days and row["conviction_score"] <= cfg.sell_threshold))
-            timing_break = bool(hold_bars >= cfg.min_hold_days and _trend_break(row, cfg))
+            timing_break = bool(_trend_break(row, cfg))
             sell_signal = stop_hit or stale or quality_drop or timing_break
             if sell_signal:
                 exit_price = effective_stop_price if stop_hit else close
@@ -1485,7 +1658,7 @@ def write_strategy_outputs(
 
 
 def default_output_dir() -> Path:
-    return output_path("strategy_v1")
+    return strategy_output_path()
 
 
 def default_inputs() -> Dict[str, Path]:
@@ -1571,12 +1744,6 @@ def prepare_latest_strategy_frame(
     df["core_candidate"] = (
         df["is_trading_day"].fillna(False)
         & (df["adv20"] >= cfg.min_adv20)
-        & df["fresh_filing"].fillna(False)
-        & df["macro_gate_ok"].fillna(False)
-        & df["quality_gate_ok"].fillna(False)
-        & (df["op_income_pti"] > 0)
-        & (df["net_income_pti"] > 0)
-        & (df["op_margin_pti"] > 0)
     )
 
     score_map = {
@@ -1711,13 +1878,17 @@ def simulate_fast_alert_cycle(
     cfg: EarningsStrategyConfig,
     output_dir: Path,
 ) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, Dict[str, object]]:
-    today = latest_df.sort_values("code").set_index("code")
+    today = latest_df.sort_values("code").copy()
+    today["code"] = today["code"].astype(str).str.zfill(6)
+    today = today[~today["code"].isin(EXCLUDED_SECURITY_CODES)]
+    today = today.set_index("code")
     dt = pd.Timestamp(today["date"].iloc[0])
     exposure_series = today["exposure"].dropna()
     exposure = float(exposure_series.iloc[0]) if not exposure_series.empty else 1.0
     regime_series = today["regime"].dropna()
     regime = str(regime_series.iloc[0]) if not regime_series.empty else "unknown"
     target_positions = _target_positions(exposure, cfg)
+    trend_mode = str(cfg.trend_mode or "optimal_ma_v2").strip().lower()
 
     state_df = load_fast_position_state(output_dir, cfg)
     positions: Dict[str, Dict[str, object]] = {}
@@ -1725,7 +1896,10 @@ def simulate_fast_alert_cycle(
     if not state_df.empty:
         next_trade_id = int(state_df["trade_id"].max()) + 1
         for _, row in state_df.iterrows():
-            positions[str(row["code"]).zfill(6)] = row.to_dict()
+            code = str(row["code"]).zfill(6)
+            if code in EXCLUDED_SECURITY_CODES:
+                continue
+            positions[code] = row.to_dict()
 
     signal_rows: List[Dict[str, object]] = []
     decision_rows: List[Dict[str, object]] = []
@@ -1800,7 +1974,7 @@ def simulate_fast_alert_cycle(
         stop_hit = low <= effective_stop_price
         stale = hold_bars >= cfg.max_holding_days
         quality_drop = bool((not bool(row["quality_gate_ok"])) or (hold_bars >= cfg.min_hold_days and row["conviction_score"] <= cfg.sell_threshold))
-        timing_break = bool(hold_bars >= cfg.min_hold_days and _trend_break(row, cfg))
+        timing_break = bool(_trend_break(row, cfg))
         sell_signal = stop_hit or stale or quality_drop or timing_break
 
         if sell_signal:
@@ -2015,7 +2189,23 @@ def simulate_fast_alert_cycle(
 
     signal_df = pd.DataFrame(signal_rows).sort_values(["signal", "conviction_score"], ascending=[True, False]).reset_index(drop=True)
     decision_df = pd.DataFrame(decision_rows)
-    state_df_out = pd.DataFrame(state_rows).sort_values(["entry_date", "trade_id"]).reset_index(drop=True)
+    if state_rows:
+        state_df_out = pd.DataFrame(state_rows).sort_values(["entry_date", "trade_id"]).reset_index(drop=True)
+    else:
+        state_df_out = pd.DataFrame(
+            columns=[
+                "trade_id",
+                "strategy_id",
+                "code",
+                "name",
+                "entry_date",
+                "entry_price",
+                "last_close",
+                "hold_bars",
+                "stop_pct",
+                "last_eval_date",
+            ]
+        )
     metadata = {
         "strategy_id": cfg.strategy_id,
         "latest_signal_date": str(dt.date()),
@@ -2040,12 +2230,10 @@ def write_fast_alert_outputs(
         "decision_fast_latest": _fast_decision_path(output_dir),
         "fast_state": _fast_state_path(output_dir),
         "fast_meta": _fast_meta_path(output_dir),
-        "signal_latest": output_dir / "signal_daily_latest.csv",
     }
     signal_df.to_csv(paths["signal_fast_latest"], index=False, encoding="utf-8-sig")
     decision_df.to_csv(paths["decision_fast_latest"], index=False, encoding="utf-8-sig")
     state_df.to_csv(paths["fast_state"], index=False, encoding="utf-8-sig")
-    signal_df.to_csv(paths["signal_latest"], index=False, encoding="utf-8-sig")
     paths["fast_meta"].write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
     return paths
 

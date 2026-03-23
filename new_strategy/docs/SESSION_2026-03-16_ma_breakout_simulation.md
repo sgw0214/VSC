@@ -40,6 +40,14 @@ From `output/ma_breakout_research/`:
 - `summary_report.md`
 - `run_meta.json`
 
+Published for live consumption:
+
+- `published/optimal_ma_selection_monthly_weekly.csv`
+- `published/optimal_ma_selection_monthly_weekly_meta.json`
+- `published/optimal_ma_selection_monthly_weekly.md`
+- schema contract: `new_strategy/docs/OPTIMAL_MA_PUBLISH_SCHEMA.md`
+- validation script: `new_strategy/ma_breakout_research/validate_optimal_ma_publish.py`
+
 ## Current Backtest Rule
 
 - Signal rule:
@@ -123,3 +131,94 @@ This is different from the earlier safe-window summary approach.
 
 - Keep future outputs separated from the live strategy until the user explicitly requests strategy integration.
 - Do not modify dashboard, telegram, or live execution logic unless asked.
+- If live strategy needs MA inputs, publish a dedicated consumption file under `output/ma_breakout_research/published/` and let live code read that file only.
+- Published monthly/weekly handoff is now fixed under schema version `optimal_ma_monthly_weekly_v1`.
+
+## 2026-03-17 Overnight Research Extension
+
+A separate non-live research track has been started under:
+
+- `new_strategy/alpha_combo_research/run_return_max_search.py`
+
+Its outputs are isolated under:
+
+- `output/alpha_combo_research/`
+
+This track does not write to `output/strategy_v2/` and does not alter live strategy behavior.
+
+Current first-pass outputs:
+
+- `global_combo_results.csv`
+- `industry_best_combos_20d.csv`
+- `stock_best_combos_20d.csv`
+- `summary.md`
+- `meta.json`
+
+Input basis:
+
+- `feature_daily.pkl`
+- `price_panel.csv`
+- `output/ma_breakout_research/published/optimal_ma_selection_monthly_weekly.csv`
+
+Current scope:
+
+- event window: `days_since_filing <= 90`
+- single and pairwise condition search
+- dimensions include:
+  - industry
+  - market cap
+  - op margin
+  - ret_5
+  - ATR ratio
+  - dist_ma_mid
+  - gold / VIX / USDKRW / US10Y regimes
+  - optimal MA timeframe / action mode / window buckets
+
+## 2026-03-17 Robust Phase 2
+
+Added scripts:
+
+- `new_strategy/alpha_combo_research/run_return_max_search_robust.py`
+- `new_strategy/alpha_combo_research/build_deployable_shortlist.py`
+
+Additional outputs:
+
+- `output/alpha_combo_research/robust_phase2/global_combo_results_robust.csv`
+- `output/alpha_combo_research/robust_phase2/industry_best_combos_20d_robust.csv`
+- `output/alpha_combo_research/robust_phase2/stock_best_combos_20d_robust.csv`
+- `output/alpha_combo_research/robust_phase2/deployable_global_shortlist.csv`
+- `output/alpha_combo_research/robust_phase2/summary.md`
+- `output/alpha_combo_research/robust_phase2/deployable_summary.md`
+
+Expanded search dimensions:
+
+- filing windows: `15 / 30 / 60 / 90`
+- profitability: operating margin, ROE, QoQ positives
+- quality: `quality_score`
+- momentum/overheat: `ret_5`, `ret_20`, `ret_60`
+- volatility/trend shape: `ATR`, `dist_ma_mid`
+- macro: gold, VIX, USDKRW, US10Y, KR10Y and their 60-day MA relations
+- optimal MA: timeframe / action mode / window bucket
+- single / pairwise / triple combinations
+
+Robust scoring:
+
+- `robust_score = winsor_mean*100 + median*40 + win_rate*8 + p25*20 + p10*10`
+
+Current interpretation:
+
+- Phase 1 raw mean-return ranking over-emphasized `small cap + high VIX`.
+- Phase 2 robust ranking shifts the strongest repeatable global patterns toward:
+  - `filing within 15 days`
+  - `positive or >=5% operating margin`
+  - `positive / high ROE`
+  - selective `quality_score`
+
+Deployable shortlist filters:
+
+- `horizon_days == 20`
+- `obs >= 20,000`
+- `median_return >= 0.30%`
+- `win_rate >= 52%`
+- `p10_return >= -12%`
+- `condition_count <= 3`
