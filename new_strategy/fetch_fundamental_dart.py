@@ -339,6 +339,37 @@ def _iter_targets(
                 }
 
 
+def _key_set_from_frame(df: pd.DataFrame) -> Set[Tuple[str, int, str]]:
+    required = {"corp_code", "bsns_year", "reprt_code"}
+    if df.empty or not required.issubset(set(df.columns)):
+        return set()
+    work = df.copy()
+    work["corp_code"] = work["corp_code"].map(_norm_corp_code)
+    work["bsns_year"] = pd.to_numeric(work["bsns_year"], errors="coerce").astype("Int64")
+    work["reprt_code"] = work["reprt_code"].map(_norm_reprt_code)
+    work = work.dropna(subset=["corp_code", "bsns_year", "reprt_code"])
+    return set(zip(work["corp_code"], work["bsns_year"].astype(int), work["reprt_code"]))
+
+
+def _load_request_log_empty_keys(request_log_path: Path) -> Tuple[Set[Tuple[str, int, str]], int]:
+    if not request_log_path.exists():
+        return set(), 0
+    prev_log = pd.read_csv(request_log_path, low_memory=False)
+    if not {"corp_code", "bsns_year", "reprt_code"}.issubset(set(prev_log.columns)):
+        return set(), 0
+    if "row_count" not in prev_log.columns:
+        return set(), len(prev_log)
+
+    work = prev_log.copy()
+    work["corp_code"] = work["corp_code"].map(_norm_corp_code)
+    work["bsns_year"] = pd.to_numeric(work["bsns_year"], errors="coerce").astype("Int64")
+    work["reprt_code"] = work["reprt_code"].map(_norm_reprt_code)
+    work["row_count"] = pd.to_numeric(work["row_count"], errors="coerce")
+    work = work.dropna(subset=["corp_code", "bsns_year", "reprt_code", "row_count"])
+    empty_only = work.loc[work["row_count"].astype(int) == 0, ["corp_code", "bsns_year", "reprt_code"]]
+    return _key_set_from_frame(empty_only), 0
+
+
 def build_quarterly(raw_df: pd.DataFrame) -> pd.DataFrame:
     if raw_df.empty:
         return pd.DataFrame()
@@ -527,47 +558,33 @@ def main() -> None:
         if str(k).strip():
             print(f"[corp-map-method] {k}: {int(v):,}")
 
-    existing_corp_keys: Set[Tuple[str, int, str]] = set()
+    saved_corp_keys: Set[Tuple[str, int, str]] = set()
+    empty_corp_keys: Set[Tuple[str, int, str]] = set()
     out_path = Path(args.output)
     raw_out = Path(args.raw_output)
     request_log_path = out_path.with_name(f"{out_path.stem}_request_log.csv")
     if (not args.no_skip_existing) and (not args.ignore_skip_keys) and out_path.exists():
         prev = _to_english_cols(pd.read_csv(out_path, low_memory=False))
-        if {"corp_code", "bsns_year", "reprt_code"}.issubset(set(prev.columns)):
-            prev["corp_code"] = prev["corp_code"].map(_norm_corp_code)
-            prev["bsns_year"] = pd.to_numeric(prev["bsns_year"], errors="coerce").astype("Int64")
-            prev["reprt_code"] = prev["reprt_code"].map(_norm_reprt_code)
-            prev = prev.dropna(subset=["corp_code", "bsns_year", "reprt_code"])
-            existing_corp_keys = set(zip(prev["corp_code"], prev["bsns_year"].astype(int), prev["reprt_code"]))
-    # Also skip already-requested corp/year/report keys seen in raw responses.
-    # This prevents retrying the same calls when a filing has no mapped metrics.
+        saved_corp_keys |= _key_set_from_frame(prev)
+    # Raw responses are also a valid source of truth for already-saved positive results.
     if (not args.no_skip_existing) and (not args.ignore_skip_keys) and raw_out.exists():
         try:
             prev_raw = pd.read_csv(raw_out, low_memory=False)
-            if {"corp_code", "bsns_year", "reprt_code"}.issubset(set(prev_raw.columns)):
-                prev_raw["corp_code"] = prev_raw["corp_code"].map(_norm_corp_code)
-                prev_raw["bsns_year"] = pd.to_numeric(prev_raw["bsns_year"], errors="coerce").astype("Int64")
-                prev_raw["reprt_code"] = prev_raw["reprt_code"].map(_norm_reprt_code)
-                prev_raw = prev_raw.dropna(subset=["corp_code", "bsns_year", "reprt_code"])
-                existing_corp_keys |= set(
-                    zip(prev_raw["corp_code"], prev_raw["bsns_year"].astype(int), prev_raw["reprt_code"])
-                )
+            saved_corp_keys |= _key_set_from_frame(prev_raw)
         except Exception as exc:
             print(f"[warn] raw skip-key load failed: {exc}")
-    # Skip keys that were already requested previously, including empty responses.
+    # Request log only skips known-empty DART responses. It must not mask missing saves.
     if (not args.no_skip_existing) and (not args.ignore_skip_keys) and request_log_path.exists():
         try:
-            prev_log = pd.read_csv(request_log_path, low_memory=False)
-            if {"corp_code", "bsns_year", "reprt_code"}.issubset(set(prev_log.columns)):
-                prev_log["corp_code"] = prev_log["corp_code"].map(_norm_corp_code)
-                prev_log["bsns_year"] = pd.to_numeric(prev_log["bsns_year"], errors="coerce").astype("Int64")
-                prev_log["reprt_code"] = prev_log["reprt_code"].map(_norm_reprt_code)
-                prev_log = prev_log.dropna(subset=["corp_code", "bsns_year", "reprt_code"])
-                existing_corp_keys |= set(
-                    zip(prev_log["corp_code"], prev_log["bsns_year"].astype(int), prev_log["reprt_code"])
+            empty_corp_keys, legacy_log_rows = _load_request_log_empty_keys(request_log_path)
+            if legacy_log_rows:
+                print(
+                    f"[warn] request-log has {legacy_log_rows:,} legacy rows without row_count; "
+                    "not using them as skip keys"
                 )
         except Exception as exc:
             print(f"[warn] request-log load failed: {exc}")
+    existing_corp_keys = saved_corp_keys | empty_corp_keys
 
     n_corps = int(code_map.loc[code_map["corp_code"].notna(), "corp_code"].map(_norm_corp_code).nunique())
     total_candidate = n_corps * (args.end_year - args.start_year + 1) * len(report_codes)
@@ -575,10 +592,13 @@ def main() -> None:
     if args.max_requests and to_request_est > args.max_requests:
         print(f"[plan] estimated_requests={to_request_est:,} exceeds cap={args.max_requests:,}; capped.")
     else:
-        print(f"[plan] estimated_requests={to_request_est:,}, existing_skipped={len(existing_corp_keys):,}")
+        print(
+            f"[plan] estimated_requests={to_request_est:,}, existing_skipped={len(existing_corp_keys):,} "
+            f"(saved={len(saved_corp_keys):,}, empty={len(empty_corp_keys):,})"
+        )
 
     rows = []
-    completed_keys: Set[Tuple[str, int, str]] = set()
+    request_records: List[Dict[str, object]] = []
     done = 0
     call_times: List[float] = []
     for t in _iter_targets(
@@ -613,7 +633,14 @@ def main() -> None:
             time.sleep(max(args.sleep_sec, 0.1))
             continue
 
-        completed_keys.add((_norm_corp_code(t["corp_code"]), int(t["bsns_year"]), str(t["reprt_code"])))
+        request_records.append(
+            {
+                "corp_code": _norm_corp_code(t["corp_code"]),
+                "bsns_year": int(t["bsns_year"]),
+                "reprt_code": str(t["reprt_code"]),
+                "row_count": int(len(one)),
+            }
+        )
         if one.empty:
             if args.sleep_sec > 0:
                 time.sleep(args.sleep_sec)
@@ -647,15 +674,18 @@ def main() -> None:
         raw_df = raw_df_new
     raw_df.to_csv(raw_out, index=False, encoding="utf-8-sig")
     print(f"[saved] {raw_out} rows={len(raw_df):,} (new={len(raw_df_new):,})")
-    # Persist request log so empty-response keys are not requested again.
-    if completed_keys:
-        log_new = pd.DataFrame(
-            [{"corp_code": k[0], "bsns_year": k[1], "reprt_code": k[2]} for k in sorted(completed_keys)]
+    # Persist request log so known-empty DART responses can be skipped safely.
+    if request_records:
+        log_new = pd.DataFrame(request_records).drop_duplicates(
+            subset=["corp_code", "bsns_year", "reprt_code"], keep="last"
         )
         if (not args.no_skip_existing) and request_log_path.exists():
             try:
                 log_prev = pd.read_csv(request_log_path, low_memory=False)
-                log_all = pd.concat([log_prev, log_new], ignore_index=True, sort=False).drop_duplicates()
+                log_all = (
+                    pd.concat([log_prev, log_new], ignore_index=True, sort=False)
+                    .drop_duplicates(subset=["corp_code", "bsns_year", "reprt_code"], keep="last")
+                )
             except Exception:
                 log_all = log_new
         else:

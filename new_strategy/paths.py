@@ -7,6 +7,8 @@ CODE_ROOT = Path(__file__).resolve().parent
 DEFAULT_DATA_ROOT = Path(r"C:\Users\sgw02\OneDrive\python\new_strategy")
 DEFAULT_STOCK_ROOT = Path(r"C:\Users\sgw02\OneDrive\python\Stock")
 DEFAULT_STRATEGY_OUTPUT_SUBDIR = "strategy_v2"
+DEFAULT_TREND_DATA_SUBDIR = "trend_lab"
+DEFAULT_TREND_OUTPUT_SUBDIR = "trend_lab"
 
 
 def data_root() -> Path:
@@ -44,6 +46,26 @@ def strategy_output_subdir() -> str:
 
 def strategy_output_path(*parts: str) -> Path:
     return output_path(strategy_output_subdir(), *parts)
+
+
+def trend_data_subdir() -> str:
+    value = str(os.getenv("NEW_STRATEGY_TREND_DATA_SUBDIR_NAME", DEFAULT_TREND_DATA_SUBDIR)).strip()
+    return value or DEFAULT_TREND_DATA_SUBDIR
+
+
+def trend_output_subdir() -> str:
+    value = str(os.getenv("NEW_STRATEGY_TREND_OUTPUT_SUBDIR_NAME", DEFAULT_TREND_OUTPUT_SUBDIR)).strip()
+    return value or DEFAULT_TREND_OUTPUT_SUBDIR
+
+
+def trend_data_path(*parts: str) -> Path:
+    # Dedicated data area for trend-lab only. Keep it isolated from core strategy runtime files.
+    return data_path(trend_data_subdir(), *parts)
+
+
+def trend_output_path(*parts: str) -> Path:
+    # Dedicated output area for trend-lab only. Keep it isolated from strategy_v2 core contracts.
+    return strategy_output_path(trend_output_subdir(), *parts)
 
 
 def cache_path(*parts: str) -> Path:

@@ -1,0 +1,24 @@
+[    1928ms] [LOG] Gather usage stats:  true @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    2655ms] [WARNING] Unrecognized feature: 'ambient-light-sensor'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    2655ms] [WARNING] Unrecognized feature: 'battery'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    2655ms] [WARNING] Unrecognized feature: 'document-domain'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    2655ms] [WARNING] Unrecognized feature: 'layout-animations'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    2655ms] [WARNING] Unrecognized feature: 'legacy-image-formats'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    2655ms] [WARNING] Unrecognized feature: 'oversized-images'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    2656ms] [WARNING] Unrecognized feature: 'vr'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    2656ms] [WARNING] Unrecognized feature: 'wake-lock'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    2730ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ about:srcdoc:0
+[    8905ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ about:srcdoc:0
+[   18849ms] [WARNING] WARN Infinite extent for field "low": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   18849ms] [WARNING] WARN Infinite extent for field "high": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   18850ms] [WARNING] WARN Infinite extent for field "body_low": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   18850ms] [WARNING] WARN Infinite extent for field "body_high": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   18850ms] [WARNING] WARN Infinite extent for field "ma_overlay": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   18850ms] [WARNING] WARN Infinite extent for field "contract_overlay_1": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   18850ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   18850ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   18851ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   18851ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   29356ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   29368ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   29376ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1

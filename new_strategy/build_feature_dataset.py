@@ -47,6 +47,8 @@ RAW_PRICE_COLS = [
     "is_trading_day",
 ]
 
+REPORT_ORDER = {"11013": 0, "11012": 1, "11014": 2, "11011": 3}
+
 
 def load_price(path: Path, cfg: StrategyConfig) -> pd.DataFrame:
     if path.suffix.lower() == ".pkl":
@@ -108,7 +110,8 @@ def load_fundamental(path: Path) -> pd.DataFrame:
     bounds = df.apply(lambda x: _reprt_period_bounds(x["bsns_year"], x["reprt_code"]), axis=1, result_type="expand")
     df["period_start"] = bounds[0]
     df["period_end"] = bounds[1]
-    df = df.sort_values(["code", "bsns_year", "reprt_code", "rcept_dt"]).reset_index(drop=True)
+    df["_report_order"] = df["reprt_code"].map(REPORT_ORDER).fillna(999)
+    df = df.sort_values(["code", "bsns_year", "_report_order", "rcept_dt"]).reset_index(drop=True)
     grp = df.groupby("code", sort=False)
     for src in ["revenue_q", "op_income_q", "net_income_q", "op_margin_q", "roe_simple_q"]:
         prev_y = grp[src].shift(4)
@@ -117,7 +120,8 @@ def load_fundamental(path: Path) -> pd.DataFrame:
         df[f"{src}_qoq"] = df[src] - prev_q
         df[f"{src}_yoy_pct"] = df[f"{src}_yoy"] / prev_y.abs().replace(0, pd.NA)
         df[f"{src}_qoq_pct"] = df[f"{src}_qoq"] / prev_q.abs().replace(0, pd.NA)
-    df = df.sort_values(["code", "rcept_dt", "bsns_year", "reprt_code"]).reset_index(drop=True)
+    df = df.sort_values(["code", "rcept_dt", "bsns_year", "_report_order"]).reset_index(drop=True)
+    df = df.drop(columns=["_report_order"])
     return df
 
 

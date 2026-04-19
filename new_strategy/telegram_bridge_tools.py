@@ -11,13 +11,19 @@ from pathlib import Path
 from typing import Any, TextIO
 
 import pandas as pd
+from PIL import Image, ImageDraw, ImageFont
 
+from new_strategy.earnings_signal_engine import EarningsStrategyConfig
+from new_strategy.optimal_ma_publish_contract import OPTIMAL_MA_ALL_SELECTION_PATH
 from new_strategy.paths import data_path, output_path, strategy_output_path
-from new_strategy.optimal_ma_overlay import (
-    load_latest_optimal_ma_snapshot,
-    optimal_ma_alignment,
-    optimal_ma_soft_delta,
+from new_strategy.price_latest_snapshot import read_price_latest_snapshot
+from new_strategy.price_level_map import build_price_level_map, DEFAULT_MA_STOP_PCT
+from new_strategy.v2_ma_contract import (
+    normalize_v2_ma_frame,
+    normalize_v2_mode_contract_frame,
+    v2_mode_contract_context,
 )
+from new_strategy.optimal_ma_overlay import load_latest_optimal_ma_snapshot
 from new_strategy.telegram_bridge_memory import load_recent_unhandled
 from new_strategy.telegram_bridge_portfolio import (
     ParsedTrade,
@@ -43,11 +49,20 @@ FAST_ALERT_META_PATH = APP_DIR / "fast_alert_metadata.json"
 STRATEGY_META_PATH = APP_DIR / "strategy_metadata.json"
 LIVE_QUOTES_PATH = data_path("live_quotes.csv")
 FEATURE_DATA_PATH = data_path("feature_daily.pkl")
+PRICE_PANEL_PATH = data_path("price_panel.csv")
+BEST_MODE_BY_STOCK_PATH = output_path("v2_four_timing_mode_grid", "best_mode_by_stock_full.csv")
 UNHANDLED_PATH = BRIDGE_DIR / "telegram_bridge_unhandled_log.csv"
 NOTES_PATH = BRIDGE_DIR / "telegram_bridge_notes.csv"
 BRIDGE_STATE_PATH = BRIDGE_DIR / "telegram_bridge_state.json"
-FRAME_CACHE: dict[str, tuple[float, pd.DataFrame]] = {}
+BRIEF_IMAGE_DIR = BRIDGE_DIR / "briefings"
+EXECUTION_SNAPSHOT_PATH = APP_DIR / "dashboard_operational_execution_snapshot.csv"
+POSTCLOSE_SNAPSHOT_PATH = APP_DIR / "dashboard_operational_postclose_snapshot.csv"
+FRAME_CACHE: dict[str, tuple[tuple[int, int], pd.DataFrame]] = {}
 INTRADAY_RECALC_MINUTES = 30
+DEFAULT_FIXED_STOP_LOSS = EarningsStrategyConfig().fixed_stop_loss
+DEFAULT_MA_STOP_LOSS = DEFAULT_MA_STOP_PCT
+WINDOWS_FONT_REG = Path(r"C:\Windows\Fonts\malgun.ttf")
+WINDOWS_FONT_BOLD = Path(r"C:\Windows\Fonts\malgunbd.ttf")
 
 EXCLUDED_SECURITIES = {
     "005390": {
@@ -66,7 +81,7 @@ SIGNAL_LABELS_INTRADAY = {
     "BUY_WATCH": "소액매수검토",
     "WATCH": "관심유지",
     "HOLD": "보유유지",
-    "SELL_WATCH": "비중축소검토",
+    "SELL_WATCH": "소액매도검토",
     "SELL": "매도",
 }
 SIGNAL_LABELS_POSTCLOSE = {
@@ -74,29 +89,41 @@ SIGNAL_LABELS_POSTCLOSE = {
     "BUY_WATCH": "익일관심유지",
     "WATCH": "익일관심유지",
     "HOLD": "익일보유",
-    "SELL_WATCH": "익일비중축소검토",
+    "SELL_WATCH": "익일소액매도검토",
     "SELL": "익일매도",
 }
 SIGNAL_ORDER = {"BUY": 0, "BUY_WATCH": 1, "HOLD": 2, "WATCH": 3, "SELL_WATCH": 4, "SELL": 5}
+SIGNAL_RESOLUTION_ORDER = {"SELL": 0, "BUY": 1, "SELL_WATCH": 2, "BUY_WATCH": 3, "WATCH": 4, "HOLD": 5}
 EXIT_REASON_LABELS = {
     "timing_break": "타이밍 훼손",
     "stop_loss": "손절",
     "quality_drop": "품질 저하",
-    "max_holding_days": "최대 보유일 도달",
     "signal_sell": "매도 신호 전환",
 }
 EXIT_REASON_DESCRIPTIONS = {
     "timing_break": "단기 타이밍 보조 조건이 깨져 청산했습니다.",
     "stop_loss": "손절 기준에 도달해 청산했습니다.",
     "quality_drop": "핵심 실적 또는 품질 조건이 약해져 청산했습니다.",
-    "max_holding_days": "최대 보유 기간에 도달해 청산했습니다.",
     "signal_sell": "전략 신호가 매도로 전환되어 청산했습니다.",
 }
+
+
+def _numeric_series_or_na(frame: pd.DataFrame, column: str) -> pd.Series:
+    """Return a numeric Series for a column, or an aligned NaN Series.
+
+    This is intentionally strict about always returning a Series. The fast
+    briefing renderer previously used `DataFrame.get()` and implicitly assumed
+    the result would always be a Series, which broke when a column was absent.
+    """
+    if column in frame.columns:
+        return pd.to_numeric(frame[column], errors="coerce")
+    return pd.Series(pd.NA, index=frame.index, dtype="Float64")
 
 RISK_FLAG_LABELS = {
     "macro_risk_off": "매크로 위험장",
     "high_volatility": "고변동성",
     "earnings_exception": "실적 예외",
+    "sell_watch": "매도경계",
     "weekly_sell_watch": "주봉 매도경계",
     "monthly_overheat": "월봉 과열",
     "timing_break": "타이밍 훼손",
@@ -132,13 +159,67 @@ def _read_csv_cached(path: Path, **kwargs: Any) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
     key = str(path)
-    mtime = path.stat().st_mtime
+    stat = path.stat()
+    cache_token = (int(stat.st_mtime_ns), int(stat.st_size))
     cached = FRAME_CACHE.get(key)
-    if cached and cached[0] == mtime:
+    if cached and cached[0] == cache_token:
         return cached[1].copy()
     df = pd.read_csv(path, low_memory=False, **kwargs)
-    FRAME_CACHE[key] = (mtime, df)
+    FRAME_CACHE[key] = (cache_token, df)
     return df.copy()
+
+
+def _read_best_mode_contract() -> pd.DataFrame:
+    columns = [
+        "code",
+        "v2_contract_mode",
+        "v2_buy_timeframe",
+        "v2_sell_timeframe",
+        "v2_buy_window",
+        "v2_sell_window",
+    ]
+    if not BEST_MODE_BY_STOCK_PATH.exists():
+        return pd.DataFrame(columns=columns)
+    df = _read_csv_cached(BEST_MODE_BY_STOCK_PATH, dtype={"code": str})
+    if df.empty:
+        return pd.DataFrame(columns=columns)
+    df["code"] = df["code"].astype(str).map(normalize_code)
+    df = normalize_v2_mode_contract_frame(df)
+    return df[columns].drop_duplicates(subset=["code"], keep="last").reset_index(drop=True)
+
+
+def _merge_best_mode_contract(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df.copy()
+    contract = _read_best_mode_contract()
+    if contract.empty:
+        return df.copy()
+    work = df.copy()
+    work["code"] = work["code"].astype(str).map(normalize_code)
+    merged = work.merge(contract, on="code", how="left", suffixes=("", "_contract"))
+    for col in [column for column in contract.columns if column != "code"]:
+        aux = f"{col}_contract"
+        if aux not in merged.columns:
+            continue
+        if col in merged.columns:
+            merged[col] = merged[col].combine_first(merged[aux])
+        else:
+            merged[col] = merged[aux]
+        merged = merged.drop(columns=[aux])
+    return normalize_v2_mode_contract_frame(merged)
+
+
+def _contract_action_text(contract: dict[str, Any], side: str, *, detailed: bool = False) -> str:
+    label = "매수" if side == "buy" else "매도"
+    timeframe_label = contract.get(f"{side}_label")
+    timeframe_short = contract.get(f"{side}_short_label")
+    window = contract.get(f"{side}_window")
+    if timeframe_label is None or timeframe_short is None or window is None:
+        return ""
+    trigger = "상향돌파" if side == "buy" else "하향돌파"
+    if detailed:
+        return f"{label} {timeframe_label} {int(window)}이평 {trigger}"
+    return f"{label} {timeframe_short}{int(window)} {trigger}"
 
 
 def _fmt_pct(value: Any) -> str:
@@ -153,6 +234,12 @@ def _fmt_num(value: Any, suffix: str = "") -> str:
     return f"{float(value):,.0f}{suffix}"
 
 
+def _fmt_num_plain(value: Any) -> str:
+    if value is None or pd.isna(value):
+        return "-"
+    return f"{float(value):,.0f}"
+
+
 def _display_text(value: Any, default: str = "없음") -> str:
     if value is None or pd.isna(value):
         return default
@@ -160,6 +247,23 @@ def _display_text(value: Any, default: str = "없음") -> str:
     if not text or text.lower() == "nan":
         return default
     return text
+
+
+def _safe_bool(value: Any) -> bool:
+    if value is None:
+        return False
+    try:
+        if pd.isna(value):
+            return False
+    except Exception:
+        pass
+    if isinstance(value, str):
+        text = value.strip().lower()
+        if text in {"", "0", "false", "no", "n", "off", "none", "nan"}:
+            return False
+        if text in {"1", "true", "yes", "y", "on"}:
+            return True
+    return bool(value)
 
 
 def _market_state_label(value: Any) -> str:
@@ -187,7 +291,7 @@ def _operating_intensity_label(exposure: Any) -> str:
 
 def _prettify_risk_flag(value: Any) -> str:
     raw = str(value or "").strip()
-    if not raw:
+    if not raw or raw.lower() in {"nan", "none", "null"}:
         return ""
     parts = [RISK_FLAG_LABELS.get(part.strip(), part.strip().replace("_", " ")) for part in raw.split("|") if part.strip()]
     return " · ".join(parts)
@@ -211,54 +315,30 @@ def _signal_distribution_text(counts: dict[str, int], *, execution_window: bool)
 
 
 def _v2_timing_summary_text(row: pd.Series | dict[str, Any]) -> str:
-    month_window = pd.to_numeric(pd.Series([row.get("v2_month_window")]), errors="coerce").iloc[0]
-    month_dist = pd.to_numeric(pd.Series([row.get("v2_month_period_dist")]), errors="coerce").iloc[0]
-    week_window = pd.to_numeric(pd.Series([row.get("v2_week_window")]), errors="coerce").iloc[0]
-    week_dist = pd.to_numeric(pd.Series([row.get("v2_week_period_dist")]), errors="coerce").iloc[0]
-    month_ready = bool(row.get("v2_month_buy_ready", row.get("monthly_main_ok", False)))
-    week_sell = bool(row.get("v2_week_sell_trigger", False))
-    week_watch = bool(row.get("v2_week_sell_watch", False))
-
+    contract = v2_mode_contract_context(row)
     parts: list[str] = []
-    if pd.notna(month_window):
-        month_state = "매수 준비" if month_ready else "매수 대기"
-        month_suffix = f", {_fmt_pct(month_dist)}" if pd.notna(month_dist) else ""
-        parts.append(f"월봉 {month_state}(최적 {int(float(month_window))}이평{month_suffix})")
-    if pd.notna(week_window):
-        if week_sell:
-            week_state = "매도 트리거"
-        elif week_watch:
-            week_state = "매도 경계"
-        else:
-            week_state = "정상"
-        week_suffix = f", {_fmt_pct(week_dist)}" if pd.notna(week_dist) else ""
-        parts.append(f"주봉 {week_state}(최적 {int(float(week_window))}이평{week_suffix})")
+    if contract.get("mode_label"):
+        parts.append(str(contract["mode_label"]))
+    buy_text = _contract_action_text(contract, "buy")
+    sell_text = _contract_action_text(contract, "sell")
+    if buy_text:
+        parts.append(buy_text)
+    if sell_text:
+        parts.append(sell_text)
     return " / ".join(parts) if parts else "V2 타이밍 데이터 없음"
 
 
 def _v2_timing_detail_lines(row: pd.Series | dict[str, Any]) -> list[str]:
-    month_window = pd.to_numeric(pd.Series([row.get("v2_month_window")]), errors="coerce").iloc[0]
-    month_dist = pd.to_numeric(pd.Series([row.get("v2_month_period_dist")]), errors="coerce").iloc[0]
-    week_window = pd.to_numeric(pd.Series([row.get("v2_week_window")]), errors="coerce").iloc[0]
-    week_dist = pd.to_numeric(pd.Series([row.get("v2_week_period_dist")]), errors="coerce").iloc[0]
-    month_ready = bool(row.get("v2_month_buy_ready", row.get("monthly_main_ok", False)))
-    week_sell = bool(row.get("v2_week_sell_trigger", False))
-    week_watch = bool(row.get("v2_week_sell_watch", False))
-
+    contract = v2_mode_contract_context(row)
     lines: list[str] = []
-    if pd.notna(month_window):
-        month_state = "매수 준비" if month_ready else "매수 대기"
-        month_dist_text = _fmt_pct(month_dist) if pd.notna(month_dist) else "n/a"
-        lines.append(f"- V2 월봉 상태: {month_state} | 최적 월이평 {int(float(month_window))} | 기준 이격 {month_dist_text}")
-    if pd.notna(week_window):
-        if week_sell:
-            week_state = "매도 트리거"
-        elif week_watch:
-            week_state = "매도 경계"
-        else:
-            week_state = "정상"
-        week_dist_text = _fmt_pct(week_dist) if pd.notna(week_dist) else "n/a"
-        lines.append(f"- V2 주봉 상태: {week_state} | 최적 주이평 {int(float(week_window))} | 기준 이격 {week_dist_text}")
+    if contract.get("mode_label"):
+        lines.append(f"- 최적 MA 계약: {contract['mode_label']}")
+    buy_text = _contract_action_text(contract, "buy", detailed=True)
+    sell_text = _contract_action_text(contract, "sell", detailed=True)
+    if buy_text:
+        lines.append(f"- {buy_text}")
+    if sell_text:
+        lines.append(f"- {sell_text}")
     return lines
 
 
@@ -298,35 +378,153 @@ def _parse_stop_pct(value: Any) -> float | None:
     if not text:
         return None
     try:
-        return float(text) / 100.0
+        pct = float(text) / 100.0
+    except Exception:
+        return None
+    return None if pd.isna(pct) else float(pct)
+
+
+def _non_nan_float(value: Any) -> float | None:
+    if value is None or pd.isna(value):
+        return None
+    text = str(value).strip()
+    if not text or text.lower() in {"nan", "none", "null"}:
+        return None
+    try:
+        return float(text)
     except Exception:
         return None
 
 
-def _risk_levels(row: pd.Series | dict[str, Any], *, current_price: float | None, entry_price: float | None = None) -> dict[str, float | None]:
-    stop_pct = _parse_stop_pct(row.get("stop_rule"))
-    month_10_ma = None if pd.isna(row.get("month_10_ma")) else float(row.get("month_10_ma"))
-    week_10_ma = None if pd.isna(row.get("week_10_ma")) else float(row.get("week_10_ma"))
-    day_20_ma = None if pd.isna(row.get("ma_day_20")) else float(row.get("ma_day_20"))
+def _format_live_basis(date_value: Any, quote_time_value: Any) -> str:
+    quote_time = pd.to_datetime(quote_time_value, errors="coerce")
+    if pd.notna(quote_time):
+        return quote_time.strftime("%Y-%m-%d %H:%M:%S")
+    date = pd.to_datetime(date_value, errors="coerce")
+    if pd.notna(date):
+        return f"{date.date()} 실시간"
+    return "n/a"
 
-    initial_stop = None
-    if entry_price is not None and stop_pct is not None:
-        initial_stop = entry_price * (1.0 + stop_pct)
+
+def _latest_weekly_ma_from_price_panel(code: Any, window: int = 10) -> float | None:
+    norm = normalize_code(str(code or ""))
+    price_path = data_path("price_panel.csv")
+    if not norm or not price_path.exists():
+        return None
+    try:
+        df = pd.read_csv(price_path, usecols=["date", "code", "close"], dtype={"code": str}, low_memory=False)
+        df = df[df["code"].astype(str).map(normalize_code) == norm].copy()
+        if df.empty:
+            return None
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
+        df["close"] = pd.to_numeric(df["close"], errors="coerce")
+        df = df.dropna(subset=["date", "close"]).sort_values("date")
+        if df.empty:
+            return None
+        weekly = df.set_index("date")["close"].resample("W-FRI").last().dropna()
+        if weekly.empty:
+            return None
+        ma = weekly.rolling(window=window, min_periods=1).mean().iloc[-1]
+        return None if pd.isna(ma) else float(ma)
+    except Exception:
+        return None
+
+
+def _risk_row_with_fallbacks(row: pd.Series | dict[str, Any]) -> pd.Series:
+    base = row.copy() if isinstance(row, pd.Series) else pd.Series(dict(row))
+    stop_pct = _parse_stop_pct(base.get("stop_rule"))
+    if stop_pct is None and DEFAULT_FIXED_STOP_LOSS is not None:
+        base["stop_rule"] = f"{DEFAULT_FIXED_STOP_LOSS:.0%}"
+    if _non_nan_float(base.get("v2_week_ma")) is None and _non_nan_float(base.get("week_10_ma")) is None:
+        weekly_ma = _latest_weekly_ma_from_price_panel(base.get("code"), window=10)
+        if weekly_ma is not None:
+            base["week_10_ma"] = weekly_ma
+    return base
+
+
+def _risk_levels(row: pd.Series | dict[str, Any], *, current_price: float | None, entry_price: float | None = None) -> dict[str, float | None]:
+    row = _risk_row_with_fallbacks(row)
+    stop_pct = _parse_stop_pct(row.get("stop_rule"))
+    if stop_pct is None:
+        stop_pct = DEFAULT_FIXED_STOP_LOSS
+    day_20_ma = _non_nan_float(row.get("ma_day_20"))
+    price_map = build_price_level_map(
+        row.get("code"),
+        buy_price=entry_price,
+        buy_stop_pct=float(stop_pct),
+        ma_stop_pct=DEFAULT_MA_STOP_LOSS,
+    )
+    initial_stop = price_map["buy_stop_price"]
+    weekly_ma_price = price_map["weekly_ma_price"]
+    weekly_ma_guard = price_map["weekly_ma_stop_price"]
+    monthly_ma_price = price_map["monthly_ma_price"]
+    monthly_ma_guard = price_map["monthly_ma_stop_price"]
 
     breakeven_guard = None
     if entry_price is not None and current_price is not None and current_price >= entry_price * 1.08:
         breakeven_guard = entry_price
 
-    effective_candidates = [v for v in [initial_stop, breakeven_guard] if v is not None]
+    effective_candidates = [v for v in [initial_stop, breakeven_guard, weekly_ma_guard, monthly_ma_guard] if v is not None]
     effective_guard = max(effective_candidates) if effective_candidates else None
     return {
+        "buy_price": price_map["buy_price"],
         "initial_stop": initial_stop,
         "breakeven_guard": breakeven_guard,
-        "month_10_ma": month_10_ma,
-        "week_10_ma": week_10_ma,
+        "weekly_window": price_map["weekly_window"],
+        "weekly_ma_price": weekly_ma_price,
+        "weekly_ma_guard": weekly_ma_guard,
+        "monthly_window": price_map["monthly_window"],
+        "monthly_ma_price": monthly_ma_price,
+        "monthly_ma_guard": monthly_ma_guard,
+        "month_10_ma": monthly_ma_price,
+        "week_10_ma": weekly_ma_price,
         "day_20_ma": day_20_ma,
         "effective_guard": effective_guard,
     }
+
+
+def _resolve_entry_price(code: str, chat_id: str = "", row: pd.Series | dict[str, Any] | None = None) -> float | None:
+    held_snap = portfolio_snapshot(chat_id) if chat_id else pd.DataFrame()
+    if not held_snap.empty:
+        held_hit = held_snap[held_snap["code"] == code]
+        if not held_hit.empty:
+            avg_price = _non_nan_float(held_hit.iloc[-1].get("avg_price"))
+            if avg_price is not None:
+                return avg_price
+    if row is not None:
+        row_entry = _non_nan_float(row.get("entry_price"))
+        if row_entry is not None:
+            return row_entry
+    fast_positions = _read_fast_positions()
+    if not fast_positions.empty:
+        pos = fast_positions[fast_positions["code"] == code]
+        if not pos.empty:
+            fast_entry = _non_nan_float(pos.iloc[-1].get("entry_price"))
+            if fast_entry is not None:
+                return fast_entry
+    return None
+
+
+def _sell_execution_hint(
+    row: pd.Series | dict[str, Any],
+    *,
+    code: str,
+    chat_id: str = "",
+    current_price: float | None,
+    current_basis: str,
+) -> str:
+    if current_price is None or pd.isna(current_price):
+        return ""
+    entry_price = _resolve_entry_price(code, chat_id=chat_id, row=row)
+    levels = _risk_levels(row, current_price=float(current_price), entry_price=entry_price)
+    parts = [f"제안 매도가 {float(current_price):,.0f}원({current_basis})"]
+    if levels["initial_stop"] is not None:
+        parts.append(f"매수손절가 {levels['initial_stop']:,.0f}원")
+    if levels["weekly_ma_guard"] is not None:
+        parts.append(f"주이평손절가 {levels['weekly_ma_guard']:,.0f}원")
+    if levels["monthly_ma_guard"] is not None:
+        parts.append(f"월이평손절가 {levels['monthly_ma_guard']:,.0f}원")
+    return " / ".join(parts)
 
 
 def _current_action_text(signal: Any, *, execution_window: bool) -> str:
@@ -337,7 +535,7 @@ def _current_action_text(signal: Any, *, execution_window: bool) -> str:
             "BUY_WATCH": "관심 유지, 강하면 소액매수 검토",
             "WATCH": "관심 유지",
             "HOLD": "보유 유지",
-            "SELL_WATCH": "비중축소 우선 검토",
+            "SELL_WATCH": "소액매도 우선 검토",
             "SELL": "매도 우선",
         }
     else:
@@ -346,7 +544,7 @@ def _current_action_text(signal: Any, *, execution_window: bool) -> str:
             "BUY_WATCH": "익일 관심 유지, 강하면 소액매수 검토",
             "WATCH": "익일 관심 유지",
             "HOLD": "익일보유 유지",
-            "SELL_WATCH": "익일 비중축소 우선 검토",
+            "SELL_WATCH": "익일 소액매도 우선 검토",
             "SELL": "익일 매도 우선",
         }
     return mapping.get(signal_text, "다음 신호 확인")
@@ -422,29 +620,79 @@ def _quarter_label(fiscal_year: Any, reprt_code: Any) -> str:
 
 def _price_action_guide(row: pd.Series | dict[str, Any], *, current_price: float | None, current_basis: str) -> str:
     execution_window = _is_execution_window()
+    row = _risk_row_with_fallbacks(row)
     base_guide = _action_guide(row, execution_window=execution_window)
     if current_price is None or pd.isna(current_price):
         return base_guide
     signal = str(row.get("signal") or "").upper()
     parts = [base_guide, f"기준가 {float(current_price):,.0f}원({current_basis})"]
-    entry_price = None if pd.isna(row.get("entry_price")) else float(row.get("entry_price")) if row.get("entry_price") is not None else None
+    entry_price = _non_nan_float(row.get("entry_price"))
     levels = _risk_levels(row, current_price=float(current_price), entry_price=entry_price)
     if signal in {"BUY", "WATCH"}:
         parts.append(f"관찰 구간 {float(current_price) * 0.99:,.0f}~{float(current_price) * 1.01:,.0f}원")
         parts.append(f"추격 금지 상단 {float(current_price) * 1.02:,.0f}원")
         if levels["initial_stop"] is not None:
             parts.append(f"진입 후 초기 손절가 {levels['initial_stop']:,.0f}원")
-    elif signal in {"HOLD", "SELL", "SELL_WATCH"}:
-        if entry_price is not None:
-            parts.append(f"진입가 {entry_price:,.0f}원")
+    elif signal in {"SELL", "SELL_WATCH"}:
+        parts.append(f"제안 매도가 {float(current_price):,.0f}원")
+        if levels["buy_price"] is not None:
+            parts.append(f"매수가 {levels['buy_price']:,.0f}원")
         if levels["initial_stop"] is not None:
-            parts.append(f"초기 손절가 {levels['initial_stop']:,.0f}원")
+            parts.append(f"매수손절가 {levels['initial_stop']:,.0f}원")
+        if levels["weekly_ma_price"] is not None:
+            window_text = f"({int(levels['weekly_window'])}주)" if levels["weekly_window"] is not None else ""
+            parts.append(f"주이평가{window_text} {levels['weekly_ma_price']:,.0f}원")
+        if levels["weekly_ma_guard"] is not None:
+            parts.append(f"주이평손절가 {levels['weekly_ma_guard']:,.0f}원")
+        if levels["monthly_ma_price"] is not None:
+            window_text = f"({int(levels['monthly_window'])}월)" if levels["monthly_window"] is not None else ""
+            parts.append(f"월이평가{window_text} {levels['monthly_ma_price']:,.0f}원")
+        if levels["monthly_ma_guard"] is not None:
+            parts.append(f"월이평손절가 {levels['monthly_ma_guard']:,.0f}원")
         if levels["breakeven_guard"] is not None:
             parts.append(f"원금 보호선 {levels['breakeven_guard']:,.0f}원")
-        if levels["effective_guard"] is not None:
-            parts.append(f"현재 유효 방어선 {levels['effective_guard']:,.0f}원")
-        parts.append("가격 방어는 초기 손절 → 원금 보호 순으로 관리합니다.")
+        parts.append("매도는 제안 매도가 우선이며, 매수손절가·주이평손절가·월이평손절가를 함께 점검합니다.")
+    elif signal in {"HOLD"}:
+        if levels["buy_price"] is not None:
+            parts.append(f"매수가 {levels['buy_price']:,.0f}원")
+        if levels["initial_stop"] is not None:
+            parts.append(f"매수손절가 {levels['initial_stop']:,.0f}원")
+        if levels["weekly_ma_price"] is not None:
+            window_text = f"({int(levels['weekly_window'])}주)" if levels["weekly_window"] is not None else ""
+            parts.append(f"주이평가{window_text} {levels['weekly_ma_price']:,.0f}원")
+        if levels["weekly_ma_guard"] is not None:
+            parts.append(f"주이평손절가 {levels['weekly_ma_guard']:,.0f}원")
+        if levels["monthly_ma_price"] is not None:
+            window_text = f"({int(levels['monthly_window'])}월)" if levels["monthly_window"] is not None else ""
+            parts.append(f"월이평가{window_text} {levels['monthly_ma_price']:,.0f}원")
+        if levels["monthly_ma_guard"] is not None:
+            parts.append(f"월이평손절가 {levels['monthly_ma_guard']:,.0f}원")
+        if levels["breakeven_guard"] is not None:
+            parts.append(f"원금 보호선 {levels['breakeven_guard']:,.0f}원")
+        parts.append("가격 방어는 매수손절가, 주이평손절가, 월이평손절가 순으로 함께 점검합니다.")
     return " / ".join(parts)
+
+
+def _price_level_lines(code: str, *, current_price: float | None, buy_price: float | None) -> list[str]:
+    levels = build_price_level_map(code, buy_price=buy_price, buy_stop_pct=DEFAULT_FIXED_STOP_LOSS, ma_stop_pct=DEFAULT_MA_STOP_LOSS)
+    lines: list[str] = []
+    if current_price is not None and not pd.isna(current_price):
+        lines.append(f"- 기준가: {float(current_price):,.0f}원")
+    if levels["buy_price"] is not None:
+        lines.append(f"- 매수가: {levels['buy_price']:,.0f}원")
+    if levels["buy_stop_price"] is not None:
+        lines.append(f"- 매수손절가: {levels['buy_stop_price']:,.0f}원")
+    if levels["weekly_ma_price"] is not None:
+        window_text = f" ({int(levels['weekly_window'])}주)" if levels["weekly_window"] is not None else ""
+        lines.append(f"- 주이평가{window_text}: {levels['weekly_ma_price']:,.0f}원")
+    if levels["weekly_ma_stop_price"] is not None:
+        lines.append(f"- 주이평손절가: {levels['weekly_ma_stop_price']:,.0f}원")
+    if levels["monthly_ma_price"] is not None:
+        window_text = f" ({int(levels['monthly_window'])}월)" if levels["monthly_window"] is not None else ""
+        lines.append(f"- 월이평가{window_text}: {levels['monthly_ma_price']:,.0f}원")
+    if levels["monthly_ma_stop_price"] is not None:
+        lines.append(f"- 월이평손절가: {levels['monthly_ma_stop_price']:,.0f}원")
+    return lines
 
 
 def _is_execution_window(now: datetime | None = None) -> bool:
@@ -468,7 +716,7 @@ def _default_action_guide(signal: Any, *, execution_window: bool) -> str:
             "BUY_WATCH": "관심 유지가 기본입니다. 장중 강도와 거래대금이 좋으면 소액매수까지 검토합니다.",
             "WATCH": "관심 유지가 기본입니다. 아직은 주문보다 초반 흐름 확인이 우선입니다.",
             "HOLD": "보유 유지가 기본입니다. 방어선 이탈 시 비중축소 또는 매도로 전환합니다.",
-            "SELL_WATCH": "비중축소 검토가 우선입니다. 약세가 이어지면 절반정리 또는 매도로 강화합니다.",
+            "SELL_WATCH": "소액매도 검토가 우선입니다. 약세가 이어지면 절반정리 또는 매도로 강화합니다.",
             "SELL": "실행 가능한 매도 신호입니다. 반등 대기보다 정리를 우선합니다.",
         }
     else:
@@ -477,7 +725,7 @@ def _default_action_guide(signal: Any, *, execution_window: bool) -> str:
             "BUY_WATCH": "익일 관심 유지가 기본입니다. 시초 강도가 좋으면 소액매수를 검토하고, 아니면 관찰 유지로 둡니다.",
             "WATCH": "익일 관심 유지가 기본입니다. 주문보다 장초반 흐름 확인이 우선입니다.",
             "HOLD": "익일 보유 유지가 기본입니다. 시초 약세가 크면 비중축소, 방어선 이탈이면 매도로 전환합니다.",
-            "SELL_WATCH": "익일 비중축소 검토가 우선입니다. 장초반 약세면 절반정리 또는 축소를 먼저 봅니다.",
+            "SELL_WATCH": "익일 소액매도 검토가 우선입니다. 장초반 약세면 절반정리 또는 축소를 먼저 봅니다.",
             "SELL": "익일 장 초반 유동성 구간에서 매도를 우선합니다. 약세가 크면 지체 없이 정리합니다.",
         }
     return guide_map.get(signal, "장 시작 후 신호를 다시 확인합니다.")
@@ -486,7 +734,7 @@ def _default_action_guide(signal: Any, *, execution_window: bool) -> str:
 def _action_guide(row: pd.Series | dict[str, Any], *, execution_window: bool) -> str:
     key = "intraday_action_guide" if execution_window else "next_day_action_guide"
     value = str(row.get(key) or "").strip()
-    if value:
+    if value and value.lower() not in {"nan", "none", "null"}:
         return value
     return _default_action_guide(row.get("signal", ""), execution_window=execution_window)
 
@@ -503,43 +751,49 @@ def _display_sell_threshold() -> float:
         return 0.35
 
 
-def _display_signal(signal: Any, conviction_score: Any, risk_flag: Any) -> str:
-    signal_text = str(signal or "").upper()
+def _display_signal_from_row(row: pd.Series | dict[str, Any], *, is_real_holding: bool = False) -> str:
+    signal_text = str(row.get("signal") or "").upper()
+    risk_flag = row.get("risk_flag")
     risk_text = "" if pd.isna(risk_flag) else str(risk_flag).strip()
+    sell_trigger = _safe_bool(row.get("v2_sell_trigger", row.get("v2_week_sell_trigger", False)))
+    sell_watch = _safe_bool(row.get("v2_sell_watch", row.get("v2_week_sell_watch", False)))
+    risk_parts = {part.strip().lower() for part in risk_text.split("|") if part.strip()}
+
+    if is_real_holding:
+        if signal_text == "SELL" or sell_trigger:
+            return "SELL"
+        if signal_text == "SELL_WATCH" or sell_watch or {"weekly_sell_watch", "sell_watch"} & risk_parts:
+            return "SELL_WATCH"
+        return "HOLD"
+
     if signal_text in {"BUY", "BUY_WATCH", "SELL", "SELL_WATCH"}:
         return signal_text
     if signal_text == "WATCH":
         return "BUY_WATCH"
-    if signal_text == "HOLD" and "weekly_sell_watch" in {part.strip().lower() for part in risk_text.split("|") if part.strip()}:
+    if signal_text == "HOLD" and ({"weekly_sell_watch", "sell_watch"} & risk_parts):
         return "SELL_WATCH"
     return "HOLD"
 
 
-def _optimal_ma_delta_text(delta: float) -> str:
-    if abs(delta) < 1e-12:
-        return "0.000"
-    return f"{delta:+.3f}"
+def _display_signal(signal: Any, conviction_score: Any, risk_flag: Any, is_real_holding: bool = False) -> str:
+    row = {"signal": signal, "conviction_score": conviction_score, "risk_flag": risk_flag}
+    return _display_signal_from_row(row, is_real_holding=is_real_holding)
 
 
 def _optimal_ma_summary_lines(row: pd.Series | dict[str, Any], *, signal_value: Any) -> list[str]:
-    timeframe = _display_text(row.get("optimal_ma_timeframe_ko"), "")
-    window = row.get("optimal_ma_window")
-    if not timeframe or pd.isna(window):
+    contract = v2_mode_contract_context(row)
+    if contract.get("buy_window") is None and contract.get("sell_window") is None:
         return ["- 최적 MA: 데이터 없음"]
-    action_mode = _display_text(row.get("optimal_ma_action_mode_ko"), "-")
-    alignment = optimal_ma_alignment(signal_value, row.get("optimal_ma_ok"))
-    delta = optimal_ma_soft_delta(signal_value, row.get("optimal_ma_ok"))
-    line_price = _fmt_num(row.get("optimal_ma_line_price"), "원")
-    basis_label = _display_text(row.get("optimal_ma_basis_label"), "-")
-    basis_price = _fmt_num(row.get("optimal_ma_basis_price"), "원")
-    rule_text = _display_text(row.get("optimal_ma_rule_text"), "데이터 없음")
-    return [
-        f"- 최적 MA: {timeframe} {int(float(window))}이평 · {action_mode}",
-        f"- 최적 MA 상태: {alignment} ({_optimal_ma_delta_text(delta)})",
-        f"- 최적 MA 판정가: {basis_label} {basis_price}",
-        f"- 최적 MA 기준선: {line_price}",
-        f"- 최적 MA 해석: {rule_text}",
-    ]
+    lines: list[str] = []
+    if contract.get("mode_label"):
+        lines.append(f"- 최적 MA 계약: {contract['mode_label']}")
+    buy_text = _contract_action_text(contract, "buy", detailed=True)
+    sell_text = _contract_action_text(contract, "sell", detailed=True)
+    if buy_text:
+        lines.append(f"- {buy_text}")
+    if sell_text:
+        lines.append(f"- {sell_text}")
+    return lines
 
 
 def _latest_existing_path(paths: list[Path]) -> Path | None:
@@ -549,8 +803,18 @@ def _latest_existing_path(paths: list[Path]) -> Path | None:
     return max(existing, key=lambda item: item.stat().st_mtime)
 
 
+def _first_existing_path(paths: list[Path]) -> Path | None:
+    for path in paths:
+        if path.exists():
+            return path
+    return None
+
+
 def _read_signal_latest() -> pd.DataFrame:
-    path = _latest_existing_path([APP_DIR / "signal_daily_fast_latest.csv", APP_DIR / "signal_daily_latest.csv"])
+    candidates = [APP_DIR / "signal_daily_fast_latest.csv", APP_DIR / "signal_daily_latest.csv"]
+    if not _is_execution_window():
+        candidates = [APP_DIR / "signal_daily_latest.csv", APP_DIR / "signal_daily_fast_latest.csv"]
+    path = _first_existing_path(candidates)
     if path is None:
         return pd.DataFrame()
     df = _read_csv_cached(path, dtype={"code": str})
@@ -560,12 +824,54 @@ def _read_signal_latest() -> pd.DataFrame:
     return df
 
 
+def _merged_display_signal(signal: Any, risk_flag: Any, is_real_holding: bool = False) -> str:
+    row = {"signal": signal, "risk_flag": risk_flag}
+    return _display_signal_from_row(row, is_real_holding=is_real_holding)
+
+
+def _read_operational_dashboard_snapshot(*, execution_window: bool) -> pd.DataFrame:
+    path = EXECUTION_SNAPSHOT_PATH if execution_window else POSTCLOSE_SNAPSHOT_PATH
+    if not path.exists():
+        return pd.DataFrame()
+    df = _read_csv_cached(path, dtype={"code": str})
+    if df.empty:
+        return df
+    work = df.copy()
+    work["code"] = work["code"].astype(str).map(normalize_code)
+    if "date" in work.columns:
+        work["date"] = pd.to_datetime(work["date"], errors="coerce")
+    if "display_signal" not in work.columns:
+        work["display_signal"] = work.apply(
+            lambda row: _merged_display_signal(
+                row.get("signal"),
+                row.get("risk_flag"),
+                bool(row.get("is_real_holding", False)),
+            ),
+            axis=1,
+        )
+    if "signal_rank" not in work.columns:
+        work["signal_rank"] = work["display_signal"].map(_signal_sort_key)
+    if "signal_ko" not in work.columns:
+        work["signal_ko"] = work["display_signal"].map(
+            lambda value: _signal_label(value, execution_window=execution_window)
+        )
+    return work
+
+
 def _read_signal_lookup() -> pd.DataFrame:
+    snapshot = _read_operational_dashboard_snapshot(execution_window=True)
+    if not snapshot.empty:
+        return snapshot
     frames: list[pd.DataFrame] = []
-    candidates = [
-        (APP_DIR / "signal_daily_fast_latest.csv", 0),
-        (APP_DIR / "signal_daily_latest.csv", 1),
-    ]
+    if _is_execution_window():
+        candidates = [
+            (APP_DIR / "signal_daily_fast_latest.csv", 0),
+        ]
+    else:
+        candidates = [
+            (APP_DIR / "signal_daily_latest.csv", 0),
+            (APP_DIR / "signal_daily_fast_latest.csv", 1),
+        ]
     for path, source_rank in candidates:
         if not path.exists():
             continue
@@ -581,19 +887,51 @@ def _read_signal_lookup() -> pd.DataFrame:
     if not frames:
         return pd.DataFrame()
     combined = pd.concat(frames, ignore_index=True, sort=False)
-    sort_cols = ["_source_rank", "code"]
-    ascending = [True, True]
+    combined["display_signal"] = combined.apply(
+        lambda row: _merged_display_signal(row.get("signal"), row.get("risk_flag")),
+        axis=1,
+    )
+    combined["_resolution_rank"] = combined["display_signal"].map(lambda x: SIGNAL_RESOLUTION_ORDER.get(str(x).upper(), 99))
+    sort_cols = ["_resolution_rank", "_source_rank", "code"]
+    ascending = [True, True, True]
     if "date" in combined.columns:
-        sort_cols = ["date", "_source_rank", "code"]
-        ascending = [False, True, True]
+        sort_cols = ["date", "_resolution_rank", "_source_rank", "code"]
+        ascending = [False, True, True, True]
     combined = combined.sort_values(sort_cols, ascending=ascending, kind="stable")
     combined = combined.drop_duplicates(subset=["code"], keep="first").reset_index(drop=True)
-    return combined.drop(columns=["_source_rank"], errors="ignore")
+    return combined.drop(columns=["_source_rank", "_resolution_rank"], errors="ignore")
+
+
+def _read_postclose_signal_lookup() -> pd.DataFrame:
+    snapshot = _read_operational_dashboard_snapshot(execution_window=False)
+    if not snapshot.empty:
+        return snapshot
+    path = APP_DIR / "signal_daily_latest.csv"
+    if not path.exists():
+        return pd.DataFrame()
+    df = _read_csv_cached(path, dtype={"code": str})
+    if df.empty:
+        return df
+    work = df.copy()
+    work["code"] = work["code"].astype(str).map(normalize_code)
+    if "date" in work.columns:
+        work["date"] = pd.to_datetime(work["date"], errors="coerce")
+    return work
 
 
 def _read_decision_latest() -> pd.DataFrame:
-    path = _latest_existing_path([APP_DIR / "decision_report_fast_latest.csv", APP_DIR / "decision_report_daily.csv"])
+    candidates = [APP_DIR / "decision_report_fast_latest.csv", APP_DIR / "decision_report_daily.csv"]
+    if not _is_execution_window():
+        candidates = [APP_DIR / "decision_report_daily.csv", APP_DIR / "decision_report_fast_latest.csv"]
+    path = _first_existing_path(candidates)
     if path is None:
+        return pd.DataFrame()
+    return _read_csv_cached(path)
+
+
+def _read_postclose_decision_latest() -> pd.DataFrame:
+    path = APP_DIR / "decision_report_daily.csv"
+    if not path.exists():
         return pd.DataFrame()
     return _read_csv_cached(path)
 
@@ -624,29 +962,23 @@ def _read_alert_log() -> pd.DataFrame:
 
 
 def _read_price_snapshot() -> pd.DataFrame:
-    snapshot_path = APP_DIR / "price_panel_latest_snapshot.csv"
-    price_path = data_path("price_panel.csv")
-    if snapshot_path.exists() and (not price_path.exists() or snapshot_path.stat().st_mtime >= price_path.stat().st_mtime):
-        df = _read_csv_cached(snapshot_path, dtype={"code": str})
-        if not df.empty and "industry" in df.columns:
-            df["code"] = df["code"].astype(str).map(normalize_code)
-            return df
-    if not price_path.exists():
-        return pd.DataFrame(columns=["code", "name", "close", "date"])
-    df = pd.read_csv(price_path, usecols=["code", "name", "close", "date", "industry"], dtype={"code": str}, low_memory=False)
+    df = read_price_latest_snapshot(allow_refresh=False)
     if df.empty:
-        return df
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
-    df = df.dropna(subset=["date"]).sort_values(["code", "date"])
-    latest = df.groupby("code", as_index=False).tail(1).copy()
-    latest["code"] = latest["code"].astype(str).map(normalize_code)
-    latest.to_csv(snapshot_path, index=False, encoding="utf-8-sig")
-    return latest
+        return pd.DataFrame(columns=["code", "name", "close", "date"])
+    df = df.copy()
+    df["code"] = df["code"].astype(str).map(normalize_code)
+    return df
 
 
 def _read_feature_snapshot() -> pd.DataFrame:
-    snapshot_path = APP_DIR / "feature_latest_snapshot.csv"
+    snapshot_path = APP_DIR / "feature_latest_snapshot.pkl"
+    legacy_snapshot_path = APP_DIR / "feature_latest_snapshot.csv"
     feature_path = FEATURE_DATA_PATH
+    if (not snapshot_path.exists()) and legacy_snapshot_path.exists():
+        try:
+            legacy_snapshot_path.replace(snapshot_path)
+        except Exception:
+            snapshot_path = legacy_snapshot_path
     if snapshot_path.exists() and (not feature_path.exists() or snapshot_path.stat().st_mtime >= feature_path.stat().st_mtime):
         df = pd.read_pickle(snapshot_path)
         if not df.empty:
@@ -680,8 +1012,16 @@ def _read_live_quotes() -> pd.DataFrame:
     if df.empty:
         return df
     df["code"] = df["code"].astype(str).map(normalize_code)
+    for col in ["close", "open", "high", "low", "volume", "trading_value"]:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
     if "date" in df.columns:
         df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    if "quote_time" in df.columns:
+        df["quote_time"] = pd.to_datetime(df["quote_time"], errors="coerce")
+    if "close" in df.columns:
+        df["close"] = df["close"].where(pd.to_numeric(df["close"], errors="coerce") > 0)
+        df = df.dropna(subset=["close"])
     return df
 
 
@@ -853,16 +1193,14 @@ def _exclude_securities_df(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _signal_display_df() -> pd.DataFrame:
-    df = _read_signal_latest()
+    df = _read_signal_lookup()
     if df.empty:
         return df
     display = _exclude_securities_df(df)
     if display.empty:
         return display
-    display["display_signal"] = display.apply(
-        lambda row: _display_signal(row.get("signal"), row.get("conviction_score"), row.get("risk_flag")),
-        axis=1,
-    )
+    display = _merge_best_mode_contract(display)
+    display["display_signal"] = display.apply(lambda row: _display_signal_from_row(row), axis=1)
     display["signal_rank"] = display["display_signal"].map(_signal_sort_key)
     display["signal_ko"] = display["display_signal"].map(_signal_label)
     return display.sort_values(["signal_rank", "code"], ascending=[True, True]).reset_index(drop=True)
@@ -877,18 +1215,92 @@ def _real_holding_codes(chat_id: str) -> set[str]:
     return set(snap["code"].astype(str).map(normalize_code))
 
 
+def _append_missing_real_holdings(
+    df: pd.DataFrame,
+    *,
+    chat_id: str,
+    execution_window: bool,
+) -> pd.DataFrame:
+    if not str(chat_id or "").strip():
+        return df
+    snap = portfolio_snapshot(chat_id)
+    if snap.empty:
+        return df
+    base = df.copy()
+    base["code"] = base["code"].astype(str).map(normalize_code)
+    snap = snap.copy()
+    snap["code"] = snap["code"].astype(str).map(normalize_code)
+    missing = snap[~snap["code"].isin(base["code"])].copy()
+    if missing.empty:
+        return base
+
+    missing["signal"] = missing.get("signal", pd.Series(index=missing.index)).fillna("HOLD")
+    missing["reason_1"] = missing.get("reason_1", pd.Series(index=missing.index)).fillna("실보유 종목")
+    missing["reason_2"] = missing.get("reason_2", pd.Series(index=missing.index)).fillna("전략 신호 없음")
+    missing["reason_3"] = missing.get("reason_3", pd.Series(index=missing.index)).fillna("")
+    missing["risk_flag"] = missing.get("risk_flag", pd.Series(index=missing.index)).fillna("signal_missing")
+    missing["is_real_holding"] = True
+    missing["display_signal"] = missing.apply(
+        lambda row: _display_signal_from_row(row, is_real_holding=True),
+        axis=1,
+    )
+    missing["signal_rank"] = missing["display_signal"].map(_signal_sort_key)
+    missing["signal_ko"] = missing["display_signal"].map(
+        lambda value: _signal_label(value, execution_window=execution_window)
+    )
+
+    for col in base.columns:
+        if col not in missing.columns:
+            missing[col] = pd.NA
+    missing = missing[base.columns]
+    return pd.concat([base, missing], ignore_index=True)
+
+
 def _operational_signal_df(chat_id: str = "") -> pd.DataFrame:
     df = _signal_display_df()
     if df.empty:
-        return df
+        if str(chat_id or "").strip():
+            df = pd.DataFrame(columns=["code", "name", "signal", "display_signal", "signal_rank", "signal_ko", "is_real_holding"])
+        else:
+            return df
+    elif EXECUTION_SNAPSHOT_PATH.exists():
+        return df.sort_values(["signal_rank", "is_real_holding", "code"], ascending=[True, False, True]).reset_index(drop=True)
     held_codes = _real_holding_codes(chat_id)
     df = df.copy()
     df["is_real_holding"] = df["code"].astype(str).map(normalize_code).isin(held_codes)
-    if held_codes:
-        df = df[df["is_real_holding"] | df["display_signal"].isin(["BUY", "BUY_WATCH"])].copy()
-    else:
-        df = df[df["display_signal"].isin(["BUY", "BUY_WATCH"])].copy()
+    df["display_signal"] = df.apply(lambda row: _display_signal_from_row(row, is_real_holding=bool(row.get("is_real_holding", False))), axis=1)
+    df["signal_rank"] = df["display_signal"].map(_signal_sort_key)
+    df["signal_ko"] = df["display_signal"].map(_signal_label)
+    df = _append_missing_real_holdings(df, chat_id=chat_id, execution_window=True)
+    df = _merge_best_mode_contract(df)
+    df = _filter_dashboard_like_signal_set(df)
     return df.sort_values(["signal_rank", "is_real_holding", "code"], ascending=[True, False, True]).reset_index(drop=True)
+
+
+def _postclose_operational_signal_df(chat_id: str = "") -> pd.DataFrame:
+    df = _read_postclose_signal_lookup()
+    if df.empty:
+        if str(chat_id or "").strip():
+            df = pd.DataFrame(columns=["code", "name", "signal", "display_signal", "signal_rank", "signal_ko", "is_real_holding"])
+        else:
+            return df
+    elif POSTCLOSE_SNAPSHOT_PATH.exists():
+        return df.sort_values(["signal_rank", "is_real_holding", "code"], ascending=[True, False, True]).reset_index(drop=True)
+    display = _exclude_securities_df(df)
+    if display.empty:
+        return display
+    display["display_signal"] = display.apply(lambda row: _display_signal_from_row(row), axis=1)
+    display["signal_rank"] = display["display_signal"].map(_signal_sort_key)
+    display["signal_ko"] = display["display_signal"].map(lambda value: _signal_label(value, execution_window=False))
+    held_codes = _real_holding_codes(chat_id)
+    display["is_real_holding"] = display["code"].astype(str).map(normalize_code).isin(held_codes)
+    display["display_signal"] = display.apply(lambda row: _display_signal_from_row(row, is_real_holding=bool(row.get("is_real_holding", False))), axis=1)
+    display["signal_rank"] = display["display_signal"].map(_signal_sort_key)
+    display["signal_ko"] = display["display_signal"].map(lambda value: _signal_label(value, execution_window=False))
+    display = _append_missing_real_holdings(display, chat_id=chat_id, execution_window=False)
+    display = _merge_best_mode_contract(display)
+    display = _filter_dashboard_like_signal_set(display)
+    return display.sort_values(["signal_rank", "is_real_holding", "code"], ascending=[True, False, True]).reset_index(drop=True)
 
 
 def _decision_latest_row() -> pd.Series | None:
@@ -901,22 +1313,62 @@ def _decision_latest_row() -> pd.Series | None:
     return frame.sort_values("date").iloc[-1]
 
 
+def _postclose_decision_latest_row() -> pd.Series | None:
+    decision = _read_postclose_decision_latest()
+    if decision.empty:
+        return None
+    frame = decision.copy()
+    if "date" in frame.columns:
+        frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
+    return frame.sort_values("date").iloc[-1]
+
+
 def _market_session_open(now: datetime | None = None) -> bool:
     return _is_execution_window(now)
 
 
-def _current_price_info(code: str) -> tuple[str, str, str]:
+def _current_price_payload(code: str) -> dict[str, Any]:
     norm = normalize_code(code)
+    snapshot_row: pd.Series | None = None
+    snapshot_date = pd.NaT
     prices = _read_price_snapshot()
     if not prices.empty:
         hit = prices[prices["code"] == norm]
         if not hit.empty:
-            row = hit.iloc[-1]
-            basis = "n/a"
-            if pd.notna(row.get("date")):
-                basis = str(pd.to_datetime(row.get("date"), errors="coerce").date())
-            return ("반영가", _fmt_num(row.get("close"), "원"), basis)
-    return ("반영가", "n/a", "n/a")
+            snapshot_row = hit.iloc[-1]
+            snapshot_date = pd.to_datetime(snapshot_row.get("date"), errors="coerce")
+
+    if _is_execution_window():
+        live_quotes = _read_live_quotes()
+        if not live_quotes.empty:
+            live = live_quotes[live_quotes["code"] == norm].copy()
+            if not live.empty:
+                if "date" not in live.columns:
+                    live["date"] = pd.NaT
+                if "quote_time" not in live.columns:
+                    live["quote_time"] = pd.NaT
+                live = live.sort_values(["date", "quote_time"], kind="stable")
+                row = live.iloc[-1]
+                close = _non_nan_float(row.get("close"))
+                if close is not None and close > 0:
+                    live_date = pd.to_datetime(row.get("date"), errors="coerce")
+                    if pd.isna(snapshot_date) or (pd.notna(live_date) and live_date >= snapshot_date):
+                        basis = _format_live_basis(row.get("date"), row.get("quote_time"))
+                        return {"label": "기준가", "value": _fmt_num(close, "원"), "basis": basis, "numeric": close}
+
+    if snapshot_row is not None:
+        row = snapshot_row
+        basis = "n/a"
+        if pd.notna(row.get("date")):
+            basis = str(pd.to_datetime(row.get("date"), errors="coerce").date())
+        numeric = None if pd.isna(row.get("close")) else float(row.get("close"))
+        return {"label": "기준가", "value": _fmt_num(row.get("close"), "원"), "basis": basis, "numeric": numeric}
+    return {"label": "기준가", "value": "n/a", "basis": "n/a", "numeric": None}
+
+
+def _current_price_info(code: str) -> tuple[str, str, str]:
+    payload = _current_price_payload(code)
+    return str(payload["label"]), str(payload["value"]), str(payload["basis"])
 
 
 def help_text() -> str:
@@ -947,6 +1399,7 @@ def help_text() -> str:
             "",
             "[입력 예시]",
             "매수 005930 70000 10",
+            "매수 10 70000 005930 (순서 자유)",
             "매도 005930 73000 5",
             "/note",
             "신영증권 가격규칙 확인 필요",
@@ -971,26 +1424,18 @@ def latest_signals_text(signal_filter: str | None = None, chat_id: str = "") -> 
             df = df[df["display_signal"] == signal_filter]
     if df.empty:
         return "실운영 기준으로 해당 조건의 최신 전략 신호가 없습니다."
-    optimal_ma = _read_optimal_ma_snapshot()
-    if not optimal_ma.empty:
-        df = df.merge(
-            optimal_ma[["code", "optimal_ma_ok"]],
-            on="code",
-            how="left",
-        )
     execution_window = _is_execution_window()
     lines = [f"V2 실운영 최신 의사결정 ({'장중 실행형' if execution_window else '장후 익일후보형'})"]
     counts = df["display_signal"].fillna("").astype(str).str.upper().value_counts().to_dict()
     lines.append(f"- {_signal_distribution_text(counts, execution_window=execution_window)}")
     for _, row in df.head(12).iterrows():
         signal_value = row.get("display_signal", row.get("signal"))
-        ma_alignment = optimal_ma_alignment(signal_value, row.get("optimal_ma_ok"))
         action_text = _current_action_text(signal_value, execution_window=execution_window)
         reason_text = _brief_reason_text(row)
         v2_text = _v2_timing_summary_text(row)
         next_text = _next_review_text(execution_window=execution_window)
         lines.append(
-            f"- {_signal_label(signal_value, execution_window=execution_window)} | {row['code']} {row['name']} | 최적MA {ma_alignment} | V2 {v2_text} | 지금 행동: {action_text} | 이유: {reason_text} | 다음 판단: {next_text}"
+            f"- {_signal_label(signal_value, execution_window=execution_window)} | {row['code']} {row['name']} | V2 {v2_text} | 지금 행동: {action_text} | 이유: {reason_text} | 다음 판단: {next_text}"
         )
     lines.extend(["", *_execution_state_lines()])
     return "\n".join(lines)
@@ -1016,16 +1461,31 @@ def early_session_brief_text(slot_label: str = "", chat_id: str = "") -> str:
     ]
     def _row_lines(row: pd.Series) -> list[str]:
         code = normalize_code(row.get("code"))
-        price_label, price_value, price_basis = _current_price_info(code)
+        price_payload = _current_price_payload(code)
+        price_label = str(price_payload["label"])
+        price_value = str(price_payload["value"])
+        price_basis = str(price_payload["basis"])
+        price_numeric = price_payload.get("numeric")
         signal_value = row.get("display_signal", row.get("signal"))
         action_text = _current_action_text(signal_value, execution_window=execution_window)
         reason_text = _brief_reason_text(row)
         v2_text = _v2_timing_summary_text(row)
-        return [
+        lines = [
             f"- {row['code']} {row['name']} | {_signal_label(signal_value, execution_window=execution_window)} | {price_label} {price_value}({price_basis}) | 현재 행동: {action_text}",
             f"  V2: {v2_text}",
             f"  사유: {reason_text}",
         ]
+        if str(signal_value).upper() in {"SELL", "SELL_WATCH"}:
+            sell_hint = _sell_execution_hint(
+                row,
+                code=code,
+                chat_id=chat_id,
+                current_price=price_numeric,
+                current_basis=f"{price_label} {price_basis}",
+            )
+            if sell_hint:
+                lines.append(f"  가격: {sell_hint}")
+        return lines
 
     sections = [
         ("[매수/관심 후보]", focus[focus["display_signal"].isin(["BUY", "BUY_WATCH", "WATCH"])]),
@@ -1040,6 +1500,834 @@ def early_session_brief_text(slot_label: str = "", chat_id: str = "") -> str:
             lines.extend(_row_lines(row))
     lines.extend(["", *_execution_state_lines()])
     return "\n".join(lines)
+
+
+def postclose_summary_text(chat_id: str = "") -> str:
+    signal_df = _postclose_operational_signal_df(chat_id)
+    if signal_df.empty:
+        return ""
+    if "date" in signal_df.columns:
+        signal_dates = pd.to_datetime(signal_df["date"], errors="coerce").dropna()
+        if signal_dates.empty:
+            return ""
+        latest_signal_date = signal_dates.max().date()
+    else:
+        return ""
+    if latest_signal_date != datetime.now().date():
+        return ""
+
+    decision = _postclose_decision_latest_row()
+    counts = signal_df["display_signal"].fillna("").astype(str).str.upper().value_counts().to_dict()
+    lines = ["[장후 요약]"]
+    lines.append(f"- 기준일: {latest_signal_date}")
+    if decision is not None:
+        lines.append(f"- 시장 상태: {_market_state_label(decision.get('market_regime', '-'))}")
+        try:
+            exposure = float(decision.get("exposure", 0.0))
+            lines.append(f"- 운용강도: {_operating_intensity_label(exposure)} (노출 {exposure:.2f})")
+        except Exception:
+            pass
+    lines.append(
+        "- "
+        + " / ".join(
+            [
+                f"익일매수 {int(counts.get('BUY', 0))}건",
+                f"익일관심유지 {int(counts.get('BUY_WATCH', 0) + counts.get('WATCH', 0))}건",
+                f"익일소액매도검토 {int(counts.get('SELL_WATCH', 0))}건",
+                f"익일매도 {int(counts.get('SELL', 0))}건",
+            ]
+        )
+    )
+
+    section_defs = [
+        ("[익일매수]", signal_df[signal_df["display_signal"].isin(["BUY"])]),
+        ("[익일관심유지]", signal_df[signal_df["display_signal"].isin(["BUY_WATCH", "WATCH"])]),
+        ("[익일소액매도검토]", signal_df[signal_df["display_signal"].isin(["SELL_WATCH"])]),
+        ("[익일매도]", signal_df[signal_df["display_signal"].isin(["SELL"])]),
+    ]
+    for title, section_df in section_defs:
+        if section_df.empty:
+            continue
+        lines.extend(["", title])
+        for _, row in section_df.head(12).iterrows():
+            code = normalize_code(row.get("code"))
+            price_payload = _current_price_payload(code)
+            reason_text = _brief_reason_text(row)
+            v2_text = _v2_timing_summary_text(row)
+            signal_value = str(row.get("display_signal", "")).upper()
+            lines.append(
+                f"- {row['code']} {row['name']} | {_signal_label(signal_value, execution_window=False)} | "
+                f"{price_payload['label']} {price_payload['value']}({price_payload['basis']})"
+            )
+            lines.append(f"  V2: {v2_text}")
+            lines.append(f"  사유: {reason_text}")
+            if signal_value in {"SELL", "SELL_WATCH"}:
+                sell_hint = _sell_execution_hint(
+                    row,
+                    code=code,
+                    chat_id=chat_id,
+                    current_price=price_payload.get("numeric"),
+                    current_basis=f"{price_payload['label']} {price_payload['basis']}",
+                )
+                if sell_hint:
+                    lines.append(f"  가격: {sell_hint}")
+    return "\n".join(lines)
+
+
+def _postclose_latest_signal_date(signal_df: pd.DataFrame) -> datetime | None:
+    if signal_df.empty or "date" not in signal_df.columns:
+        return None
+    dates = pd.to_datetime(signal_df["date"], errors="coerce").dropna()
+    if dates.empty:
+        return None
+    return dates.max().to_pydatetime()
+
+
+def _load_optimal_ma_windows_for_codes(codes: list[str]) -> pd.DataFrame:
+    norm_codes = sorted({normalize_code(code) for code in codes if str(code or "").strip()})
+    if not norm_codes or not OPTIMAL_MA_ALL_SELECTION_PATH.exists():
+        return pd.DataFrame(columns=["code", "monthly_window", "weekly_window"])
+    usecols = ["code", "name", "ma_timeframe", "ma_window"]
+    df = pd.read_csv(OPTIMAL_MA_ALL_SELECTION_PATH, usecols=usecols, dtype={"code": str}, low_memory=False)
+    if df.empty:
+        return pd.DataFrame(columns=["code", "monthly_window", "weekly_window"])
+    df["code"] = df["code"].astype(str).map(normalize_code)
+    df["ma_timeframe"] = df["ma_timeframe"].astype(str).str.lower()
+    sub = df[df["code"].isin(norm_codes) & df["ma_timeframe"].isin(["monthly", "weekly"])].copy()
+    if sub.empty:
+        return pd.DataFrame(columns=["code", "monthly_window", "weekly_window"])
+    pivot = (
+        sub.pivot_table(index=["code", "name"], columns="ma_timeframe", values="ma_window", aggfunc="last")
+        .reset_index()
+        .rename_axis(None, axis=1)
+        .rename(columns={"monthly": "monthly_window", "weekly": "weekly_window"})
+    )
+    return pivot
+
+
+def _load_close_history_for_codes(codes: list[str]) -> pd.DataFrame:
+    norm_codes = sorted({normalize_code(code) for code in codes if str(code or "").strip()})
+    if not norm_codes or not PRICE_PANEL_PATH.exists():
+        return pd.DataFrame(columns=["date", "code", "close"])
+    code_set = set(norm_codes)
+    frames: list[pd.DataFrame] = []
+    for chunk in pd.read_csv(
+        PRICE_PANEL_PATH,
+        usecols=["date", "code", "close"],
+        dtype={"code": str},
+        chunksize=250000,
+        low_memory=False,
+    ):
+        chunk["code"] = chunk["code"].astype(str).map(normalize_code)
+        part = chunk[chunk["code"].isin(code_set)][["date", "code", "close"]]
+        if not part.empty:
+            frames.append(part)
+    if not frames:
+        return pd.DataFrame(columns=["date", "code", "close"])
+    hist = pd.concat(frames, ignore_index=True)
+    hist["date"] = pd.to_datetime(hist["date"], errors="coerce")
+    hist["close"] = pd.to_numeric(hist["close"], errors="coerce")
+    hist = hist.dropna(subset=["date", "close"]).sort_values(["code", "date"]).reset_index(drop=True)
+    return hist
+
+
+def _latest_optimal_ma_metrics(codes: list[str]) -> pd.DataFrame:
+    windows = _load_optimal_ma_windows_for_codes(codes)
+    hist = _load_close_history_for_codes(codes)
+    if windows.empty or hist.empty:
+        return pd.DataFrame(
+            columns=[
+                "code",
+                "monthly_window",
+                "monthly_ma_price",
+                "monthly_dist",
+                "weekly_window",
+                "weekly_ma_price",
+                "weekly_dist",
+                "current_price",
+            ]
+        )
+
+    rows: list[dict[str, Any]] = []
+    for _, meta in windows.iterrows():
+        code = normalize_code(meta.get("code"))
+        sub = hist[hist["code"] == code]
+        if sub.empty:
+            continue
+        close_series = sub.set_index("date")["close"].sort_index()
+        current_price = float(close_series.iloc[-1])
+
+        monthly_window = pd.to_numeric(pd.Series([meta.get("monthly_window")]), errors="coerce").iloc[0]
+        weekly_window = pd.to_numeric(pd.Series([meta.get("weekly_window")]), errors="coerce").iloc[0]
+
+        monthly_ma_price = None
+        monthly_dist = None
+        if pd.notna(monthly_window) and int(float(monthly_window)) > 0:
+            monthly_series = close_series.resample("M").last().dropna()
+            if not monthly_series.empty:
+                monthly_ma_price = float(monthly_series.rolling(int(float(monthly_window)), min_periods=1).mean().iloc[-1])
+                if monthly_ma_price:
+                    monthly_dist = (current_price / monthly_ma_price) - 1.0
+
+        weekly_ma_price = None
+        weekly_dist = None
+        if pd.notna(weekly_window) and int(float(weekly_window)) > 0:
+            weekly_series = close_series.resample("W-FRI").last().dropna()
+            if not weekly_series.empty:
+                weekly_ma_price = float(weekly_series.rolling(int(float(weekly_window)), min_periods=1).mean().iloc[-1])
+                if weekly_ma_price:
+                    weekly_dist = (current_price / weekly_ma_price) - 1.0
+
+        rows.append(
+            {
+                "code": code,
+                "monthly_window": None if pd.isna(monthly_window) else int(float(monthly_window)),
+                "monthly_ma_price": monthly_ma_price,
+                "monthly_dist": monthly_dist,
+                "weekly_window": None if pd.isna(weekly_window) else int(float(weekly_window)),
+                "weekly_ma_price": weekly_ma_price,
+                "weekly_dist": weekly_dist,
+                "current_price": current_price,
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _brief_font(size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
+    font_path = WINDOWS_FONT_BOLD if bold else WINDOWS_FONT_REG
+    return ImageFont.truetype(str(font_path), size=size)
+
+
+def _brief_action_palette(signal_value: str) -> tuple[str, str]:
+    signal = str(signal_value or "").upper()
+    if signal == "BUY":
+        return "#dbeafe", "#1d4ed8"
+    if signal in {"BUY_WATCH", "WATCH"}:
+        return "#fef3c7", "#b45309"
+    if signal == "HOLD":
+        return "#e0f2fe", "#0f766e"
+    if signal in {"SELL_WATCH", "SELL"}:
+        return "#fee2e2", "#b91c1c"
+    return "#e5e7eb", "#334155"
+
+
+def _brief_holding_palette(is_holding: bool) -> tuple[str, str]:
+    if is_holding:
+        return "#eff6ff", "#1d4ed8"
+    return "#f5f3ff", "#6d28d9"
+
+
+def _brief_price_label(row: pd.Series | dict[str, Any]) -> str:
+    quote_raw = row.get("alert_quote_time", row.get("quote_time"))
+    quote_ts = pd.to_datetime(pd.Series([quote_raw]), errors="coerce").iloc[0]
+    if pd.notna(quote_ts):
+        return f"현재({quote_ts.strftime('%H:%M')})"
+    return "기준"
+
+
+def _filter_dashboard_like_signal_set(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df.copy()
+    work = df.copy()
+    if "is_real_holding" not in work.columns:
+        work["is_real_holding"] = False
+    signal_text = work.get("display_signal", pd.Series(index=work.index, dtype="string")).astype(str).str.upper()
+    action_mask = signal_text.isin(["BUY", "BUY_WATCH"])
+    buy_cross_mask = pd.Series(False, index=work.index, dtype=bool)
+    for col in ("v2_buy_cross", "v2_month_buy_cross"):
+        if col in work.columns:
+            buy_cross_mask = buy_cross_mask | pd.to_numeric(work[col], errors="coerce").fillna(0).astype(bool)
+    holding_mask = work["is_real_holding"].fillna(False).astype(bool)
+    if holding_mask.any():
+        return work[holding_mask | (action_mask & buy_cross_mask)].copy()
+    return work[action_mask & buy_cross_mask].copy()
+
+
+def _brief_section_rows(signal_df: pd.DataFrame, *, execution_window: bool) -> list[tuple[str, pd.DataFrame]]:
+    if execution_window:
+        return [
+            ("매도", signal_df[signal_df["display_signal"].eq("SELL")].copy()),
+            ("소액매도검토", signal_df[signal_df["display_signal"].eq("SELL_WATCH")].copy()),
+            ("보유유지", signal_df[signal_df["display_signal"].eq("HOLD")].copy()),
+            ("소액매수검토", signal_df[signal_df["display_signal"].isin(["BUY", "BUY_WATCH", "WATCH"])].copy()),
+        ]
+    return [
+        ("익일매도", signal_df[signal_df["display_signal"].eq("SELL")].copy()),
+        ("익일소액매도검토", signal_df[signal_df["display_signal"].eq("SELL_WATCH")].copy()),
+        ("익일보유", signal_df[signal_df["display_signal"].eq("HOLD")].copy()),
+        ("익일관심유지", signal_df[signal_df["display_signal"].isin(["BUY", "BUY_WATCH", "WATCH"])].copy()),
+    ]
+
+
+def _prepare_brief_signal_frame(signal_df: pd.DataFrame) -> pd.DataFrame:
+    if signal_df.empty:
+        return signal_df.copy()
+    metrics = _latest_optimal_ma_metrics(signal_df["code"].astype(str).tolist())
+    work = signal_df.copy()
+    if not metrics.empty:
+        work = work.merge(metrics, on="code", how="left", suffixes=("", "_calc"))
+    for src, dst in [
+        ("current_price", "current_price"),
+        ("monthly_window", "monthly_window"),
+        ("monthly_ma_price", "monthly_ma_price"),
+        ("monthly_dist", "monthly_dist"),
+        ("weekly_window", "weekly_window"),
+        ("weekly_ma_price", "weekly_ma_price"),
+        ("weekly_dist", "weekly_dist"),
+    ]:
+        if f"{dst}_calc" in work.columns:
+            work[dst] = pd.to_numeric(work.get(dst), errors="coerce").combine_first(
+                pd.to_numeric(work.get(f"{dst}_calc"), errors="coerce")
+            )
+    work = normalize_v2_mode_contract_frame(normalize_v2_ma_frame(work))
+
+    def _series_or_na(column: str) -> pd.Series:
+        if column in work.columns:
+            return pd.to_numeric(work[column], errors="coerce")
+        return pd.Series([float("nan")] * len(work), index=work.index, dtype="float64")
+
+    monthly_window = _series_or_na("v2_month_window")
+    weekly_window = _series_or_na("v2_week_window")
+    monthly_ma_price = _series_or_na("v2_month_ma")
+    weekly_ma_price = _series_or_na("v2_week_ma")
+    monthly_dist = _series_or_na("v2_month_display_dist")
+    weekly_dist = _series_or_na("v2_week_display_dist")
+
+    work["monthly_window"] = monthly_window
+    work["weekly_window"] = weekly_window
+    work["monthly_ma_price"] = monthly_ma_price
+    work["weekly_ma_price"] = weekly_ma_price
+    work["monthly_dist"] = monthly_dist
+    work["weekly_dist"] = weekly_dist
+    work["current_price"] = (
+        _series_or_na("alert_current_price")
+        .combine_first(_series_or_na("current_price"))
+        .combine_first(_series_or_na("latest_close"))
+        .combine_first(_series_or_na("close"))
+    )
+
+    buy_timeframe = work["v2_buy_timeframe"].astype("string").str.strip().str.lower() if "v2_buy_timeframe" in work.columns else pd.Series(pd.NA, index=work.index, dtype="string")
+    sell_timeframe = work["v2_sell_timeframe"].astype("string").str.strip().str.lower() if "v2_sell_timeframe" in work.columns else pd.Series(pd.NA, index=work.index, dtype="string")
+    buy_window = _series_or_na("v2_buy_window")
+    sell_window = _series_or_na("v2_sell_window")
+    buy_is_month = buy_timeframe.eq("monthly")
+    sell_is_month = sell_timeframe.eq("monthly")
+
+    work["buy_window"] = buy_window
+    work["sell_window"] = sell_window
+    work["buy_ma_price"] = _series_or_na("v2_buy_ma").combine_first(weekly_ma_price.where(~buy_is_month, monthly_ma_price))
+    work["sell_ma_price"] = _series_or_na("v2_sell_ma").combine_first(weekly_ma_price.where(~sell_is_month, monthly_ma_price))
+    work["buy_dist"] = _series_or_na("v2_buy_live_dist").combine_first(_series_or_na("v2_buy_period_dist")).combine_first(weekly_dist.where(~buy_is_month, monthly_dist))
+    work["sell_dist"] = _series_or_na("v2_sell_live_dist").combine_first(_series_or_na("v2_sell_period_dist")).combine_first(weekly_dist.where(~sell_is_month, monthly_dist))
+    return work
+
+
+def render_postclose_brief_image(chat_id: str = "", *, require_today: bool = False) -> tuple[Path | None, str]:
+    signal_df = _postclose_operational_signal_df(chat_id)
+    if signal_df.empty:
+        return None, ""
+
+    latest_signal_dt = _postclose_latest_signal_date(signal_df)
+    if latest_signal_dt is None:
+        return None, ""
+    if require_today and latest_signal_dt.date() != datetime.now().date():
+        return None, ""
+
+    decision = _postclose_decision_latest_row()
+    work = _prepare_brief_signal_frame(signal_df)
+
+    counts = work["display_signal"].fillna("").astype(str).str.upper().value_counts().to_dict()
+    market_state = "-"
+    exposure_text = "-"
+    if decision is not None:
+        market_state = _market_state_label(decision.get("market_regime", "-"))
+        try:
+            exposure_text = _operating_intensity_label(float(decision.get("exposure", 0.0)))
+        except Exception:
+            exposure_text = "-"
+
+    title = "장후 브리핑"
+    subtitle = (
+        f"기준일 {latest_signal_dt.date()} · 시장 {market_state} · 운용강도 {exposure_text}"
+    )
+    summary_line = (
+        f"익일보유 {int(counts.get('HOLD', 0))} · "
+        f"익일관심유지 {int(counts.get('BUY_WATCH', 0) + counts.get('WATCH', 0) + counts.get('BUY', 0))} · "
+        f"익일소액매도검토 {int(counts.get('SELL_WATCH', 0))} · "
+        f"익일매도 {int(counts.get('SELL', 0))}"
+    )
+
+    section_defs = _brief_section_rows(work, execution_window=False)
+    row_h = 68
+    section_gap = 18
+    section_title_h = 34
+    table_header_h = 46
+    top_h = 146
+    footer_h = 52
+    bottom_h = 40
+    width = 1450
+    margin = 30
+    table_rows = int(sum(len(section_df) for _, section_df in section_defs if not section_df.empty))
+    section_count = int(sum(1 for _, section_df in section_defs if not section_df.empty))
+    height = (
+        margin
+        + top_h
+        + section_count * (section_title_h + table_header_h)
+        + table_rows * row_h
+        + max(section_count - 1, 0) * section_gap
+        + footer_h
+        + bottom_h
+        + margin
+    )
+
+    BRIEF_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = BRIEF_IMAGE_DIR / f"postclose_brief_{latest_signal_dt.strftime('%Y%m%d')}_{str(chat_id or 'default')}.png"
+
+    img = Image.new("RGB", (width, height), "#f8fafc")
+    draw = ImageDraw.Draw(img)
+    draw.rounded_rectangle((margin, margin, width - margin, height - margin), radius=24, fill="#ffffff", outline="#e2e8f0", width=2)
+
+    title_font = _brief_font(34, bold=True)
+    text_font = _brief_font(20)
+    text_bold = _brief_font(20, bold=True)
+    section_font = _brief_font(22, bold=True)
+    cell_font = _brief_font(18)
+    cell_bold = _brief_font(18, bold=True)
+
+    draw.text((margin + 24, margin + 20), title, font=title_font, fill="#0f172a")
+    draw.text((margin + 24, margin + 68), subtitle, font=text_font, fill="#475569")
+    draw.text((margin + 24, margin + 96), summary_line, font=text_bold, fill="#0f172a")
+
+    cols = [
+        ("구분", 92),
+        ("종목", 240),
+        ("액션", 170),
+        ("월/주 이격률", 270),
+        ("가격 기준", 520),
+    ]
+    x_positions: list[int] = []
+    x_cursor = margin + 24
+    for _, col_w in cols:
+        x_positions.append(x_cursor)
+        x_cursor += col_w
+    table_w = sum(col_w for _, col_w in cols)
+
+    y = margin + top_h
+    rendered_sections = 0
+    for section_title, section_df in section_defs:
+        if section_df.empty:
+            continue
+        draw.text((margin + 24, y), section_title, font=section_font, fill="#0f172a")
+        y += section_title_h
+
+        draw.rounded_rectangle((margin + 24, y, margin + 24 + table_w, y + table_header_h), radius=12, fill="#f8fafc", outline="#e2e8f0", width=1)
+        for (col_name, _), x in zip(cols, x_positions):
+            draw.text((x + 12, y + 12), col_name, font=cell_bold, fill="#334155")
+        y += table_header_h
+
+        for _, row in section_df.iterrows():
+            row_box = (margin + 24, y, margin + 24 + table_w, y + row_h)
+            draw.rounded_rectangle(row_box, radius=12, fill="#ffffff", outline="#e5e7eb", width=1)
+
+            kind_bg, kind_fg = _brief_holding_palette(bool(row.get("is_real_holding", False)))
+            action_bg, action_fg = _brief_action_palette(row.get("display_signal", row.get("signal")))
+            kind_text = "보유" if bool(row.get("is_real_holding", False)) else "신규"
+            action_text = str(row.get("signal_ko") or _signal_label(row.get("display_signal"), execution_window=False))
+
+            kind_box = (x_positions[0] + 10, y + 16, x_positions[0] + 72, y + 50)
+            draw.rounded_rectangle(kind_box, radius=16, fill=kind_bg)
+            kind_bbox = draw.textbbox((0, 0), kind_text, font=cell_bold)
+            kind_w = kind_bbox[2] - kind_bbox[0]
+            draw.text((kind_box[0] + (kind_box[2] - kind_box[0] - kind_w) / 2, y + 22), kind_text, font=cell_bold, fill=kind_fg)
+
+            draw.text((x_positions[1] + 10, y + 10), f"{normalize_code(row.get('code'))} {row.get('name', '-')}", font=cell_bold, fill="#0f172a")
+
+            action_box = (x_positions[2] + 10, y + 16, x_positions[2] + 150, y + 50)
+            draw.rounded_rectangle(action_box, radius=16, fill=action_bg)
+            action_bbox = draw.textbbox((0, 0), action_text, font=cell_bold)
+            action_w = action_bbox[2] - action_bbox[0]
+            draw.text((action_box[0] + (action_box[2] - action_box[0] - action_w) / 2, y + 22), action_text, font=cell_bold, fill=action_fg)
+
+            contract = v2_mode_contract_context(row)
+            buy_window = pd.to_numeric(pd.Series([row.get("buy_window")]), errors="coerce").iloc[0]
+            sell_window = pd.to_numeric(pd.Series([row.get("sell_window")]), errors="coerce").iloc[0]
+            buy_dist = pd.to_numeric(pd.Series([row.get("buy_dist")]), errors="coerce").iloc[0]
+            sell_dist = pd.to_numeric(pd.Series([row.get("sell_dist")]), errors="coerce").iloc[0]
+            buy_short = contract.get("buy_short_label")
+            sell_short = contract.get("sell_short_label")
+            dist_line_1 = "-" if pd.isna(buy_window) or not buy_short else f"매수 {buy_short}{int(float(buy_window))} {_fmt_pct(buy_dist)}"
+            dist_line_2 = "-" if pd.isna(sell_window) or not sell_short else f"매도 {sell_short}{int(float(sell_window))} {_fmt_pct(sell_dist)}"
+            draw.text((x_positions[3] + 10, y + 10), dist_line_1, font=cell_font, fill="#0f172a")
+            draw.text((x_positions[3] + 10, y + 36), dist_line_2, font=cell_font, fill="#475569")
+
+            current_price = pd.to_numeric(pd.Series([row.get("current_price")]), errors="coerce").iloc[0]
+            buy_ma_price = pd.to_numeric(pd.Series([row.get("buy_ma_price")]), errors="coerce").iloc[0]
+            sell_ma_price = pd.to_numeric(pd.Series([row.get("sell_ma_price")]), errors="coerce").iloc[0]
+            price_line_1 = f"{_brief_price_label(row)} {_fmt_num_plain(current_price)}"
+            if bool(row.get("is_real_holding", False)):
+                price_line_2 = "-" if pd.isna(sell_window) or not sell_short else f"매도선 {_fmt_num_plain(sell_ma_price)}"
+            else:
+                price_line_2 = "-" if pd.isna(buy_window) or not buy_short else f"매수선 {_fmt_num_plain(buy_ma_price)}"
+            draw.text((x_positions[4] + 10, y + 10), price_line_1, font=cell_font, fill="#0f172a")
+            draw.text((x_positions[4] + 10, y + 36), price_line_2, font=cell_font, fill="#475569")
+
+            y += row_h
+        rendered_sections += 1
+        if rendered_sections < section_count:
+            y += section_gap
+
+    footer = "가격 기준: 계약 기준 매수선/매도선을 사용합니다."
+    footer_y = max(y + 12, height - margin - footer_h)
+    draw.text((margin + 24, footer_y), footer, font=_brief_font(16), fill="#64748b")
+    img.save(out_path)
+
+    caption = (
+        f"[장후 브리핑] 기준 {latest_signal_dt.date()} | "
+        f"익일보유 {int(counts.get('HOLD', 0))} / "
+        f"익일관심유지 {int(counts.get('BUY_WATCH', 0) + counts.get('WATCH', 0) + counts.get('BUY', 0))} / "
+        f"익일소액매도검토 {int(counts.get('SELL_WATCH', 0))} / "
+        f"익일매도 {int(counts.get('SELL', 0))}"
+    )
+    return out_path, caption
+
+
+def render_operational_brief_image(slot_label: str = "", chat_id: str = "", *, require_today: bool = False) -> tuple[Path | None, str]:
+    signal_df = _operational_signal_df(chat_id)
+    if signal_df.empty:
+        return None, ""
+
+    latest_signal_dt = _postclose_latest_signal_date(signal_df)
+    if latest_signal_dt is None:
+        return None, ""
+    if require_today and latest_signal_dt.date() != datetime.now().date():
+        return None, ""
+
+    decision = _decision_latest_row()
+    work = _prepare_brief_signal_frame(signal_df)
+    counts = work["display_signal"].fillna("").astype(str).str.upper().value_counts().to_dict()
+    market_state = "-"
+    exposure_text = "-"
+    if decision is not None:
+        market_state = _market_state_label(decision.get("market_regime", "-"))
+        try:
+            exposure_text = _operating_intensity_label(float(decision.get("exposure", 0.0)))
+        except Exception:
+            exposure_text = "-"
+
+    slot_text = str(slot_label or "").strip()
+    title = "장초반 브리핑"
+    stem = "open"
+    if "프리" in slot_text:
+        title = "프리장 1차 브리핑"
+        stem = "premarket"
+    elif "본" in slot_text:
+        title = "본장 2차 브리핑"
+        stem = "open"
+
+    subtitle = (
+        f"기준일 {latest_signal_dt.date()} · 시장 {market_state} · 운용강도 {exposure_text}"
+    )
+    summary_line = (
+        f"보유유지 {int(counts.get('HOLD', 0))} · "
+        f"소액매수검토 {int(counts.get('BUY_WATCH', 0) + counts.get('WATCH', 0) + counts.get('BUY', 0))} · "
+        f"소액매도검토 {int(counts.get('SELL_WATCH', 0))} · "
+        f"매도 {int(counts.get('SELL', 0))}"
+    )
+
+    section_defs = _brief_section_rows(work, execution_window=True)
+    row_h = 68
+    section_gap = 18
+    section_title_h = 34
+    table_header_h = 46
+    top_h = 146
+    footer_h = 52
+    bottom_h = 40
+    width = 1450
+    margin = 30
+    table_rows = int(sum(len(section_df) for _, section_df in section_defs if not section_df.empty))
+    section_count = int(sum(1 for _, section_df in section_defs if not section_df.empty))
+    height = (
+        margin
+        + top_h
+        + section_count * (section_title_h + table_header_h)
+        + table_rows * row_h
+        + max(section_count - 1, 0) * section_gap
+        + footer_h
+        + bottom_h
+        + margin
+    )
+
+    BRIEF_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = BRIEF_IMAGE_DIR / f"operational_brief_{stem}_{latest_signal_dt.strftime('%Y%m%d')}_{str(chat_id or 'default')}.png"
+
+    img = Image.new("RGB", (width, height), "#f8fafc")
+    draw = ImageDraw.Draw(img)
+    draw.rounded_rectangle((margin, margin, width - margin, height - margin), radius=24, fill="#ffffff", outline="#e2e8f0", width=2)
+
+    title_font = _brief_font(34, bold=True)
+    text_font = _brief_font(20)
+    text_bold = _brief_font(20, bold=True)
+    section_font = _brief_font(22, bold=True)
+    cell_font = _brief_font(18)
+    cell_bold = _brief_font(18, bold=True)
+
+    draw.text((margin + 24, margin + 20), title, font=title_font, fill="#0f172a")
+    draw.text((margin + 24, margin + 68), subtitle, font=text_font, fill="#475569")
+    draw.text((margin + 24, margin + 96), summary_line, font=text_bold, fill="#0f172a")
+
+    cols = [
+        ("구분", 92),
+        ("종목", 240),
+        ("액션", 170),
+        ("월/주 이격률", 270),
+        ("가격 기준", 520),
+    ]
+    x_positions: list[int] = []
+    x_cursor = margin + 24
+    for _, col_w in cols:
+        x_positions.append(x_cursor)
+        x_cursor += col_w
+    table_w = sum(col_w for _, col_w in cols)
+
+    y = margin + top_h
+    rendered_sections = 0
+    for section_title, section_df in section_defs:
+        if section_df.empty:
+            continue
+        draw.text((margin + 24, y), section_title, font=section_font, fill="#0f172a")
+        y += section_title_h
+
+        draw.rounded_rectangle((margin + 24, y, margin + 24 + table_w, y + table_header_h), radius=12, fill="#f8fafc", outline="#e2e8f0", width=1)
+        for (col_name, _), x in zip(cols, x_positions):
+            draw.text((x + 12, y + 12), col_name, font=cell_bold, fill="#334155")
+        y += table_header_h
+
+        for _, row in section_df.iterrows():
+            row_box = (margin + 24, y, margin + 24 + table_w, y + row_h)
+            draw.rounded_rectangle(row_box, radius=12, fill="#ffffff", outline="#e5e7eb", width=1)
+
+            kind_bg, kind_fg = _brief_holding_palette(bool(row.get("is_real_holding", False)))
+            action_bg, action_fg = _brief_action_palette(row.get("display_signal", row.get("signal")))
+            kind_text = "보유" if bool(row.get("is_real_holding", False)) else "신규"
+            action_text = str(row.get("signal_ko") or _signal_label(row.get("display_signal"), execution_window=True))
+
+            kind_box = (x_positions[0] + 10, y + 16, x_positions[0] + 72, y + 50)
+            draw.rounded_rectangle(kind_box, radius=16, fill=kind_bg)
+            kind_bbox = draw.textbbox((0, 0), kind_text, font=cell_bold)
+            kind_w = kind_bbox[2] - kind_bbox[0]
+            draw.text((kind_box[0] + (kind_box[2] - kind_box[0] - kind_w) / 2, y + 22), kind_text, font=cell_bold, fill=kind_fg)
+
+            draw.text((x_positions[1] + 10, y + 10), f"{normalize_code(row.get('code'))} {row.get('name', '-')}", font=cell_bold, fill="#0f172a")
+
+            action_box = (x_positions[2] + 10, y + 16, x_positions[2] + 150, y + 50)
+            draw.rounded_rectangle(action_box, radius=16, fill=action_bg)
+            action_bbox = draw.textbbox((0, 0), action_text, font=cell_bold)
+            action_w = action_bbox[2] - action_bbox[0]
+            draw.text((action_box[0] + (action_box[2] - action_box[0] - action_w) / 2, y + 22), action_text, font=cell_bold, fill=action_fg)
+
+            contract = v2_mode_contract_context(row)
+            buy_window = pd.to_numeric(pd.Series([row.get("buy_window")]), errors="coerce").iloc[0]
+            sell_window = pd.to_numeric(pd.Series([row.get("sell_window")]), errors="coerce").iloc[0]
+            buy_dist = pd.to_numeric(pd.Series([row.get("buy_dist")]), errors="coerce").iloc[0]
+            sell_dist = pd.to_numeric(pd.Series([row.get("sell_dist")]), errors="coerce").iloc[0]
+            buy_short = contract.get("buy_short_label")
+            sell_short = contract.get("sell_short_label")
+            dist_line_1 = "-" if pd.isna(buy_window) or not buy_short else f"매수 {buy_short}{int(float(buy_window))} {_fmt_pct(buy_dist)}"
+            dist_line_2 = "-" if pd.isna(sell_window) or not sell_short else f"매도 {sell_short}{int(float(sell_window))} {_fmt_pct(sell_dist)}"
+            draw.text((x_positions[3] + 10, y + 10), dist_line_1, font=cell_font, fill="#0f172a")
+            draw.text((x_positions[3] + 10, y + 36), dist_line_2, font=cell_font, fill="#475569")
+
+            current_price = pd.to_numeric(pd.Series([row.get("current_price")]), errors="coerce").iloc[0]
+            buy_ma_price = pd.to_numeric(pd.Series([row.get("buy_ma_price")]), errors="coerce").iloc[0]
+            sell_ma_price = pd.to_numeric(pd.Series([row.get("sell_ma_price")]), errors="coerce").iloc[0]
+            price_line_1 = f"{_brief_price_label(row)} {_fmt_num_plain(current_price)}"
+            if bool(row.get("is_real_holding", False)):
+                price_line_2 = "-" if pd.isna(sell_window) or not sell_short else f"매도선 {_fmt_num_plain(sell_ma_price)}"
+            else:
+                price_line_2 = "-" if pd.isna(buy_window) or not buy_short else f"매수선 {_fmt_num_plain(buy_ma_price)}"
+            draw.text((x_positions[4] + 10, y + 10), price_line_1, font=cell_font, fill="#0f172a")
+            draw.text((x_positions[4] + 10, y + 36), price_line_2, font=cell_font, fill="#475569")
+            y += row_h
+
+        rendered_sections += 1
+        if rendered_sections < section_count:
+            y += section_gap
+
+    footer = "가격 기준: 계약 기준 매수선/매도선을 사용합니다."
+    footer_y = max(y + 12, height - margin - footer_h)
+    draw.text((margin + 24, footer_y), footer, font=_brief_font(16), fill="#64748b")
+    img.save(out_path)
+
+    caption = (
+        f"[{title}] 기준 {latest_signal_dt.date()} | "
+        f"보유유지 {int(counts.get('HOLD', 0))} / "
+        f"소액매수검토 {int(counts.get('BUY_WATCH', 0) + counts.get('WATCH', 0) + counts.get('BUY', 0))} / "
+        f"소액매도검토 {int(counts.get('SELL_WATCH', 0))} / "
+        f"매도 {int(counts.get('SELL', 0))}"
+    )
+    return out_path, caption
+
+
+def render_fast_trigger_image(signal_df: pd.DataFrame, *, slot_label: str = "") -> tuple[Path | None, str]:
+    if signal_df.empty:
+        return None, ""
+
+    work = signal_df.copy()
+    if "code" in work.columns:
+        work["code"] = work["code"].astype(str).map(normalize_code)
+    if "date" in work.columns:
+        work["date"] = pd.to_datetime(work["date"], errors="coerce")
+    work["display_signal"] = work.get("signal", "").astype(str).str.upper()
+    work = work[work["display_signal"].isin(["BUY", "SELL"])].copy()
+    if work.empty:
+        return None, ""
+
+    work["is_real_holding"] = work["display_signal"].eq("SELL")
+    # No fallback for fast trigger price: use explicit alert price only.
+    work["current_price"] = _numeric_series_or_na(work, "alert_current_price")
+    work["monthly_ma_price"] = _numeric_series_or_na(work, "alert_monthly_ma").combine_first(
+        _numeric_series_or_na(work, "v2_month_ma")
+    )
+    work["weekly_ma_price"] = _numeric_series_or_na(work, "alert_weekly_ma").combine_first(
+        _numeric_series_or_na(work, "v2_week_ma")
+    )
+    work["monthly_window"] = _numeric_series_or_na(work, "v2_month_window")
+    work["weekly_window"] = _numeric_series_or_na(work, "v2_week_window")
+    work["monthly_dist"] = _numeric_series_or_na(work, "v2_month_period_dist")
+    work["weekly_dist"] = _numeric_series_or_na(work, "v2_week_period_dist")
+    latest_signal_dt = work["date"].dropna().max()
+    if pd.isna(latest_signal_dt):
+        latest_signal_dt = pd.Timestamp(datetime.now().date())
+
+    title = f"장중 FAST {slot_label}".strip()
+    summary_line = (
+        f"매수 {int(work['display_signal'].eq('BUY').sum())} · "
+        f"매도 {int(work['display_signal'].eq('SELL').sum())}"
+    )
+    section_defs = [
+        ("매도 변화", work[work["display_signal"] == "SELL"].copy()),
+        ("매수 변화", work[work["display_signal"] == "BUY"].copy()),
+    ]
+    row_h = 68
+    section_gap = 18
+    section_title_h = 34
+    table_header_h = 46
+    top_h = 130
+    footer_h = 52
+    bottom_h = 36
+    width = 1450
+    margin = 30
+    table_rows = int(sum(len(section_df) for _, section_df in section_defs if not section_df.empty))
+    section_count = int(sum(1 for _, section_df in section_defs if not section_df.empty))
+    height = (
+        margin + top_h + section_count * (section_title_h + table_header_h) + table_rows * row_h
+        + max(section_count - 1, 0) * section_gap + footer_h + bottom_h + margin
+    )
+
+    BRIEF_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = latest_signal_dt.strftime("%Y%m%d")
+    out_path = BRIEF_IMAGE_DIR / f"fast_trigger_{stamp}_{slot_label.replace(':','').replace(' ','_') or 'slot'}.png"
+
+    img = Image.new("RGB", (width, height), "#f8fafc")
+    draw = ImageDraw.Draw(img)
+    draw.rounded_rectangle((margin, margin, width - margin, height - margin), radius=24, fill="#ffffff", outline="#e2e8f0", width=2)
+
+    title_font = _brief_font(34, bold=True)
+    text_font = _brief_font(20)
+    text_bold = _brief_font(20, bold=True)
+    section_font = _brief_font(22, bold=True)
+    cell_font = _brief_font(18)
+    cell_bold = _brief_font(18, bold=True)
+
+    draw.text((margin + 24, margin + 20), title, font=title_font, fill="#0f172a")
+    draw.text((margin + 24, margin + 68), f"기준일 {latest_signal_dt.date()} · 변화 종목만 표시", font=text_font, fill="#475569")
+    draw.text((margin + 24, margin + 96), summary_line, font=text_bold, fill="#0f172a")
+
+    cols = [
+        ("구분", 92),
+        ("종목", 240),
+        ("액션", 170),
+        ("기준가", 190),
+        ("월/주 이격률", 270),
+        ("가격 기준", 430),
+    ]
+    x_positions: list[int] = []
+    x_cursor = margin + 24
+    for _, col_w in cols:
+        x_positions.append(x_cursor)
+        x_cursor += col_w
+    table_w = sum(col_w for _, col_w in cols)
+
+    y = margin + top_h
+    rendered_sections = 0
+    for section_title, section_df in section_defs:
+        if section_df.empty:
+            continue
+        draw.text((margin + 24, y), section_title, font=section_font, fill="#0f172a")
+        y += section_title_h
+        draw.rounded_rectangle((margin + 24, y, margin + 24 + table_w, y + table_header_h), radius=12, fill="#f8fafc", outline="#e2e8f0", width=1)
+        for (col_name, _), x in zip(cols, x_positions):
+            draw.text((x + 12, y + 12), col_name, font=cell_bold, fill="#334155")
+        y += table_header_h
+
+        for _, row in section_df.iterrows():
+            row_box = (margin + 24, y, margin + 24 + table_w, y + row_h)
+            draw.rounded_rectangle(row_box, radius=12, fill="#ffffff", outline="#e5e7eb", width=1)
+            kind_bg, kind_fg = _brief_holding_palette(bool(row.get("is_real_holding", False)))
+            action_bg, action_fg = _brief_action_palette(row.get("display_signal"))
+            kind_text = "보유" if bool(row.get("is_real_holding", False)) else "신규"
+            action_text = "매도" if str(row.get("display_signal")).upper() == "SELL" else "매수"
+
+            kind_box = (x_positions[0] + 10, y + 16, x_positions[0] + 72, y + 50)
+            draw.rounded_rectangle(kind_box, radius=16, fill=kind_bg)
+            kind_bbox = draw.textbbox((0, 0), kind_text, font=cell_bold)
+            kind_w = kind_bbox[2] - kind_bbox[0]
+            draw.text((kind_box[0] + (kind_box[2] - kind_box[0] - kind_w) / 2, y + 22), kind_text, font=cell_bold, fill=kind_fg)
+
+            draw.text((x_positions[1] + 10, y + 10), f"{normalize_code(row.get('code'))} {row.get('name', '-')}", font=cell_bold, fill="#0f172a")
+
+            action_box = (x_positions[2] + 10, y + 16, x_positions[2] + 150, y + 50)
+            draw.rounded_rectangle(action_box, radius=16, fill=action_bg)
+            action_bbox = draw.textbbox((0, 0), action_text, font=cell_bold)
+            action_w = action_bbox[2] - action_bbox[0]
+            draw.text((action_box[0] + (action_box[2] - action_box[0] - action_w) / 2, y + 22), action_text, font=cell_bold, fill=action_fg)
+
+            draw.text((x_positions[3] + 10, y + 22), _fmt_num_plain(row.get("current_price")), font=cell_font, fill="#0f172a")
+
+            month_window = pd.to_numeric(pd.Series([row.get("monthly_window")]), errors="coerce").iloc[0]
+            week_window = pd.to_numeric(pd.Series([row.get("weekly_window")]), errors="coerce").iloc[0]
+            month_dist = pd.to_numeric(pd.Series([row.get("monthly_dist")]), errors="coerce").iloc[0]
+            week_dist = pd.to_numeric(pd.Series([row.get("weekly_dist")]), errors="coerce").iloc[0]
+            dist_line_1 = "-" if pd.isna(month_window) else f"월{int(float(month_window))} {_fmt_pct(month_dist)}"
+            dist_line_2 = "-" if pd.isna(week_window) else f"주{int(float(week_window))} {_fmt_pct(week_dist)}"
+            draw.text((x_positions[4] + 10, y + 10), dist_line_1, font=cell_font, fill="#0f172a")
+            draw.text((x_positions[4] + 10, y + 36), dist_line_2, font=cell_font, fill="#475569")
+
+            if bool(row.get("is_real_holding", False)):
+                weekly_line = pd.to_numeric(pd.Series([row.get("weekly_ma_price")]), errors="coerce").iloc[0]
+                price_line_1 = f"주{int(float(week_window))}선 {_fmt_num_plain(weekly_line)}" if pd.notna(week_window) else "주이평선 -"
+                trigger_line = pd.to_numeric(pd.Series([row.get("alert_weekly_trigger_price")]), errors="coerce").iloc[0]
+                price_line_2 = f"트리거 {_fmt_num_plain(trigger_line)}"
+            else:
+                monthly_line = pd.to_numeric(pd.Series([row.get("monthly_ma_price")]), errors="coerce").iloc[0]
+                proposal = monthly_line * 1.02 if pd.notna(monthly_line) else None
+                price_line_1 = f"월선 {_fmt_num_plain(monthly_line)}"
+                price_line_2 = f"제안 {_fmt_num_plain(proposal)}"
+            draw.text((x_positions[5] + 10, y + 10), price_line_1, font=cell_font, fill="#0f172a")
+            draw.text((x_positions[5] + 10, y + 36), price_line_2, font=cell_font, fill="#475569")
+            y += row_h
+
+        rendered_sections += 1
+        if rendered_sections < section_count:
+            y += section_gap
+
+    footer = "장중 FAST는 포지션 변화(BUY/SELL)만 표시합니다."
+    footer_y = max(y + 12, height - margin - footer_h)
+    draw.text((margin + 24, footer_y), footer, font=_brief_font(16), fill="#64748b")
+    img.save(out_path)
+
+    caption = f"[장중 FAST {slot_label}] 매수 {int(work['display_signal'].eq('BUY').sum())} / 매도 {int(work['display_signal'].eq('SELL').sum())}"
+    return out_path, caption
 
 
 def tomorrow_plan_text(chat_id: str = "") -> str:
@@ -1062,7 +2350,7 @@ def _held_strategy_status_text(chat_id: str) -> str:
         [
             f"- 실보유 종목 수: {len(snap)}",
             f"- {_signal_distribution_text(counts, execution_window=execution_window)}",
-            "- 기준 전략: 월봉매수 / 주봉매도 / buy_0%__sell_-5%",
+            "- 실행 기본형: 월봉매수 / 주봉매도 / buy_0%__sell_-5%",
         ]
     )
 
@@ -1330,18 +2618,16 @@ def signal_detail_text(identifier: str, chat_id: str = "") -> str:
         for col in optimal_ma_row.columns:
             if col != "code":
                 row[col] = optimal_ma_row.iloc[0][col]
-    row["display_signal"] = _display_signal(row.get("signal"), row.get("conviction_score"), row.get("risk_flag"))
+    is_real_holding = code in _real_holding_codes(chat_id)
+    row["display_signal"] = _display_signal_from_row(row, is_real_holding=is_real_holding)
     decision = _decision_latest_row()
 
-    price_label, price_value, price_basis = _current_price_info(code)
-    basis_numeric = None
-    basis_label = "전일종가"
-    basis_date = "n/a"
-    if not price_hits.empty and pd.notna(price_hits.iloc[0].get("close")):
-        basis_numeric = float(price_hits.iloc[0]["close"])
-        if pd.notna(price_hits.iloc[0].get("date")):
-            basis_date = str(pd.to_datetime(price_hits.iloc[0].get("date"), errors="coerce").date())
-    basis_text = f"{basis_date} 전일종가" if basis_date != "n/a" else "전일종가"
+    price_payload = _current_price_payload(code)
+    price_label = str(price_payload["label"])
+    price_value = str(price_payload["value"])
+    price_basis = str(price_payload["basis"])
+    basis_numeric = price_payload.get("numeric")
+    basis_text = f"{price_label} {price_basis}".strip()
     op_margin = _extract_metric_from_reasons(row, "영업이익률")
     net_margin = _extract_metric_from_reasons(row, "순이익률")
     op_qoq = _extract_metric_from_reasons(row, "영업이익 QoQ")
@@ -1358,23 +2644,14 @@ def signal_detail_text(identifier: str, chat_id: str = "") -> str:
                 op_qoq = _fmt_num(frow.get("op_income_qoq_period"), "원")
     if op_qoq == "n/a":
         op_qoq = _extract_metric_from_reasons(row, "순이익 QoQ")
-    risk_flag = _prettify_risk_flag(row.get("risk_flag")) or "없음"
+    risk_flag = _prettify_risk_flag(row.get("risk_flag")) or "위험없음"
     stop_rule = _display_text(row.get("stop_rule"), "없음")
     exit_rule = _display_text(row.get("target_exit_rule"), "없음")
-    fast_positions = _read_fast_positions()
-    entry_price = None
-    held_snap = portfolio_snapshot(chat_id) if chat_id else pd.DataFrame()
-    if not held_snap.empty:
-        held_hit = held_snap[held_snap["code"] == code]
-        if not held_hit.empty and pd.notna(held_hit.iloc[-1].get("avg_price")):
-            entry_price = float(held_hit.iloc[-1]["avg_price"])
-            row["entry_price"] = entry_price
-    if not fast_positions.empty:
-        pos = fast_positions[fast_positions["code"] == code]
-        if entry_price is None and not pos.empty and pd.notna(pos.iloc[-1].get("entry_price")):
-            entry_price = float(pos.iloc[-1]["entry_price"])
-            row["entry_price"] = entry_price
+    entry_price = _resolve_entry_price(code, chat_id=chat_id, row=row)
+    if entry_price is not None:
+        row["entry_price"] = entry_price
     action_guide = _price_action_guide(row, current_price=basis_numeric, current_basis=basis_text)
+    price_level_lines = _price_level_lines(code, current_price=basis_numeric, buy_price=entry_price)
     quarter_text = "n/a"
     filing_text = "n/a"
     if not feature_row.empty:
@@ -1417,6 +2694,9 @@ def signal_detail_text(identifier: str, chat_id: str = "") -> str:
         "",
         "[실행 가이드]",
         f"- {action_guide}",
+        "",
+        "[가격 기준 맵]",
+        *(price_level_lines if price_level_lines else ["- 표시 가능한 가격 기준이 없습니다."]),
         "",
         "[추가 정보]",
         f"- 업종: {row.get('industry', 'n/a')}",

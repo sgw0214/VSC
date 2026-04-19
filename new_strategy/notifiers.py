@@ -23,6 +23,18 @@ class AlertEvent:
     strategy_id: str
     conviction_score: float
     message: str
+    current_price: float | None = None
+    low_price: float | None = None
+    entry_price: float | None = None
+    weekly_ma: float | None = None
+    weekly_trigger_price: float | None = None
+    monthly_ma: float | None = None
+    stop_loss_price: float | None = None
+    exit_reason: str = ""
+    position_source: str = ""
+    quote_time: str = ""
+    image_path: str = ""
+    caption: str = ""
 
     @property
     def dedupe_key(self) -> str:
@@ -36,6 +48,9 @@ class BaseNotifier:
         return False
 
     def send(self, title: str, message: str) -> None:
+        raise NotImplementedError
+
+    def send_photo(self, photo_path: str, caption: str = "") -> None:
         raise NotImplementedError
 
 
@@ -53,6 +68,15 @@ class TelegramNotifier(BaseNotifier):
         url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
         text = f"{title}\n{message}"
         resp = requests.post(url, json={"chat_id": self.chat_id, "text": text}, timeout=15)
+        resp.raise_for_status()
+
+    def send_photo(self, photo_path: str, caption: str = "") -> None:
+        url = f"https://api.telegram.org/bot{self.bot_token}/sendPhoto"
+        data = {"chat_id": self.chat_id}
+        if caption:
+            data["caption"] = caption[:1024]
+        with open(photo_path, "rb") as handle:
+            resp = requests.post(url, data=data, files={"photo": handle}, timeout=40)
         resp.raise_for_status()
 
 
@@ -78,6 +102,10 @@ class EmailNotifier(BaseNotifier):
         with smtplib.SMTP_SSL(self.smtp_host, self.smtp_port, timeout=20) as server:
             server.login(self.username, self.password)
             server.send_message(msg)
+
+    def send_photo(self, photo_path: str, caption: str = "") -> None:
+        message = caption or Path(photo_path).name
+        self.send("[IMAGE]", message)
 
 
 def build_notifiers() -> List[BaseNotifier]:
@@ -119,6 +147,16 @@ def load_alert_log(path: Path) -> pd.DataFrame:
                 "success",
                 "error",
                 "conviction_score",
+                "current_price",
+                "low_price",
+                "entry_price",
+                "weekly_ma",
+                "weekly_trigger_price",
+                "monthly_ma",
+                "stop_loss_price",
+                "exit_reason",
+                "position_source",
+                "quote_time",
             ]
         )
     df = pd.read_csv(path, dtype={"code": str}, low_memory=False)
@@ -157,16 +195,32 @@ def dispatch_alerts(events: Iterable[AlertEvent], notifiers: List[BaseNotifier],
         return alert_log
 
     rows = []
+    grouped_send_result: Dict[str, tuple[bool, str]] = {}
     for event in new_events:
         title = f"[{event.signal}] {event.name}({event.code})"
         for notifier in notifiers:
-            success = True
-            error = ""
-            try:
-                notifier.send(title, event.message)
-            except Exception as exc:
-                success = False
-                error = str(exc)
+            group_key = ""
+            if notifier.channel == "telegram" and event.image_path:
+                group_key = f"{notifier.channel}|{event.event_type}|{event.signal_date}|{event.image_path}"
+            if group_key:
+                if group_key not in grouped_send_result:
+                    success = True
+                    error = ""
+                    try:
+                        notifier.send_photo(event.image_path, event.caption or event.message)
+                    except Exception as exc:
+                        success = False
+                        error = str(exc)
+                    grouped_send_result[group_key] = (success, error)
+                success, error = grouped_send_result[group_key]
+            else:
+                success = True
+                error = ""
+                try:
+                    notifier.send(title, event.message)
+                except Exception as exc:
+                    success = False
+                    error = str(exc)
             rows.append(
                 {
                     "sent_at": event.event_time,
@@ -181,6 +235,16 @@ def dispatch_alerts(events: Iterable[AlertEvent], notifiers: List[BaseNotifier],
                     "success": success,
                     "error": error,
                     "conviction_score": event.conviction_score,
+                    "current_price": event.current_price,
+                    "low_price": event.low_price,
+                    "entry_price": event.entry_price,
+                    "weekly_ma": event.weekly_ma,
+                    "weekly_trigger_price": event.weekly_trigger_price,
+                    "monthly_ma": event.monthly_ma,
+                    "stop_loss_price": event.stop_loss_price,
+                    "exit_reason": event.exit_reason,
+                    "position_source": event.position_source,
+                    "quote_time": event.quote_time,
                 }
             )
     merged = pd.concat([alert_log, pd.DataFrame(rows)], ignore_index=True)

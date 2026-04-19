@@ -1,3 +1,11 @@
+if (-not $env:NEW_STRATEGY_HIDDEN_BRIDGE) {
+    $env:NEW_STRATEGY_HIDDEN_BRIDGE = "1"
+    Start-Process powershell `
+        -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath) `
+        -WindowStyle Hidden
+    exit 0
+}
+
 Set-Location "E:\VSC\CODE"
 
 if (-not $env:NEW_STRATEGY_TELEGRAM_BOT_TOKEN) {

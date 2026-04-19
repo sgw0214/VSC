@@ -8,6 +8,11 @@ $commonSettingsArgs = @{
 
 $taskDefs = @(
     @{
+        Name = "new_strategy_live_quotes"
+        Script = "E:\VSC\CODE\new_strategy\run_kiwoom_live_quotes.ps1"
+        Description = "Start new_strategy live quotes collector at logon"
+    },
+    @{
         Name = "new_strategy_telegram_bridge"
         Script = "E:\VSC\CODE\new_strategy\run_telegram_bridge.ps1"
         Description = "Start new_strategy telegram bridge at logon"

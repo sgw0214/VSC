@@ -1,4 +1,4 @@
-# Telegram Bridge Action Log
+﻿# Telegram Bridge Action Log
 
 Date: 2026-03-16
 
@@ -13,7 +13,7 @@ This log covers only `T1` Telegram bridge work. It does not change `L1` live str
 2. The bridge should prioritize short operational guidance over free-form chat.
 3. Pre-market proactive messaging is needed.
    - Two windows:
-     - `08:20 ~ 08:25` pre-market first response
+     - `08:28 ~ 08:33` pre-market first response
      - `09:20 ~ 09:25` regular-session second response
    - Use them as operational response briefings for the current focus universe.
 4. Symbols outside the active strategy universe must not be described like active candidates.
@@ -29,7 +29,7 @@ This log covers only `T1` Telegram bridge work. It does not change `L1` live str
 
 ### Symbol handling
 
-- `005390 신성통상` is hard-excluded from active strategy symbol responses.
+- `005390 ?좎꽦?듭긽` is hard-excluded from active strategy symbol responses.
 - More generally:
   - if a symbol has price history but is not in the latest strategy signal/feature snapshot,
   - the bridge responds that the symbol is outside the current strategy universe.
@@ -42,13 +42,13 @@ This log covers only `T1` Telegram bridge work. It does not change `L1` live str
 ### Pre-open proactive briefing
 
 - New internal scheduled windows:
-  - `08:20 ~ 08:25` (`프리장`)
-  - `09:20 ~ 09:25` (`본장`)
+  - `08:28 ~ 08:33` (`?꾨━??)
+  - `09:20 ~ 09:25` (`蹂몄옣`)
 - Message now covers the full focus set, not a truncated top-N list.
 - Message sections are grouped as:
-  - `매수/관심 후보`
-  - `보유 점검`
-  - `매도/경고`
+  - `留ㅼ닔/愿???꾨낫`
+  - `蹂댁쑀 ?먭?`
+  - `留ㅻ룄/寃쎄퀬`
 
 ### Bridge state tracking
 
@@ -96,7 +96,8 @@ Use these in order:
 
 ### Issue logging
 
-- Messages starting with `기록]` are now treated as stored issue/question notes.
+- Messages starting with `湲곕줉]` are now treated as stored issue/question notes.
 - Notes are appended to:
   - `output/strategy_v2/telegram_bridge/telegram_bridge_notes.csv`
 - These notes are intentionally stored without GPT handling at ingest time.
+

@@ -1,0 +1,65 @@
+[    2548ms] [LOG] Gather usage stats:  true @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    4737ms] [WARNING] Unrecognized feature: 'ambient-light-sensor'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    4737ms] [WARNING] Unrecognized feature: 'battery'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    4737ms] [WARNING] Unrecognized feature: 'document-domain'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    4737ms] [WARNING] Unrecognized feature: 'layout-animations'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    4737ms] [WARNING] Unrecognized feature: 'legacy-image-formats'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    4737ms] [WARNING] Unrecognized feature: 'oversized-images'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    4737ms] [WARNING] Unrecognized feature: 'vr'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    4737ms] [WARNING] Unrecognized feature: 'wake-lock'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    4775ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ about:srcdoc:0
+[   16587ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ about:srcdoc:0
+[   25739ms] [WARNING] WARN Infinite extent for field "low": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   25739ms] [WARNING] WARN Infinite extent for field "high": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   25739ms] [WARNING] WARN Infinite extent for field "body_low": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   25739ms] [WARNING] WARN Infinite extent for field "body_high": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   25739ms] [WARNING] WARN Infinite extent for field "ma_overlay": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   25739ms] [WARNING] WARN Infinite extent for field "contract_overlay_1": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   25740ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   25740ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   25740ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   25740ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   25784ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   32008ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   32084ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   32094ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   72219ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   74479ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[   74479ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[   77318ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[   77318ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[   80785ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[   80788ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[   83195ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   90341ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[   92648ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[   92648ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[   95476ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[   95476ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[   99193ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[  173130ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[  175395ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[  175395ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[  178218ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[  178218ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[  182018ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[  254748ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[  257030ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[  257031ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[  259896ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[  259903ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[  261377ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[  344965ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[  347240ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[  347240ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[  350056ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[  350056ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[  353242ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[  353257ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[  355745ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[  413336ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[  415618ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[  415618ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[  418448ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[  418448ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[  422028ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1

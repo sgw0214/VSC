@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import json
@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from datetime import datetime, time as time_of_day
 from pathlib import Path
 from typing import Any
+import unicodedata
 
 import requests
 
@@ -39,11 +40,14 @@ from new_strategy.telegram_bridge_tools import (
     manual_trade_history_text,
     myeval_summary_text,
     portfolio_summary_text,
+    postclose_summary_text,
     read_log_tail,
     recent_alerts_text,
     recent_trades_text,
     record_manual_trade_text,
     regime_explain_text,
+    render_operational_brief_image,
+    render_postclose_brief_image,
     signal_detail_text,
     start_job,
     tomorrow_plan_text,
@@ -55,10 +59,28 @@ from new_strategy.telegram_bridge_tools import (
 REPLY_TIMEOUT_SECONDS = 15
 TELEGRAM_TEXT_LIMIT = 3500
 PIPELINE_PROGRESS_PATH = strategy_output_path("dashboard_pipeline_progress.json")
-EARLY_SESSION_WINDOWS = [
-    ("preopen_1", "프리장", time_of_day(8, 20), time_of_day(8, 25, 59)),
-    ("regular_open_1", "본장", time_of_day(9, 20), time_of_day(9, 25, 59)),
-]
+MARKET_SCHEDULE_STATE_PATH = strategy_output_path("market_schedule_state.json")
+REGULAR_BRIEF_DELAY_SECONDS = 60 * 60
+PREOPEN_BRIEF_START = time_of_day(8, 10)
+PREOPEN_BRIEF_DEADLINE = time_of_day(9, 0)
+POSTCLOSE_SUMMARY_START = time_of_day(20, 10)
+REGULAR_OPEN_BRIEF_START = time_of_day(9, 20)
+REGULAR_OPEN_BRIEF_DEADLINE = time_of_day(10, 0)
+
+
+def _contains_suspicious_mojibake(text: str) -> bool:
+    if "\ufffd" in text:
+        return True
+    # Korean mojibake often appears as CJK compatibility ideographs.
+    return any(0xF900 <= ord(ch) <= 0xFAFF for ch in text)
+
+
+def _prepare_telegram_text(text: str, *, context: str) -> str:
+    normalized = unicodedata.normalize("NFC", str(text or ""))
+    normalized.encode("utf-8", "strict")
+    if _contains_suspicious_mojibake(normalized):
+        raise ValueError(f"suspected_mojibake:{context}")
+    return normalized
 
 
 def _is_pipeline_job_command(command: list[str]) -> bool:
@@ -123,8 +145,19 @@ def _split_message(text: str, limit: int = TELEGRAM_TEXT_LIMIT) -> list[str]:
 
 
 def send_text(bot_token: str, chat_id: str, text: str) -> None:
-    for chunk in _split_message(text):
+    safe_text = _prepare_telegram_text(text, context="send_text")
+    for chunk in _split_message(safe_text):
         _telegram_api(bot_token, "sendMessage", {"chat_id": chat_id, "text": chunk})
+
+
+def send_photo(bot_token: str, chat_id: str, photo_path: Path, caption: str = "") -> None:
+    url = f"https://api.telegram.org/bot{bot_token}/sendPhoto"
+    data: dict[str, Any] = {"chat_id": chat_id}
+    if caption:
+        data["caption"] = _prepare_telegram_text(caption, context="send_photo_caption")[:1024]
+    with photo_path.open("rb") as fh:
+        resp = requests.post(url, data=data, files={"photo": fh}, timeout=60)
+    resp.raise_for_status()
 
 
 def _safe_send_text(
@@ -140,7 +173,29 @@ def _safe_send_text(
         send_text(cfg.bot_token, chat_id, text)
         _touch_state_timestamp(state, "last_outgoing_at", when)
         return True
-    except requests.RequestException as exc:
+    except Exception as exc:
+        _touch_state_timestamp(state, "last_error_at", when)
+        state["last_error_action"] = error_action
+        state["last_error_message"] = str(exc)
+        save_state(cfg.state_path, state)
+        return False
+
+
+def _safe_send_photo(
+    cfg: TelegramBridgeConfig,
+    state: dict[str, Any],
+    *,
+    chat_id: str,
+    photo_path: Path,
+    caption: str,
+    error_action: str,
+    when: datetime | None = None,
+) -> bool:
+    try:
+        send_photo(cfg.bot_token, chat_id, photo_path, caption)
+        _touch_state_timestamp(state, "last_outgoing_at", when)
+        return True
+    except Exception as exc:
         _touch_state_timestamp(state, "last_error_at", when)
         state["last_error_action"] = error_action
         state["last_error_message"] = str(exc)
@@ -157,9 +212,9 @@ def _job_preview_text(job_id: int, job_spec: JobSpec) -> str:
         [
             f"작업 확인이 필요합니다. job_id={job_id}",
             job_spec.summary,
-            "실행하려면 이 채팅에서 `yes` 또는 `no`로 답해 주세요.",
-            f"명시적으로 확인하려면 `confirm {job_id}`를 입력해 주세요.",
-            f"명시적으로 취소하려면 `reject {job_id}`를 입력해 주세요.",
+            "실행하려면 이 채팅에서 `yes` 또는 `no`로 답해주세요.",
+            f"명시적으로 확인하려면 `confirm {job_id}`를 입력해주세요.",
+            f"명시적으로 취소하려면 `reject {job_id}`를 입력해주세요.",
         ]
     )
 
@@ -291,9 +346,9 @@ def _start_job(
     )
     return "\n".join(
         [
-            f"작업을 시작했습니다. job_id={job_id}",
+            f"?묒뾽???쒖옉?덉뒿?덈떎. job_id={job_id}",
             job_spec.summary,
-            "완료되면 결과와 최근 로그를 다시 알려드리겠습니다.",
+            "?꾨즺?섎㈃ 寃곌낵? 理쒓렐 濡쒓렇瑜??ㅼ떆 ?뚮젮?쒕━寃좎뒿?덈떎.",
         ]
     )
 
@@ -313,6 +368,77 @@ def _prune_scheduled_briefs(state: dict[str, Any], keep_days: int = 7) -> None:
         scheduled.pop(key, None)
 
 
+def _load_market_schedule_state() -> dict[str, Any]:
+    if not MARKET_SCHEDULE_STATE_PATH.exists():
+        return {}
+    try:
+        return json.loads(MARKET_SCHEDULE_STATE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _parse_slot_timestamp(raw: Any) -> datetime | None:
+    text = str(raw or "").strip()
+    if not text:
+        return None
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f"):
+        try:
+            return datetime.strptime(text, fmt)
+        except Exception:
+            continue
+    try:
+        return datetime.fromisoformat(text)
+    except Exception:
+        return None
+
+
+def _should_send_preopen_brief(
+    now: datetime,
+    *,
+    first_intraday_date: str,
+    first_done_at: datetime | None,
+    scheduled: dict[str, Any],
+) -> bool:
+    preopen_key = f"{now.date().isoformat()}:preopen_1"
+    if preopen_key in scheduled:
+        return False
+    if first_intraday_date != now.date().isoformat() or first_done_at is None:
+        return False
+    return PREOPEN_BRIEF_START <= now.time() < PREOPEN_BRIEF_DEADLINE and now >= first_done_at
+
+
+def _should_skip_preopen_brief(now: datetime, *, scheduled: dict[str, Any]) -> bool:
+    preopen_key = f"{now.date().isoformat()}:preopen_1"
+    return preopen_key not in scheduled and now.time() >= PREOPEN_BRIEF_DEADLINE
+
+
+def _is_regular_open_slot_ready(now: datetime, last_intraday_slot: datetime | None) -> bool:
+    return (
+        last_intraday_slot is not None
+        and last_intraday_slot.date() == now.date()
+        and (last_intraday_slot.hour > 9 or (last_intraday_slot.hour == 9 and last_intraday_slot.minute >= 10))
+    )
+
+
+def _should_send_regular_open_brief(
+    now: datetime,
+    *,
+    scheduled: dict[str, Any],
+    last_intraday_slot: datetime | None,
+) -> bool:
+    regular_key = f"{now.date().isoformat()}:regular_open_1"
+    if regular_key in scheduled:
+        return False
+    if not (REGULAR_OPEN_BRIEF_START <= now.time() < REGULAR_OPEN_BRIEF_DEADLINE):
+        return False
+    return _is_regular_open_slot_ready(now, last_intraday_slot)
+
+
+def _should_skip_regular_open_brief(now: datetime, *, scheduled: dict[str, Any]) -> bool:
+    regular_key = f"{now.date().isoformat()}:regular_open_1"
+    return regular_key not in scheduled and now.time() >= REGULAR_OPEN_BRIEF_DEADLINE
+
+
 def _maybe_send_early_session_brief(cfg: TelegramBridgeConfig, state: dict[str, Any]) -> None:
     now = datetime.now()
     if now.weekday() >= 5:
@@ -322,16 +448,103 @@ def _maybe_send_early_session_brief(cfg: TelegramBridgeConfig, state: dict[str, 
 
     _prune_scheduled_briefs(state)
     scheduled = state.setdefault("scheduled_briefs", {})
-    sent = False
+    schedule_state = _load_market_schedule_state()
+    first_intraday_date = str(schedule_state.get("first_intraday_date") or "")
+    first_intraday_completed_at = str(schedule_state.get("first_intraday_completed_at") or "")
+    last_intraday_slot = _parse_slot_timestamp(schedule_state.get("last_intraday_slot"))
+    if first_intraday_date != now.date().isoformat() or not first_intraday_completed_at:
+        return
 
-    for slot_key, slot_label, start_at, end_at in EARLY_SESSION_WINDOWS:
-        if not (start_at <= now.time() <= end_at):
-            continue
-        state_key = f"{now.date().isoformat()}:{slot_key}"
-        if state_key in scheduled:
-            continue
+    try:
+        first_done_at = datetime.fromisoformat(first_intraday_completed_at)
+    except Exception:
+        return
+
+    sent = False
+    preopen_key = f"{now.date().isoformat()}:preopen_1"
+    regular_key = f"{now.date().isoformat()}:regular_open_1"
+
+    if _should_send_preopen_brief(
+        now,
+        first_intraday_date=first_intraday_date,
+        first_done_at=first_done_at,
+        scheduled=scheduled,
+    ):
         for chat_id in cfg.allowed_chat_ids:
-            text = early_session_brief_text(slot_label, str(chat_id))
+            photo_path, caption = render_operational_brief_image("프리장", str(chat_id), require_today=True)
+            if photo_path is not None and photo_path.exists():
+                sent_ok = _safe_send_photo(
+                    cfg,
+                    state,
+                    chat_id=str(chat_id),
+                    photo_path=photo_path,
+                    caption=caption,
+                    error_action="scheduled_early_session_brief_image",
+                    when=now,
+                )
+                if sent_ok:
+                    append_message_log(
+                        cfg.message_log_path,
+                        direction="out",
+                        chat_id=str(chat_id),
+                        text=f"{caption}\n[image] {photo_path}",
+                        intent="scheduled_early_session_brief",
+                        used_model=False,
+                        tool_name="scheduled_early_session_brief_image",
+                    )
+                    continue
+
+            text = early_session_brief_text("프리장", str(chat_id))
+            sent_ok = _safe_send_text(
+                cfg,
+                state,
+                chat_id=str(chat_id),
+                text=text,
+                error_action="scheduled_early_session_brief",
+                when=now,
+            )
+            if not sent_ok:
+                continue
+            append_message_log(
+                cfg.message_log_path,
+                direction="out",
+                chat_id=str(chat_id),
+                text=text,
+                intent="scheduled_early_session_brief",
+                used_model=False,
+                    tool_name="scheduled_early_session_brief",
+                )
+        scheduled[preopen_key] = now.isoformat()
+        sent = True
+    elif _should_skip_preopen_brief(now, scheduled=scheduled):
+        scheduled[preopen_key] = f"SKIPPED:{now.isoformat()}"
+
+    if _should_send_regular_open_brief(now, scheduled=scheduled, last_intraday_slot=last_intraday_slot):
+        for chat_id in cfg.allowed_chat_ids:
+            photo_path, caption = render_operational_brief_image("본장", str(chat_id), require_today=True)
+            if photo_path is not None and photo_path.exists():
+                sent_ok = _safe_send_photo(
+                    cfg,
+                    state,
+                    chat_id=str(chat_id),
+                    photo_path=photo_path,
+                    caption=caption,
+                    error_action="scheduled_early_session_brief_image",
+                    when=now,
+                )
+                if sent_ok:
+                    append_message_log(
+                        cfg.message_log_path,
+                        direction="out",
+                        chat_id=str(chat_id),
+                        text=f"{caption}\n[image] {photo_path}",
+                        intent="scheduled_early_session_brief",
+                        used_model=False,
+                        tool_name="scheduled_early_session_brief_image",
+                    )
+                    continue
+
+            text = early_session_brief_text("본장", str(chat_id))
             sent_ok = _safe_send_text(
                 cfg,
                 state,
@@ -351,11 +564,89 @@ def _maybe_send_early_session_brief(cfg: TelegramBridgeConfig, state: dict[str, 
                 used_model=False,
                 tool_name="scheduled_early_session_brief",
             )
-        scheduled[state_key] = now.isoformat()
+        scheduled[regular_key] = now.isoformat()
         sent = True
+    elif _should_skip_regular_open_brief(now, scheduled=scheduled):
+        scheduled[regular_key] = f"SKIPPED:{now.isoformat()}"
 
     if sent:
         _touch_state_timestamp(state, "last_early_session_brief_at", now)
+    if sent or (preopen_key in scheduled) or (regular_key in scheduled):
+        save_state(cfg.state_path, state)
+
+
+def _maybe_send_postclose_summary(cfg: TelegramBridgeConfig, state: dict[str, Any]) -> None:
+    now = datetime.now()
+    if now.weekday() >= 5:
+        return
+    if not cfg.allowed_chat_ids:
+        return
+    if now.time() < POSTCLOSE_SUMMARY_START:
+        return
+
+    schedule_state = _load_market_schedule_state()
+    if str(schedule_state.get("last_eod_date") or "") != now.date().isoformat():
+        return
+
+    _prune_scheduled_briefs(state)
+    scheduled = state.setdefault("scheduled_briefs", {})
+    state_key = f"{now.date().isoformat()}:postclose_summary"
+    if state_key in scheduled:
+        return
+
+    sent_any = False
+    for chat_id in cfg.allowed_chat_ids:
+        photo_path, caption = render_postclose_brief_image(str(chat_id), require_today=True)
+        if photo_path is not None and photo_path.exists():
+            sent_ok = _safe_send_photo(
+                cfg,
+                state,
+                chat_id=str(chat_id),
+                photo_path=photo_path,
+                caption=caption,
+                error_action="scheduled_postclose_summary_image",
+                when=now,
+            )
+            if sent_ok:
+                append_message_log(
+                    cfg.message_log_path,
+                    direction="out",
+                    chat_id=str(chat_id),
+                    text=f"{caption}\n[image] {photo_path}",
+                    intent="scheduled_postclose_summary",
+                    used_model=False,
+                    tool_name="scheduled_postclose_summary_image",
+                )
+                sent_any = True
+                continue
+
+        text = postclose_summary_text(str(chat_id))
+        if not text:
+            continue
+        sent_ok = _safe_send_text(
+            cfg,
+            state,
+            chat_id=str(chat_id),
+            text=text,
+            error_action="scheduled_postclose_summary",
+            when=now,
+        )
+        if not sent_ok:
+            continue
+        append_message_log(
+            cfg.message_log_path,
+            direction="out",
+            chat_id=str(chat_id),
+            text=text,
+            intent="scheduled_postclose_summary",
+            used_model=False,
+            tool_name="scheduled_postclose_summary",
+        )
+        sent_any = True
+
+    if sent_any:
+        scheduled[state_key] = now.isoformat()
+        _touch_state_timestamp(state, "last_postclose_summary_at", now)
         save_state(cfg.state_path, state)
 
 
@@ -502,9 +793,9 @@ def _route_message(
             )
             pending_notes.pop(str(chat_id), None)
             save_state(cfg.state_path, state)
-            return "기록으로 저장했습니다. 나중에 모아서 검토할 수 있습니다.", "record_note", False
+            return "기록으로 저장했습니다. 이후에 모아서 검토할 수 있습니다.", "record_note", False
         if raw_text.startswith("/"):
-            return "지금은 기록 내용을 기다리고 있습니다. 내용을 그대로 보내거나, 취소하려면 /notecancel 을 입력하세요.", "note_pending", False
+            return "지금은 기록 내용을 기다리고 있습니다. 내용을 그대로 보내거나, 취소하려면 /notecancel 을 입력해주세요.", "note_pending", False
 
     intent = parse_intent(text)
 
@@ -550,7 +841,7 @@ def _route_message(
     if intent.name == "note_prompt":
         pending_notes[str(chat_id)] = datetime.now().isoformat()
         save_state(cfg.state_path, state)
-        return '기록할 내용을 다음 메시지로 보내주세요. 취소는 /notecancel 입니다.', "note_prompt", False
+        return "기록할 내용을 다음 메시지로 보내주세요. 취소는 /notecancel 입니다.", "note_prompt", False
 
     if intent.name == "note_direct":
         note_text = str(intent.args.get("text") or "").strip()
@@ -593,7 +884,7 @@ def _route_message(
     }:
         job_spec = build_job_spec(intent.name)
         if job_spec is None:
-            return "지원하지 않는 작업입니다.", "job_unsupported", False
+            return "吏?먰븯吏 ?딅뒗 ?묒뾽?낅땲??", "job_unsupported", False
         job_id = reserve_job_id(state)
         save_state(cfg.state_path, state)
         if job_spec.require_confirm:
@@ -675,7 +966,7 @@ def _process_update(
         reply = (
             "응답이 지연되고 있습니다.\n"
             "종목 질의는 6자리 종목코드로 다시 요청해 주세요.\n"
-            "예: `034220 왜 HOLD야?`, `068270 정보`"
+            "예: `034220 HOLD`, `068270 정보`"
         )
         tool_name = "timeout"
         used_model = False
@@ -873,6 +1164,12 @@ def main() -> None:
             save_state(cfg.state_path, state)
             pass
         try:
+            _maybe_send_postclose_summary(cfg, state)
+        except requests.RequestException:
+            _touch_state_timestamp(state, "last_error_at")
+            save_state(cfg.state_path, state)
+            pass
+        try:
             updates = get_updates(cfg.bot_token, offset=state.get("offset"), timeout=20)
         except requests.RequestException:
             _touch_state_timestamp(state, "last_error_at")
@@ -903,3 +1200,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

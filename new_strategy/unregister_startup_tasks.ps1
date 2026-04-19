@@ -1,6 +1,7 @@
 Set-Location "E:\VSC\CODE"
 
 $taskNames = @(
+    "new_strategy_live_quotes",
     "new_strategy_telegram_bridge",
     "new_strategy_market_schedule",
     "new_strategy_streamlit"

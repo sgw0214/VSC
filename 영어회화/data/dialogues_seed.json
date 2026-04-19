@@ -1,0 +1,284 @@
+﻿{
+  "dialogues": [
+    {
+      "id": "d001",
+      "set_no": 1,
+      "title": "Ordering Coffee",
+      "level": "A2",
+      "scene": "Cafe",
+      "key_patterns": ["Can I get ...?", "I'd like ...", "For here or to go?", "That's all."],
+      "turns": [
+        {"speaker": "A", "en": "Hi, can I get a medium latte?", "ko": "안녕하세요, 미디엄 라떼 한 잔 주세요."},
+        {"speaker": "B", "en": "Sure. For here or to go?", "ko": "네. 매장에서 드시나요, 가지고 가시나요?"},
+        {"speaker": "A", "en": "To go, please. I'd like it less sweet.", "ko": "포장해주세요. 덜 달게 부탁드려요."},
+        {"speaker": "B", "en": "No problem. Anything else?", "ko": "알겠습니다. 더 필요하신 건요?"}
+      ]
+    },
+    {
+      "id": "d002",
+      "set_no": 2,
+      "title": "Asking for Directions",
+      "level": "A2",
+      "scene": "Street",
+      "key_patterns": ["How do I get to ...?", "Go straight", "Turn left", "It's on your right."],
+      "turns": [
+        {"speaker": "A", "en": "Excuse me, how do I get to City Hall?", "ko": "실례합니다, 시청은 어떻게 가나요?"},
+        {"speaker": "B", "en": "Go straight for two blocks and turn left.", "ko": "두 블록 직진한 뒤 왼쪽으로 도세요."},
+        {"speaker": "A", "en": "Is it far from here?", "ko": "여기서 먼가요?"},
+        {"speaker": "B", "en": "Not really. It's on your right next to the bank.", "ko": "아니요. 은행 옆 오른쪽에 있어요."}
+      ]
+    },
+    {
+      "id": "d003",
+      "set_no": 3,
+      "title": "Rescheduling a Meeting",
+      "level": "B1",
+      "scene": "Office",
+      "key_patterns": ["Can we move ...?", "Something came up", "Does ... work for you?", "That works for me."],
+      "turns": [
+        {"speaker": "A", "en": "Can we move our meeting to tomorrow?", "ko": "회의를 내일로 옮길 수 있을까요?"},
+        {"speaker": "B", "en": "Sure. Did something come up?", "ko": "물론이죠. 무슨 일이 생겼나요?"},
+        {"speaker": "A", "en": "Yes, I need more time to finish the report.", "ko": "네, 보고서를 마무리할 시간이 더 필요해요."},
+        {"speaker": "B", "en": "No problem. Does 10 a.m. work for you?", "ko": "괜찮아요. 오전 10시는 어떠세요?"}
+      ]
+    },
+    {
+      "id": "d004",
+      "set_no": 4,
+      "title": "Phone Call Clarification",
+      "level": "A2",
+      "scene": "Phone",
+      "key_patterns": ["Could you repeat that?", "I didn't catch that", "Speak a little slower", "Let me check."],
+      "turns": [
+        {"speaker": "A", "en": "Hello, this is Mina from ABC Company.", "ko": "안녕하세요, ABC 회사의 미나입니다."},
+        {"speaker": "B", "en": "Hi, I didn't catch that. Could you repeat your name?", "ko": "안녕하세요, 잘 못 들었어요. 이름을 다시 말씀해주실래요?"},
+        {"speaker": "A", "en": "Sure, it's Mina. I called about your order.", "ko": "네, 미나입니다. 주문 건으로 전화드렸어요."},
+        {"speaker": "B", "en": "Thanks. Could you speak a little slower, please?", "ko": "감사합니다. 조금 천천히 말씀해주시겠어요?"}
+      ]
+    },
+    {
+      "id": "d005",
+      "set_no": 5,
+      "title": "Returning an Item",
+      "level": "A2",
+      "scene": "Store",
+      "key_patterns": ["I'd like to return ...", "Do you have the receipt?", "What's wrong with it?", "I'd prefer a refund."],
+      "turns": [
+        {"speaker": "A", "en": "Hi, I'd like to return this shirt.", "ko": "안녕하세요, 이 셔츠를 반품하고 싶어요."},
+        {"speaker": "B", "en": "Sure. Do you have the receipt?", "ko": "네. 영수증 있으신가요?"},
+        {"speaker": "A", "en": "Yes, here it is. The size doesn't fit me.", "ko": "네, 여기요. 사이즈가 맞지 않아요."},
+        {"speaker": "B", "en": "I understand. Would you like an exchange or a refund?", "ko": "알겠습니다. 교환하시겠어요, 환불하시겠어요?"}
+      ]
+    },
+    {
+      "id": "d006",
+      "set_no": 6,
+      "title": "Making a Doctor Appointment",
+      "level": "A2",
+      "scene": "Clinic",
+      "key_patterns": ["I'd like to make an appointment", "Are there any openings?", "How about ...?", "That works."],
+      "turns": [
+        {"speaker": "A", "en": "Hi, I'd like to make an appointment with Dr. Kim.", "ko": "안녕하세요, 김 선생님 진료 예약하고 싶어요."},
+        {"speaker": "B", "en": "Sure. Are there any days that work better for you?", "ko": "네. 편하신 요일이 있으신가요?"},
+        {"speaker": "A", "en": "Do you have any openings this Friday?", "ko": "이번 주 금요일에 빈 시간이 있나요?"},
+        {"speaker": "B", "en": "Yes, 3 p.m. is available.", "ko": "네, 오후 3시 가능합니다."}
+      ]
+    },
+    {
+      "id": "d007",
+      "set_no": 7,
+      "title": "Checking Project Progress",
+      "level": "B1",
+      "scene": "Office",
+      "key_patterns": ["How's it going?", "I'm almost done", "Could you send ...?", "I'll get back to you."],
+      "turns": [
+        {"speaker": "A", "en": "How's the project going so far?", "ko": "프로젝트는 지금까지 어떻게 진행되고 있나요?"},
+        {"speaker": "B", "en": "I'm almost done with the first draft.", "ko": "초안은 거의 끝났어요."},
+        {"speaker": "A", "en": "Great. Could you send it by noon?", "ko": "좋아요. 정오까지 보내주실 수 있나요?"},
+        {"speaker": "B", "en": "Sure, I'll get back to you before lunch.", "ko": "네, 점심 전에 드릴게요."}
+      ]
+    },
+    {
+      "id": "d008",
+      "set_no": 8,
+      "title": "Restaurant Reservation",
+      "level": "A2",
+      "scene": "Restaurant",
+      "key_patterns": ["I'd like to make a reservation", "For how many people?", "At what time?", "See you then."],
+      "turns": [
+        {"speaker": "A", "en": "Hello, I'd like to make a reservation for tonight.", "ko": "안녕하세요, 오늘 저녁 예약하고 싶어요."},
+        {"speaker": "B", "en": "Of course. For how many people?", "ko": "네, 몇 분이신가요?"},
+        {"speaker": "A", "en": "For two people at 7 p.m., please.", "ko": "두 명, 오후 7시로 부탁드려요."},
+        {"speaker": "B", "en": "Done. We look forward to seeing you.", "ko": "예약되었습니다. 기다리고 있겠습니다."}
+      ]
+    },
+    {
+      "id": "d009",
+      "set_no": 9,
+      "title": "Hotel Check-in",
+      "level": "A2",
+      "scene": "Travel",
+      "key_patterns": ["I have a reservation", "Could I see your ID?", "Is breakfast included?", "Check-out is at ..."],
+      "turns": [
+        {"speaker": "A", "en": "Hi, I have a reservation under Park.", "ko": "안녕하세요, 박 이름으로 예약했어요."},
+        {"speaker": "B", "en": "Welcome. Could I see your ID, please?", "ko": "어서 오세요. 신분증 보여주시겠어요?"},
+        {"speaker": "A", "en": "Sure. Is breakfast included?", "ko": "네. 조식이 포함되어 있나요?"},
+        {"speaker": "B", "en": "Yes, and check-out is at 11 a.m.", "ko": "네, 그리고 체크아웃은 오전 11시입니다."}
+      ]
+    },
+    {
+      "id": "d010",
+      "set_no": 10,
+      "title": "Gym Membership",
+      "level": "A2",
+      "scene": "Gym",
+      "key_patterns": ["I'm interested in ...", "How much is ...?", "Is there a trial?", "Sign up"],
+      "turns": [
+        {"speaker": "A", "en": "Hi, I'm interested in joining this gym.", "ko": "안녕하세요, 이 헬스장 등록에 관심 있어요."},
+        {"speaker": "B", "en": "Great. How often do you plan to come?", "ko": "좋습니다. 얼마나 자주 오실 계획인가요?"},
+        {"speaker": "A", "en": "About three times a week. How much is the monthly plan?", "ko": "주 3회 정도요. 월 회원권은 얼마인가요?"},
+        {"speaker": "B", "en": "It's 50 dollars, and we offer a one-day trial.", "ko": "50달러이고, 1일 체험도 제공해요."}
+      ]
+    },
+    {
+      "id": "d011",
+      "set_no": 11,
+      "title": "Online Meeting Issue",
+      "level": "B1",
+      "scene": "Video Call",
+      "key_patterns": ["Can you hear me?", "Your screen is frozen", "Try reconnecting", "You're back"],
+      "turns": [
+        {"speaker": "A", "en": "Can you hear me now?", "ko": "지금 제 목소리 들리나요?"},
+        {"speaker": "B", "en": "Yes, but your screen is frozen.", "ko": "네, 그런데 화면이 멈췄어요."},
+        {"speaker": "A", "en": "Thanks for letting me know. I'll reconnect.", "ko": "알려줘서 고마워요. 다시 접속해볼게요."},
+        {"speaker": "B", "en": "No worries. You're back now.", "ko": "괜찮아요. 지금 다시 보입니다."}
+      ]
+    },
+    {
+      "id": "d012",
+      "set_no": 12,
+      "title": "Weekend Plan",
+      "level": "A2",
+      "scene": "Friends",
+      "key_patterns": ["Do you want to ...?", "How about ...?", "Sounds good", "Let's do that."],
+      "turns": [
+        {"speaker": "A", "en": "Do you want to grab lunch this weekend?", "ko": "이번 주말에 점심 먹을래?"},
+        {"speaker": "B", "en": "Sure. How about Saturday?", "ko": "좋아. 토요일은 어때?"},
+        {"speaker": "A", "en": "Saturday works for me. Around 1 p.m.?", "ko": "토요일 좋아. 오후 1시쯤?"},
+        {"speaker": "B", "en": "Perfect. Let's do that.", "ko": "완벽해. 그렇게 하자."}
+      ]
+    },
+    {
+      "id": "d013",
+      "set_no": 13,
+      "title": "Borrowing a Charger",
+      "level": "A2",
+      "scene": "Office",
+      "key_patterns": ["Do you have ...?", "Could I borrow ...?", "I'll give it back", "Take your time"],
+      "turns": [
+        {"speaker": "A", "en": "Do you have an iPhone charger by any chance?", "ko": "혹시 아이폰 충전기 있나요?"},
+        {"speaker": "B", "en": "Yes, I do. Do you need it now?", "ko": "네, 있어요. 지금 필요하세요?"},
+        {"speaker": "A", "en": "Could I borrow it for 20 minutes?", "ko": "20분만 빌릴 수 있을까요?"},
+        {"speaker": "B", "en": "Of course. Just leave it on my desk later.", "ko": "물론이죠. 나중에 제 책상에 놓아주세요."}
+      ]
+    },
+    {
+      "id": "d014",
+      "set_no": 14,
+      "title": "Asking for a Discount",
+      "level": "B1",
+      "scene": "Market",
+      "key_patterns": ["Is this your best price?", "Could you lower ...?", "How about ...?", "Deal"],
+      "turns": [
+        {"speaker": "A", "en": "I'm interested in this bag. Is this your best price?", "ko": "이 가방 관심 있는데요. 이게 최저가인가요?"},
+        {"speaker": "B", "en": "I can give you a small discount.", "ko": "소폭 할인은 가능해요."},
+        {"speaker": "A", "en": "Could you lower it to 40 dollars?", "ko": "40달러까지 가능할까요?"},
+        {"speaker": "B", "en": "I can do 45. Deal?", "ko": "45달러는 가능해요. 어떠세요?"}
+      ]
+    },
+    {
+      "id": "d015",
+      "set_no": 15,
+      "title": "Giving Feedback",
+      "level": "B1",
+      "scene": "Office",
+      "key_patterns": ["I like ...", "One suggestion is ...", "Could you ...?", "That makes sense"],
+      "turns": [
+        {"speaker": "A", "en": "I reviewed your presentation. I like the structure.", "ko": "발표 자료 검토했어요. 구성은 좋네요."},
+        {"speaker": "B", "en": "Thanks. Any suggestions for improvement?", "ko": "감사합니다. 개선할 점 있을까요?"},
+        {"speaker": "A", "en": "Could you add one real example on slide three?", "ko": "3번 슬라이드에 실제 예시 하나 추가해줄 수 있을까요?"},
+        {"speaker": "B", "en": "Sure, that makes sense. I'll update it.", "ko": "네, 좋은 의견이네요. 수정할게요."}
+      ]
+    },
+    {
+      "id": "d016",
+      "set_no": 16,
+      "title": "Customer Support Chat",
+      "level": "A2",
+      "scene": "Online Service",
+      "key_patterns": ["I have a problem with ...", "When did it start?", "Try ...", "It works now"],
+      "turns": [
+        {"speaker": "A", "en": "Hi, I have a problem with my account login.", "ko": "안녕하세요, 계정 로그인에 문제가 있어요."},
+        {"speaker": "B", "en": "I'm sorry to hear that. When did it start?", "ko": "불편을 드려 죄송합니다. 언제부터 그랬나요?"},
+        {"speaker": "A", "en": "Since this morning. I reset my password, but it failed.", "ko": "오늘 아침부터요. 비밀번호를 재설정했는데도 실패했어요."},
+        {"speaker": "B", "en": "Please clear your browser cache and try again.", "ko": "브라우저 캐시를 지우고 다시 시도해주세요."}
+      ]
+    },
+    {
+      "id": "d017",
+      "set_no": 17,
+      "title": "Morning Small Talk",
+      "level": "A2",
+      "scene": "Office",
+      "key_patterns": ["How was your commute?", "It took ...", "Traffic was ...", "Same here"],
+      "turns": [
+        {"speaker": "A", "en": "Good morning. How was your commute today?", "ko": "좋은 아침이에요. 오늘 출근길 어땠어요?"},
+        {"speaker": "B", "en": "It took longer than usual because of traffic.", "ko": "교통 때문에 평소보다 오래 걸렸어요."},
+        {"speaker": "A", "en": "Same here. It took me almost an hour.", "ko": "저도요. 거의 한 시간 걸렸어요."},
+        {"speaker": "B", "en": "Hopefully tomorrow will be better.", "ko": "내일은 좀 나아지면 좋겠네요."}
+      ]
+    },
+    {
+      "id": "d018",
+      "set_no": 18,
+      "title": "Delivery Confirmation",
+      "level": "A2",
+      "scene": "Home",
+      "key_patterns": ["Did you receive ...?", "It hasn't arrived yet", "I'll check", "Thanks for checking"],
+      "turns": [
+        {"speaker": "A", "en": "Hi, did you receive the package I sent?", "ko": "안녕하세요, 제가 보낸 택배 받으셨나요?"},
+        {"speaker": "B", "en": "Not yet. It hasn't arrived yet.", "ko": "아직요. 아직 도착하지 않았어요."},
+        {"speaker": "A", "en": "I see. I'll check the tracking number now.", "ko": "알겠어요. 지금 송장번호 확인해볼게요."},
+        {"speaker": "B", "en": "Thanks for checking. Please let me know.", "ko": "확인해줘서 고마워요. 알려주세요."}
+      ]
+    },
+    {
+      "id": "d019",
+      "set_no": 19,
+      "title": "Requesting More Time",
+      "level": "B1",
+      "scene": "Office",
+      "key_patterns": ["Could I have ...?", "I need more time", "By when can you ...?", "I'll send it by ..."],
+      "turns": [
+        {"speaker": "A", "en": "Could I have one more day for this task?", "ko": "이 업무 하루만 더 시간 받을 수 있을까요?"},
+        {"speaker": "B", "en": "Maybe. Why do you need more time?", "ko": "아마요. 왜 시간이 더 필요한가요?"},
+        {"speaker": "A", "en": "I found a data issue and need to fix it first.", "ko": "데이터 이슈를 발견해서 먼저 수정해야 해요."},
+        {"speaker": "B", "en": "Okay. Please send the final version by 5 p.m. tomorrow.", "ko": "좋아요. 내일 오후 5시까지 최종본 보내주세요."}
+      ]
+    },
+    {
+      "id": "d020",
+      "set_no": 20,
+      "title": "Networking Introduction",
+      "level": "B1",
+      "scene": "Event",
+      "key_patterns": ["Nice to meet you", "What do you do?", "I work in ...", "Let's keep in touch"],
+      "turns": [
+        {"speaker": "A", "en": "Hi, I'm Jisoo. Nice to meet you.", "ko": "안녕하세요, 지수입니다. 만나서 반가워요."},
+        {"speaker": "B", "en": "Nice to meet you too. What do you do?", "ko": "저도 반가워요. 무슨 일 하세요?"},
+        {"speaker": "A", "en": "I work in marketing at a startup.", "ko": "스타트업에서 마케팅 일을 해요."},
+        {"speaker": "B", "en": "That's great. Let's keep in touch.", "ko": "좋네요. 계속 연락해요."}
+      ]
+    }
+  ]
+}

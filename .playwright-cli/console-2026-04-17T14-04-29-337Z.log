@@ -1,0 +1,31 @@
+[    1743ms] [LOG] Gather usage stats:  true @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    1932ms] [WARNING] Unrecognized feature: 'ambient-light-sensor'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    1932ms] [WARNING] Unrecognized feature: 'battery'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    1932ms] [WARNING] Unrecognized feature: 'document-domain'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    1932ms] [WARNING] Unrecognized feature: 'layout-animations'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    1932ms] [WARNING] Unrecognized feature: 'legacy-image-formats'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    1932ms] [WARNING] Unrecognized feature: 'oversized-images'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    1933ms] [WARNING] Unrecognized feature: 'vr'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    1933ms] [WARNING] Unrecognized feature: 'wake-lock'. @ http://localhost:8501/static/js/main.75ac1cb6.js:9
+[    2114ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ about:srcdoc:0
+[    4678ms] [WARNING] An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing. @ about:srcdoc:0
+[    5178ms] [WARNING] WARN Infinite extent for field "low": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[    5178ms] [WARNING] WARN Infinite extent for field "high": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[    5178ms] [WARNING] WARN Infinite extent for field "body_low": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[    5178ms] [WARNING] WARN Infinite extent for field "body_high": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[    5178ms] [WARNING] WARN Infinite extent for field "ma_overlay": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[    5178ms] [WARNING] WARN Infinite extent for field "contract_overlay_1": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[    5178ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[    5178ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[    5179ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[    5179ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[    5210ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[    5627ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[    5636ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[    5643ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[  183445ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1
+[  185699ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[  185713ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[  188571ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/health:0
+[  188571ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8501/_stcore/host-config:0
+[  189786ms] [WARNING] WARN Infinite extent for field "value": [Infinity, -Infinity] @ http://localhost:8501/static/js/7612.3f409b56.chunk.js:1

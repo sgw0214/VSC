@@ -2,6 +2,7 @@
 
 import importlib.util
 import json
+import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -11,10 +12,20 @@ import pandas as pd
 
 from new_strategy.paths import data_path, output_path, strategy_output_path
 from new_strategy.strategy_rules import StrategyConfig, add_features
+from new_strategy.v2_ma_contract import normalize_v2_mode_contract_frame
 
 
 EXCLUDED_SECURITY_CODES = {"005390"}
 V2_OPTIMAL_MA_RAW_PATH = output_path("ma_breakout_research", "native_timeframe_close_returns_by_stock.csv")
+V2_BEST_MODE_BY_STOCK_PATH = output_path("v2_four_timing_mode_grid", "best_mode_by_stock_full.csv")
+SIGNAL_RESOLUTION_ORDER = {
+    "SELL": 0,
+    "BUY": 1,
+    "SELL_WATCH": 2,
+    "BUY_WATCH": 3,
+    "WATCH": 4,
+    "HOLD": 5,
+}
 
 
 FEATURE_COLUMNS = [
@@ -70,6 +81,81 @@ FEATURE_COLUMNS = [
     "net_income_qoq_pti",
     "days_since_filing",
 ]
+
+
+def dedupe_signal_rows(signal_df: pd.DataFrame) -> pd.DataFrame:
+    if signal_df.empty or "code" not in signal_df.columns or "signal" not in signal_df.columns:
+        return signal_df
+    work = signal_df.copy()
+    work["code"] = work["code"].astype(str).str.upper()
+    work["code"] = work["code"].where(~work["code"].str.fullmatch(r"\d+"), work["code"].str.zfill(6))
+    work["_signal_priority"] = work["signal"].astype(str).str.upper().map(SIGNAL_RESOLUTION_ORDER).fillna(99).astype(int)
+    dedupe_cols = ["code"]
+    sort_cols = ["_signal_priority", "code"]
+    ascending = [True, True]
+    if "date" in work.columns:
+        work["_date_sort"] = pd.to_datetime(work["date"], errors="coerce")
+        dedupe_cols = ["date", "code"]
+        sort_cols = ["_date_sort", "_signal_priority", "code"]
+        ascending = [False, True, True]
+    work = work.sort_values(sort_cols, ascending=ascending, kind="stable")
+    work = work.drop_duplicates(subset=dedupe_cols, keep="first")
+    if "date" in work.columns:
+        work = work.sort_values(["date", "code"], ascending=[True, True], kind="stable")
+    return work.drop(columns=["_signal_priority", "_date_sort"], errors="ignore").reset_index(drop=True)
+
+
+def sync_decision_summary(decision_df: pd.DataFrame, signal_df: pd.DataFrame) -> pd.DataFrame:
+    if decision_df.empty or "date" not in decision_df.columns:
+        return decision_df
+    work = decision_df.copy()
+    if signal_df.empty or "date" not in signal_df.columns or "signal" not in signal_df.columns or "code" not in signal_df.columns:
+        return work
+
+    signals = signal_df.copy()
+    signals["date"] = pd.to_datetime(signals["date"], errors="coerce").dt.strftime("%Y-%m-%d")
+    signals["code"] = signals["code"].astype(str).str.upper()
+    signals["code"] = signals["code"].where(~signals["code"].str.fullmatch(r"\d+"), signals["code"].str.zfill(6))
+    signals["signal"] = signals["signal"].astype(str).str.upper()
+    signals = signals.dropna(subset=["date"])
+    if signals.empty:
+        return work
+
+    grouped: dict[str, dict[str, list[str]]] = {}
+    for dt, group in signals.groupby("date"):
+        grouped[str(dt)] = {
+            "BUY": group.loc[group["signal"] == "BUY", "code"].astype(str).drop_duplicates().tolist(),
+            "SELL": group.loc[group["signal"] == "SELL", "code"].astype(str).drop_duplicates().tolist(),
+            "HOLD": group.loc[group["signal"] == "HOLD", "code"].astype(str).drop_duplicates().tolist(),
+            "WATCH": group.loc[group["signal"] == "WATCH", "code"].astype(str).drop_duplicates().tolist(),
+        }
+
+    work["date"] = pd.to_datetime(work["date"], errors="coerce")
+    work["_date_key"] = work["date"].dt.strftime("%Y-%m-%d")
+
+    for idx, row in work.iterrows():
+        bucket = grouped.get(str(row["_date_key"]))
+        if not bucket:
+            continue
+        buy_codes = bucket["BUY"]
+        sell_codes = bucket["SELL"]
+        hold_codes = bucket["HOLD"]
+        watch_codes = bucket["WATCH"]
+        work.at[idx, "buy_count"] = len(buy_codes)
+        work.at[idx, "sell_count"] = len(sell_codes)
+        work.at[idx, "hold_count"] = len(hold_codes)
+        work.at[idx, "watch_count"] = len(watch_codes)
+        work.at[idx, "buy_codes"] = ",".join(buy_codes)
+        work.at[idx, "sell_codes"] = ",".join(sell_codes)
+        work.at[idx, "watch_codes"] = ",".join(watch_codes)
+        regime = row.get("market_regime", "unknown")
+        exposure = float(row.get("exposure", 1.0) or 1.0)
+        work.at[idx, "summary_text"] = (
+            f"regime={regime}, exposure={exposure:.2f}, "
+            f"buy={len(buy_codes)}, sell={len(sell_codes)}, hold={len(hold_codes)}, watch={len(watch_codes)}"
+        )
+
+    return work.drop(columns=["_date_key"], errors="ignore")
 
 FUND_RENAME = {
     "종목코드": "code",
@@ -201,6 +287,83 @@ def load_v2_optimal_ma_pairs(path: Path = V2_OPTIMAL_MA_RAW_PATH) -> pd.DataFram
     return pivot
 
 
+def load_v2_mode_contract_pairs(
+    best_mode_path: Path = V2_BEST_MODE_BY_STOCK_PATH,
+    base_path: Path = V2_OPTIMAL_MA_RAW_PATH,
+) -> pd.DataFrame:
+    base = load_v2_optimal_ma_pairs(base_path)
+    columns = [
+        "code",
+        "v2_month_window",
+        "v2_week_window",
+        "v2_contract_mode",
+        "v2_buy_timeframe",
+        "v2_sell_timeframe",
+        "v2_buy_window",
+        "v2_sell_window",
+    ]
+    if best_mode_path.exists():
+        contract = pd.read_csv(best_mode_path, dtype={"code": str}, low_memory=False)
+        if not contract.empty:
+            contract["code"] = contract["code"].astype(str).str.zfill(6)
+            contract = normalize_v2_mode_contract_frame(contract)
+            contract = contract[
+                [
+                    "code",
+                    "v2_contract_mode",
+                    "v2_buy_timeframe",
+                    "v2_sell_timeframe",
+                    "v2_buy_window",
+                    "v2_sell_window",
+                ]
+            ].drop_duplicates(subset=["code"], keep="last")
+        else:
+            contract = pd.DataFrame(columns=[c for c in columns if c not in {"v2_month_window", "v2_week_window"}])
+    else:
+        contract = pd.DataFrame(columns=[c for c in columns if c not in {"v2_month_window", "v2_week_window"}])
+
+    if base.empty and contract.empty:
+        return pd.DataFrame(columns=columns)
+    if base.empty:
+        out = contract.copy()
+        out["v2_month_window"] = np.nan
+        out["v2_week_window"] = np.nan
+    elif contract.empty:
+        out = base.copy()
+    else:
+        out = base.merge(contract, on="code", how="outer")
+
+    out["code"] = out["code"].astype(str).str.zfill(6)
+    out["v2_buy_timeframe"] = (
+        out["v2_buy_timeframe"].astype("string").str.strip().str.lower().replace({"": pd.NA, "nan": pd.NA, "none": pd.NA})
+    )
+    out["v2_sell_timeframe"] = (
+        out["v2_sell_timeframe"].astype("string").str.strip().str.lower().replace({"": pd.NA, "nan": pd.NA, "none": pd.NA})
+    )
+    out["v2_buy_timeframe"] = out["v2_buy_timeframe"].fillna("monthly")
+    out["v2_sell_timeframe"] = out["v2_sell_timeframe"].fillna("weekly")
+    out["v2_buy_window"] = pd.to_numeric(out.get("v2_buy_window"), errors="coerce")
+    out["v2_sell_window"] = pd.to_numeric(out.get("v2_sell_window"), errors="coerce")
+    out["v2_month_window"] = pd.to_numeric(out.get("v2_month_window"), errors="coerce")
+    out["v2_week_window"] = pd.to_numeric(out.get("v2_week_window"), errors="coerce")
+    buy_month_mask = out["v2_buy_timeframe"].eq("monthly")
+    sell_month_mask = out["v2_sell_timeframe"].eq("monthly")
+    buy_month_fill_mask = buy_month_mask & out["v2_buy_window"].isna()
+    buy_week_fill_mask = (~buy_month_mask) & out["v2_buy_window"].isna()
+    sell_month_fill_mask = sell_month_mask & out["v2_sell_window"].isna()
+    sell_week_fill_mask = (~sell_month_mask) & out["v2_sell_window"].isna()
+    out.loc[buy_month_fill_mask, "v2_buy_window"] = out.loc[buy_month_fill_mask, "v2_month_window"]
+    out.loc[buy_week_fill_mask, "v2_buy_window"] = out.loc[buy_week_fill_mask, "v2_week_window"]
+    out.loc[sell_month_fill_mask, "v2_sell_window"] = out.loc[sell_month_fill_mask, "v2_month_window"]
+    out.loc[sell_week_fill_mask, "v2_sell_window"] = out.loc[sell_week_fill_mask, "v2_week_window"]
+    out["v2_contract_mode"] = out["v2_contract_mode"].astype("string").str.strip().str.lower()
+    out["v2_contract_mode"] = out["v2_contract_mode"].replace({"": pd.NA, "nan": pd.NA, "none": pd.NA})
+    out["v2_contract_mode"] = out["v2_contract_mode"].fillna(
+        out["v2_buy_timeframe"].astype(str) + "_buy_" + out["v2_sell_timeframe"].astype(str) + "_sell"
+    )
+    return out[columns].drop_duplicates(subset=["code"], keep="last").reset_index(drop=True)
+
+
 def _merge_variable_period_state(
     frame: pd.DataFrame,
     *,
@@ -267,10 +430,99 @@ def _merge_variable_period_state(
     return pd.concat(merged_parts, ignore_index=True)
 
 
+def _build_period_state(grp: pd.DataFrame, timeframe: str) -> pd.DataFrame:
+    tf = str(timeframe or "").strip().lower()
+    if tf == "daily":
+        return grp[["date", "close"]].rename(columns={"date": "state_date", "close": "state_close"}).copy()
+    if tf == "weekly":
+        return (
+            grp.assign(_period_key=grp["date"].dt.to_period("W-FRI"))
+            .groupby("_period_key", as_index=False)
+            .agg(state_date=("date", "max"), state_close=("close", "last"))
+        )
+    return (
+        grp.assign(_period_key=grp["date"].dt.to_period("M"))
+        .groupby("_period_key", as_index=False)
+        .agg(state_date=("date", "max"), state_close=("close", "last"))
+    )
+
+
+def _merge_contract_period_state(
+    frame: pd.DataFrame,
+    *,
+    timeframe_map: dict[str, str],
+    window_map: dict[str, int],
+    prefix: str,
+) -> pd.DataFrame:
+    merged_parts: List[pd.DataFrame] = []
+    base_df = frame.sort_values(["code", "date"]).reset_index(drop=True)
+
+    for code, grp in base_df.groupby("code", sort=False):
+        code_key = str(code).zfill(6)
+        timeframe = str(timeframe_map.get(code_key, "") or "").strip().lower()
+        window = int(window_map.get(code_key, 0) or 0)
+        block = grp.copy()
+        block[f"{prefix}_window"] = np.nan if window < 2 else float(window)
+        block[f"{prefix}_timeframe"] = timeframe or pd.NA
+        block[f"{prefix}_close"] = np.nan
+        block[f"{prefix}_ma"] = np.nan
+        block[f"{prefix}_period_dist"] = np.nan
+        block[f"{prefix}_period_above"] = False
+        block[f"{prefix}_prev_period_dist"] = np.nan
+        block[f"{prefix}_prev_period_above"] = False
+        block[f"{prefix}_live_dist"] = np.nan
+        if window < 2 or timeframe not in {"daily", "weekly", "monthly"}:
+            merged_parts.append(block)
+            continue
+
+        period_state = _build_period_state(grp, timeframe)
+        period_state[f"{prefix}_close"] = period_state["state_close"]
+        period_state[f"{prefix}_ma"] = period_state["state_close"].rolling(
+            window,
+            min_periods=_ma_min_periods(window),
+        ).mean()
+        period_state[f"{prefix}_period_dist"] = period_state["state_close"] / period_state[f"{prefix}_ma"] - 1.0
+        period_state[f"{prefix}_period_above"] = period_state[f"{prefix}_period_dist"] >= 0.0
+        period_state[f"{prefix}_prev_period_dist"] = period_state[f"{prefix}_period_dist"].shift(1)
+        period_state[f"{prefix}_prev_period_above"] = period_state[f"{prefix}_period_above"].shift(1).fillna(False)
+
+        block = pd.merge_asof(
+            grp.sort_values("date").reset_index(drop=True),
+            period_state[
+                [
+                    "state_date",
+                    f"{prefix}_close",
+                    f"{prefix}_ma",
+                    f"{prefix}_period_dist",
+                    f"{prefix}_period_above",
+                    f"{prefix}_prev_period_dist",
+                    f"{prefix}_prev_period_above",
+                ]
+            ],
+            left_on="date",
+            right_on="state_date",
+            direction="backward",
+            allow_exact_matches=True,
+        ).drop(columns=["state_date"], errors="ignore")
+        block[f"{prefix}_window"] = float(window)
+        block[f"{prefix}_timeframe"] = timeframe
+        block[f"{prefix}_live_dist"] = block["close"] / block[f"{prefix}_ma"] - 1.0
+        merged_parts.append(block)
+
+    return pd.concat(merged_parts, ignore_index=True)
+
+
 def add_v2_optimal_ma_features(frame: pd.DataFrame, cfg: EarningsStrategyConfig) -> pd.DataFrame:
-    df = frame.sort_values(["code", "date"]).reset_index(drop=True).copy()
-    selection = load_v2_optimal_ma_pairs()
+    # `sort_values(...).reset_index(...)` already returns a new frame. Copying a
+    # 2M+ row panel again can trigger avoidable memory spikes during daily EOD runs.
+    df = frame.sort_values(["code", "date"]).reset_index(drop=True)
+    selection = load_v2_mode_contract_pairs()
     if selection.empty:
+        df["v2_contract_mode"] = pd.NA
+        df["v2_buy_timeframe"] = pd.NA
+        df["v2_sell_timeframe"] = pd.NA
+        df["v2_buy_window"] = np.nan
+        df["v2_sell_window"] = np.nan
         df["v2_month_window"] = np.nan
         df["v2_week_window"] = np.nan
         df["v2_month_close"] = np.nan
@@ -294,14 +546,69 @@ def add_v2_optimal_ma_features(frame: pd.DataFrame, cfg: EarningsStrategyConfig)
         df["v2_month_sell_cross"] = False
         df["v2_week_sell_trigger"] = False
         df["v2_week_sell_watch"] = False
+        df["v2_buy_close"] = np.nan
+        df["v2_buy_ma"] = np.nan
+        df["v2_buy_period_dist"] = np.nan
+        df["v2_buy_period_above"] = False
+        df["v2_buy_prev_period_dist"] = np.nan
+        df["v2_buy_prev_period_above"] = False
+        df["v2_buy_live_dist"] = np.nan
+        df["v2_buy_ready"] = False
+        df["v2_buy_prev_ready"] = False
+        df["v2_buy_cross"] = False
+        df["v2_buy_above_maintain"] = False
+        df["v2_buy_sell_cross"] = False
+        df["v2_sell_close"] = np.nan
+        df["v2_sell_ma"] = np.nan
+        df["v2_sell_period_dist"] = np.nan
+        df["v2_sell_period_above"] = False
+        df["v2_sell_prev_period_dist"] = np.nan
+        df["v2_sell_prev_period_above"] = False
+        df["v2_sell_live_dist"] = np.nan
+        df["v2_sell_trigger"] = False
+        df["v2_sell_watch"] = False
         return df
 
     selection["code"] = selection["code"].astype(str).str.zfill(6)
+    df = df.merge(
+        selection[
+            [
+                "code",
+                "v2_contract_mode",
+                "v2_buy_timeframe",
+                "v2_sell_timeframe",
+                "v2_buy_window",
+                "v2_sell_window",
+                "v2_month_window",
+                "v2_week_window",
+            ]
+        ],
+        on="code",
+        how="left",
+    )
     window_map_month = selection.set_index("code")["v2_month_window"].dropna().astype(int).to_dict()
     window_map_week = selection.set_index("code")["v2_week_window"].dropna().astype(int).to_dict()
 
     df = _merge_variable_period_state(df, period_alias="M", window_map=window_map_month, prefix="v2_month")
     df = _merge_variable_period_state(df, period_alias="W-FRI", window_map=window_map_week, prefix="v2_week")
+    buy_timeframe_map = (
+        selection.dropna(subset=["v2_buy_timeframe"])
+        .set_index("code")["v2_buy_timeframe"]
+        .astype(str)
+        .str.lower()
+        .to_dict()
+    )
+    sell_timeframe_map = (
+        selection.dropna(subset=["v2_sell_timeframe"])
+        .set_index("code")["v2_sell_timeframe"]
+        .astype(str)
+        .str.lower()
+        .to_dict()
+    )
+    buy_window_map = selection.set_index("code")["v2_buy_window"].dropna().astype(int).to_dict()
+    sell_window_map = selection.set_index("code")["v2_sell_window"].dropna().astype(int).to_dict()
+    df = _merge_contract_period_state(df, timeframe_map=buy_timeframe_map, window_map=buy_window_map, prefix="v2_buy")
+    df = _merge_contract_period_state(df, timeframe_map=sell_timeframe_map, window_map=sell_window_map, prefix="v2_sell")
     df["v2_month_buy_ready"] = df["v2_month_period_dist"] >= cfg.monthly_buy_threshold
     df["v2_month_prev_ready"] = df["v2_month_prev_period_dist"] >= cfg.monthly_buy_threshold
     df["v2_month_buy_cross"] = df["v2_month_buy_ready"] & (~df["v2_month_prev_ready"].fillna(False))
@@ -311,6 +618,16 @@ def add_v2_optimal_ma_features(frame: pd.DataFrame, cfg: EarningsStrategyConfig)
     df["v2_week_sell_watch"] = (
         df["v2_week_period_dist"].gt(cfg.weekly_sell_threshold)
         & df["v2_week_period_dist"].lt(0.0)
+    )
+    df["v2_buy_ready"] = df["v2_buy_period_dist"] >= cfg.monthly_buy_threshold
+    df["v2_buy_prev_ready"] = df["v2_buy_prev_period_dist"] >= cfg.monthly_buy_threshold
+    df["v2_buy_cross"] = df["v2_buy_ready"] & (~df["v2_buy_prev_ready"].fillna(False))
+    df["v2_buy_above_maintain"] = df["v2_buy_ready"] & df["v2_buy_prev_ready"].fillna(False)
+    df["v2_buy_sell_cross"] = (~df["v2_buy_ready"]) & df["v2_buy_prev_ready"].fillna(False)
+    df["v2_sell_trigger"] = df["v2_sell_period_dist"] <= cfg.weekly_sell_threshold
+    df["v2_sell_watch"] = (
+        df["v2_sell_period_dist"].gt(cfg.weekly_sell_threshold)
+        & df["v2_sell_period_dist"].lt(0.0)
     )
     return df
 
@@ -389,9 +706,9 @@ def add_multi_timeframe_ma_features(frame: pd.DataFrame, cfg: EarningsStrategyCo
         df["week_10_above"] = df["v2_week_period_above"].fillna(False)
         df["month_10_ma"] = df["v2_month_ma"]
         df["month_10_above"] = df["v2_month_period_above"].fillna(False)
-        df["weekly_aux_ok"] = (~df["v2_week_sell_trigger"]).fillna(False)
-        df["monthly_main_ok"] = df["v2_month_buy_ready"].fillna(False)
-        df["dist_month_10"] = df["v2_month_live_dist"]
+        df["weekly_aux_ok"] = (~df["v2_sell_trigger"]).fillna(False)
+        df["monthly_main_ok"] = df["v2_buy_ready"].fillna(False)
+        df["dist_month_10"] = df["v2_buy_live_dist"]
     else:
         df = _merge_period_state(
             df,
@@ -412,42 +729,21 @@ def add_multi_timeframe_ma_features(frame: pd.DataFrame, cfg: EarningsStrategyCo
 
 
 def _apply_trend_logic(df: pd.DataFrame, cfg: EarningsStrategyConfig, *, include_ml: bool) -> pd.DataFrame:
-    monthly_ready = df.get("v2_month_buy_ready", pd.Series(False, index=df.index)).fillna(False)
-    monthly_new_buy = df.get("v2_month_buy_cross", pd.Series(False, index=df.index)).fillna(False)
-    monthly_above_maintain = df.get("v2_month_above_maintain", pd.Series(False, index=df.index)).fillna(False)
-    weekly_exit = df.get("v2_week_sell_trigger", pd.Series(False, index=df.index)).fillna(False)
-    weekly_watch = df.get("v2_week_sell_watch", pd.Series(False, index=df.index)).fillna(False)
-    month_live_dist = df.get("v2_month_live_dist", pd.Series(np.nan, index=df.index))
-    price_ok = (
-        (df["ret_5"] <= cfg.max_ret_5)
-        & (df["atr_ratio"] <= cfg.max_atr_ratio)
-        & (month_live_dist <= cfg.max_dist_ma_mid)
-    ).fillna(False)
-    fundamental_ok = (
-        df["quality_gate_ok"].fillna(False)
-        & (df["op_income_pti"] > 0)
-        & (df["net_income_pti"] > 0)
-        & (df["op_margin_pti"] > 0)
-    ).fillna(False)
-
-    df["timing_ok"] = monthly_ready & price_ok & (~weekly_exit)
+    buy_ready = df.get("v2_buy_ready", df.get("v2_month_buy_ready", pd.Series(False, index=df.index))).fillna(False)
+    buy_new_cross = df.get("v2_buy_cross", df.get("v2_month_buy_cross", pd.Series(False, index=df.index))).fillna(False)
+    sell_exit = df.get("v2_sell_trigger", df.get("v2_week_sell_trigger", pd.Series(False, index=df.index))).fillna(False)
+    sell_watch = df.get("v2_sell_watch", df.get("v2_week_sell_watch", pd.Series(False, index=df.index))).fillna(False)
+    df["timing_ok"] = buy_ready & (~sell_exit)
     df["timing_score"] = (
-        0.60 * _bool_score(monthly_ready)
-        + 0.20 * _bool_score(price_ok)
-        + 0.20 * _bool_score(~weekly_exit)
+        0.70 * _bool_score(buy_ready)
+        + 0.30 * _bool_score(~sell_exit)
     )
-    df["watch_candidate"] = df["core_candidate"] & monthly_ready & (~weekly_exit)
-    df["buy_candidate"] = df["watch_candidate"] & monthly_new_buy & price_ok & fundamental_ok & (~weekly_watch)
-    df["sell_candidate"] = weekly_exit | (~df["quality_gate_ok"].fillna(False))
-    df["conviction_score"] = 0.25
-    df.loc[df["watch_candidate"], "conviction_score"] = 0.60
-    df.loc[df["watch_candidate"] & monthly_new_buy, "conviction_score"] = 0.66
-    df.loc[df["watch_candidate"] & fundamental_ok, "conviction_score"] = 0.68
-    df.loc[df["watch_candidate"] & price_ok, "conviction_score"] = 0.72
-    df.loc[df["buy_candidate"], "conviction_score"] = 0.90
-    df.loc[monthly_above_maintain & df["watch_candidate"] & (~df["buy_candidate"]), "conviction_score"] = 0.62
-    df.loc[weekly_watch & (~df["buy_candidate"]), "conviction_score"] = 0.45
-    df.loc[df["sell_candidate"], "conviction_score"] = 0.20
+    df["watch_candidate"] = df["core_candidate"] & buy_ready & (~sell_exit)
+    # V2 MA-only contract: entries/exits are driven by optimal MA state only.
+    df["buy_candidate"] = df["watch_candidate"] & buy_new_cross & (~sell_watch)
+    df["sell_candidate"] = sell_exit
+    # Keep schema-compatible columns, but do not use score for any decision path.
+    df["conviction_score"] = np.nan
     df["conviction_raw"] = df["conviction_score"]
     return df
 
@@ -489,6 +785,25 @@ def load_feature_dataset(path: Path) -> pd.DataFrame:
     if "filing_date_pti" in df.columns:
         df["filing_date_pti"] = pd.to_datetime(df["filing_date_pti"], errors="coerce")
     return df.dropna(subset=["date"]).sort_values(["code", "date"]).reset_index(drop=True)
+
+
+def _sanitize_price_ohlc_frame(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
+    out = df.copy()
+    for col in ["close", "open", "high", "low"]:
+        if col not in out.columns:
+            out[col] = np.nan
+        out[col] = pd.to_numeric(out[col], errors="coerce")
+    out["close"] = out["close"].where(np.isfinite(out["close"]) & (out["close"] > 0))
+    out["open"] = out["open"].where(np.isfinite(out["open"]) & (out["open"] > 0)).combine_first(out["close"])
+    valid_high = out["high"].where(np.isfinite(out["high"]) & (out["high"] > 0))
+    valid_low = out["low"].where(np.isfinite(out["low"]) & (out["low"] > 0))
+    out["high"] = pd.concat([valid_high, out["open"], out["close"]], axis=1).max(axis=1, skipna=True)
+    out["low"] = pd.concat([valid_low, out["open"], out["close"]], axis=1).min(axis=1, skipna=True)
+    out["close"] = out["close"].combine_first(out["open"])
+    out["open"] = out["open"].combine_first(out["close"])
+    return out.dropna(subset=["close", "open", "high", "low"])
 
 
 def load_live_quotes(path: Path) -> pd.DataFrame:
@@ -534,6 +849,7 @@ def load_live_quotes(path: Path) -> pd.DataFrame:
             df[col] = pd.to_numeric(df[col], errors="coerce")
         else:
             df[col] = np.nan
+    df = _sanitize_price_ohlc_frame(df)
     if "quote_time" not in df.columns:
         df["quote_time"] = pd.NaT
     else:
@@ -601,14 +917,34 @@ def build_live_feature_history(feature_df: pd.DataFrame, live_quotes_path: Path)
         suffixes=("", "_live"),
     )
     prev_close = merged["close"]
-    merged["close"] = merged["close_live"].combine_first(merged["close"])
-    merged["open"] = merged["open_live"].combine_first(merged["open"]).fillna(prev_close)
-    merged["high"] = merged["high_live"].combine_first(
-        pd.concat([merged["high"], prev_close, merged["close"]], axis=1).max(axis=1)
-    )
-    merged["low"] = merged["low_live"].combine_first(
-        pd.concat([merged["low"], prev_close, merged["close"]], axis=1).min(axis=1)
-    )
+    base_close = pd.to_numeric(merged["close"], errors="coerce")
+    base_open = pd.to_numeric(merged["open"], errors="coerce")
+    base_high = pd.to_numeric(merged["high"], errors="coerce")
+    base_low = pd.to_numeric(merged["low"], errors="coerce")
+    live_close = pd.to_numeric(merged["close_live"], errors="coerce")
+    live_open = pd.to_numeric(merged["open_live"], errors="coerce")
+    live_high = pd.to_numeric(merged["high_live"], errors="coerce")
+    live_low = pd.to_numeric(merged["low_live"], errors="coerce")
+
+    base_close = base_close.where(np.isfinite(base_close) & (base_close > 0))
+    base_open = base_open.where(np.isfinite(base_open) & (base_open > 0))
+    base_high = base_high.where(np.isfinite(base_high) & (base_high > 0))
+    base_low = base_low.where(np.isfinite(base_low) & (base_low > 0))
+    live_close = live_close.where(np.isfinite(live_close) & (live_close > 0))
+    live_open = live_open.where(np.isfinite(live_open) & (live_open > 0))
+    live_high = live_high.where(np.isfinite(live_high) & (live_high > 0))
+    live_low = live_low.where(np.isfinite(live_low) & (live_low > 0))
+
+    merged["close"] = live_close.combine_first(base_close)
+    merged["open"] = live_open.combine_first(base_open).combine_first(prev_close).combine_first(merged["close"])
+    merged["high"] = pd.concat(
+        [live_high.combine_first(base_high), merged["open"], merged["close"], prev_close],
+        axis=1,
+    ).max(axis=1, skipna=True)
+    merged["low"] = pd.concat(
+        [live_low.combine_first(base_low), merged["open"], merged["close"], prev_close],
+        axis=1,
+    ).min(axis=1, skipna=True)
     merged["volume"] = merged["volume_live"].combine_first(merged["volume"])
     merged["trading_value"] = merged["trading_value_live"].combine_first(merged["trading_value"])
     drop_live = [c for c in merged.columns if c.endswith("_live")]
@@ -941,14 +1277,28 @@ def _row_reasons(row: pd.Series, signal: str) -> Tuple[str, str, str]:
     week_window = _coerce_float(row.get("v2_week_window"))
     month_dist = _coerce_float(row.get("v2_month_period_dist"))
     week_dist = _coerce_float(row.get("v2_week_period_dist"))
+    buy_timeframe = str(row.get("v2_buy_timeframe") or "monthly").strip().lower()
+    sell_timeframe = str(row.get("v2_sell_timeframe") or "weekly").strip().lower()
+    buy_window = _coerce_float(row.get("v2_buy_window"))
+    sell_window = _coerce_float(row.get("v2_sell_window"))
+    buy_dist = _coerce_float(row.get("v2_buy_period_dist"))
+    sell_dist = _coerce_float(row.get("v2_sell_period_dist"))
+    timeframe_labels = {"monthly": "월봉", "weekly": "주봉", "daily": "일봉"}
+    timeframe_short = {"monthly": "월", "weekly": "주", "daily": "일"}
+    buy_label = timeframe_labels.get(buy_timeframe, "매수")
+    sell_label = timeframe_labels.get(sell_timeframe, "매도")
     if signal in {"BUY", "WATCH", "HOLD"}:
-        if bool(row.get("v2_month_buy_cross", False)):
-            reasons.append("월봉 신규 상향돌파")
-        elif bool(row.get("v2_month_above_maintain", False)):
-            reasons.append("월봉 유지상방")
-        if np.isfinite(month_window) and pd.notna(month_dist):
+        if bool(row.get("v2_buy_cross", row.get("v2_month_buy_cross", False))):
+            reasons.append(f"{buy_label} 신규 상향돌파")
+        elif bool(row.get("v2_buy_above_maintain", row.get("v2_month_above_maintain", False))):
+            reasons.append(f"{buy_label} 유지상방")
+        if np.isfinite(buy_window) and pd.notna(buy_dist):
+            reasons.append(f"매수 {timeframe_short.get(buy_timeframe, '')}{int(buy_window)} / 이격 {buy_dist:.1%}")
+        if np.isfinite(sell_window) and pd.notna(sell_dist):
+            reasons.append(f"매도 {timeframe_short.get(sell_timeframe, '')}{int(sell_window)} / 이격 {sell_dist:.1%}")
+        elif np.isfinite(month_window) and pd.notna(month_dist):
             reasons.append(f"최적 월이평 {int(month_window)} / 이격 {month_dist:.1%}")
-        if np.isfinite(week_window) and pd.notna(week_dist):
+        elif np.isfinite(week_window) and pd.notna(week_dist):
             reasons.append(f"최적 주이평 {int(week_window)} / 이격 {week_dist:.1%}")
         if pd.notna(row.get("op_margin_pti")):
             reasons.append(f"영업이익률 {row['op_margin_pti']:.1%}")
@@ -965,14 +1315,14 @@ def _row_reasons(row: pd.Series, signal: str) -> Tuple[str, str, str]:
         if row.get("ml_assist_score", 0) > 0:
             reasons.append(f"ML 보조점수 {row['ml_assist_score']:.2f}")
     else:
-        if np.isfinite(week_window) and pd.notna(week_dist):
-            reasons.append(f"최적 주이평 {int(week_window)} / 이격 {week_dist:.1%}")
+        if bool(row.get("v2_sell_trigger", row.get("v2_week_sell_trigger", False))) and np.isfinite(sell_window):
+            reasons.append(f"매도 {timeframe_short.get(sell_timeframe, '')}{int(sell_window)} 하향트리거")
+        if np.isfinite(sell_window) and pd.notna(sell_dist):
+            reasons.append(f"매도 {timeframe_short.get(sell_timeframe, '')}{int(sell_window)} / 이격 {sell_dist:.1%}")
         if row.get("_exit_reason"):
             reasons.append(str(row["_exit_reason"]))
         if row.get("_realized_return") is not None and not pd.isna(row.get("_realized_return")):
             reasons.append(f"실현수익률 {row['_realized_return']:.2%}")
-        if pd.notna(row.get("conviction_score")):
-            reasons.append(f"점수 {row['conviction_score']:.2f}")
 
     reasons = reasons[:3] + [""] * max(0, 3 - len(reasons))
     return reasons[0], reasons[1], reasons[2]
@@ -986,9 +1336,9 @@ def _risk_flag(row: pd.Series) -> str:
         flags.append("earnings_exception")
     if pd.notna(row.get("atr_ratio")) and row.get("atr_ratio", 0) > 0.10:
         flags.append("high_volatility")
-    if bool(row.get("v2_week_sell_watch", False)):
-        flags.append("weekly_sell_watch")
-    if pd.notna(row.get("v2_month_live_dist")) and row.get("v2_month_live_dist", 0) > 0.18:
+    if bool(row.get("v2_sell_watch", row.get("v2_week_sell_watch", False))):
+        flags.append("sell_watch")
+    if pd.notna(row.get("v2_buy_live_dist")) and row.get("v2_buy_live_dist", 0) > 0.18:
         flags.append("monthly_overheat")
     return "|".join(flags)
 
@@ -1063,6 +1413,23 @@ def _signal_context_fields(row: pd.Series) -> Dict[str, object]:
         "v2_month_sell_cross": bool(row.get("v2_month_sell_cross", False)),
         "v2_week_sell_trigger": bool(row.get("v2_week_sell_trigger", False)),
         "v2_week_sell_watch": bool(row.get("v2_week_sell_watch", False)),
+        "v2_contract_mode": str(row.get("v2_contract_mode") or ""),
+        "v2_buy_timeframe": str(row.get("v2_buy_timeframe") or ""),
+        "v2_sell_timeframe": str(row.get("v2_sell_timeframe") or ""),
+        "v2_buy_window": _coerce_float(row.get("v2_buy_window")),
+        "v2_sell_window": _coerce_float(row.get("v2_sell_window")),
+        "v2_buy_ma": _coerce_float(row.get("v2_buy_ma")),
+        "v2_sell_ma": _coerce_float(row.get("v2_sell_ma")),
+        "v2_buy_period_dist": _coerce_float(row.get("v2_buy_period_dist")),
+        "v2_buy_prev_period_dist": _coerce_float(row.get("v2_buy_prev_period_dist")),
+        "v2_sell_period_dist": _coerce_float(row.get("v2_sell_period_dist")),
+        "v2_buy_live_dist": _coerce_float(row.get("v2_buy_live_dist")),
+        "v2_sell_live_dist": _coerce_float(row.get("v2_sell_live_dist")),
+        "v2_buy_cross": bool(row.get("v2_buy_cross", False)),
+        "v2_buy_above_maintain": bool(row.get("v2_buy_above_maintain", False)),
+        "v2_buy_sell_cross": bool(row.get("v2_buy_sell_cross", False)),
+        "v2_sell_trigger": bool(row.get("v2_sell_trigger", False)),
+        "v2_sell_watch": bool(row.get("v2_sell_watch", False)),
     }
     return fields
 
@@ -1080,11 +1447,57 @@ def _effective_stop_price(row: pd.Series, position: Dict[str, object]) -> float:
     return initial_stop
 
 
+def _safe_low_for_stop(row: pd.Series, close_price: float) -> float:
+    low = _coerce_float(row.get("low"))
+    if np.isfinite(low) and low > 0:
+        return float(low)
+    fallback_candidates = [
+        _coerce_float(row.get("open")),
+        _coerce_float(row.get("high")),
+        close_price,
+    ]
+    valid = [value for value in fallback_candidates if np.isfinite(value) and value > 0]
+    if not valid:
+        return float("nan")
+    return float(min(valid))
+
+
 def _trend_break(row: pd.Series, cfg: EarningsStrategyConfig) -> bool:
-    dist = _coerce_float(row.get("v2_week_period_dist"))
+    dist = _coerce_float(row.get("v2_sell_period_dist"))
+    if not np.isfinite(dist):
+        dist = _coerce_float(row.get("v2_week_period_dist"))
     if np.isfinite(dist):
         return bool(dist <= cfg.weekly_sell_threshold)
     return not bool(row.get("monthly_main_ok", True))
+
+
+def _sort_candidates_by_ma_state(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return frame
+    ranked = frame.copy()
+    ranked["_buy_cross_priority"] = (
+        ranked.get("v2_buy_cross", pd.Series(False, index=ranked.index))
+        .fillna(False)
+        .astype(int)
+    )
+    ranked["_buy_live_dist_priority"] = pd.to_numeric(
+        ranked.get("v2_buy_live_dist", ranked.get("v2_buy_period_dist", pd.Series(np.nan, index=ranked.index))),
+        errors="coerce",
+    ).fillna(float("-inf"))
+    ranked["_sell_live_dist_priority"] = pd.to_numeric(
+        ranked.get("v2_sell_live_dist", ranked.get("v2_sell_period_dist", pd.Series(np.nan, index=ranked.index))),
+        errors="coerce",
+    ).fillna(float("-inf"))
+    ranked["_code_priority"] = ranked.index.astype(str)
+    ranked = ranked.sort_values(
+        ["_buy_cross_priority", "_buy_live_dist_priority", "_sell_live_dist_priority", "_code_priority"],
+        ascending=[False, False, False, True],
+        kind="stable",
+    )
+    return ranked.drop(
+        columns=["_buy_cross_priority", "_buy_live_dist_priority", "_sell_live_dist_priority", "_code_priority"],
+        errors="ignore",
+    )
 
 
 def _target_positions(exposure: float, cfg: EarningsStrategyConfig) -> int:
@@ -1094,6 +1507,38 @@ def _target_positions(exposure: float, cfg: EarningsStrategyConfig) -> int:
     if exposure >= 0.99:
         return cfg.max_positions
     return max(1, int(np.floor(cfg.max_positions * exposure)))
+
+
+def _resolve_macro_context(frame: pd.DataFrame, dt: pd.Timestamp) -> tuple[float, str]:
+    exposure_series = pd.to_numeric(frame.get("exposure"), errors="coerce").dropna()
+    regime_series = frame.get("regime", pd.Series(dtype=object))
+    if isinstance(regime_series, pd.Series):
+        regime_series = regime_series.dropna().astype(str).str.strip()
+        regime_series = regime_series[regime_series != ""]
+    else:
+        regime_series = pd.Series(dtype=object)
+
+    if not exposure_series.empty and not regime_series.empty:
+        return float(exposure_series.iloc[0]), str(regime_series.iloc[0])
+
+    macro_path = data_path("macro_regime_v3_rec.csv")
+    if macro_path.exists():
+        try:
+            macro = pd.read_csv(macro_path, usecols=["date", "regime", "exposure"])
+            macro["date"] = pd.to_datetime(macro["date"], errors="coerce")
+            macro["exposure"] = pd.to_numeric(macro["exposure"], errors="coerce")
+            macro["regime"] = macro["regime"].astype(str).str.strip()
+            macro = macro.dropna(subset=["date"]).sort_values("date")
+            macro = macro[(macro["date"] <= pd.Timestamp(dt)) & macro["exposure"].notna() & (macro["regime"] != "")]
+            if not macro.empty:
+                row = macro.iloc[-1]
+                return float(row["exposure"]), str(row["regime"])
+        except Exception:
+            pass
+
+    exposure = float(exposure_series.iloc[0]) if not exposure_series.empty else 1.0
+    regime = str(regime_series.iloc[0]) if not regime_series.empty else "unknown"
+    return exposure, regime
 
 
 def simulate_signals(strategy_df: pd.DataFrame, cfg: EarningsStrategyConfig) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -1111,10 +1556,7 @@ def simulate_signals(strategy_df: pd.DataFrame, cfg: EarningsStrategyConfig) -> 
 
     for dt in dates:
         today = by_date[dt]
-        exposure_series = today["exposure"].dropna()
-        exposure = float(exposure_series.iloc[0]) if not exposure_series.empty else 1.0
-        regime_series = today["regime"].dropna()
-        regime = str(regime_series.iloc[0]) if not regime_series.empty else "unknown"
+        exposure, regime = _resolve_macro_context(today, pd.Timestamp(dt))
         target_positions = _target_positions(exposure, cfg)
         trend_mode = str(cfg.trend_mode or "optimal_ma_v2").strip().lower()
 
@@ -1164,24 +1606,18 @@ def simulate_signals(strategy_df: pd.DataFrame, cfg: EarningsStrategyConfig) -> 
 
             row = today.loc[code]
             close = float(row["close"])
-            low = float(row["low"])
+            low = _safe_low_for_stop(row, close)
             pos["last_close"] = close
             hold_bars = int(pos["hold_bars"])
             effective_stop_price = _effective_stop_price(row, pos)
-            stop_hit = low <= effective_stop_price
-            stale = hold_bars >= cfg.max_holding_days
-            quality_drop = bool((not bool(row["quality_gate_ok"])) or (hold_bars >= cfg.min_hold_days and row["conviction_score"] <= cfg.sell_threshold))
+            stop_hit = bool(np.isfinite(low) and low <= effective_stop_price)
             timing_break = bool(_trend_break(row, cfg))
-            sell_signal = stop_hit or stale or quality_drop or timing_break
+            sell_signal = stop_hit or timing_break
             if sell_signal:
                 exit_price = effective_stop_price if stop_hit else close
                 realized_return = exit_price / float(pos["entry_price"]) - 1.0
                 if stop_hit:
                     exit_reason = "stop_loss"
-                elif stale:
-                    exit_reason = "stale_hold"
-                elif quality_drop:
-                    exit_reason = "quality_drop"
                 else:
                     exit_reason = "timing_break"
                 row = row.copy()
@@ -1203,7 +1639,7 @@ def simulate_signals(strategy_df: pd.DataFrame, cfg: EarningsStrategyConfig) -> 
                         "reason_3": reason_3,
                         "risk_flag": _risk_flag(row),
                         "stop_rule": f"{cfg.fixed_stop_loss:.0%}",
-                        "target_exit_rule": "초기손절/원금보호/품질/타이밍/보유기한",
+                        "target_exit_rule": "초기손절/원금보호/품질/타이밍",
                         **_execution_plan_fields(row, "SELL"),
                         **_signal_context_fields(row),
                     }
@@ -1231,7 +1667,7 @@ def simulate_signals(strategy_df: pd.DataFrame, cfg: EarningsStrategyConfig) -> 
         for code in to_remove:
             positions.pop(code, None)
 
-        candidates = today[today["buy_candidate"]].sort_values("conviction_score", ascending=False)
+        candidates = _sort_candidates_by_ma_state(today[today["buy_candidate"]])
         slots = max(0, target_positions - len(positions))
         if slots > 0:
             for code, row in candidates.iterrows():
@@ -1265,7 +1701,7 @@ def simulate_signals(strategy_df: pd.DataFrame, cfg: EarningsStrategyConfig) -> 
                         "reason_3": reason_3,
                         "risk_flag": _risk_flag(row),
                         "stop_rule": f"{cfg.fixed_stop_loss:.0%}",
-                        "target_exit_rule": "초기손절/원금보호/품질/타이밍/보유기한",
+                        "target_exit_rule": "초기손절/원금보호/품질/타이밍",
                         **_execution_plan_fields(row, "BUY"),
                         **_signal_context_fields(row),
                     }
@@ -1303,7 +1739,7 @@ def simulate_signals(strategy_df: pd.DataFrame, cfg: EarningsStrategyConfig) -> 
             )
             hold_count += 1
 
-        watch_candidates = today[today["watch_candidate"]].sort_values("conviction_score", ascending=False)
+        watch_candidates = _sort_candidates_by_ma_state(today[today["watch_candidate"]])
         watch_candidates = watch_candidates[~watch_candidates.index.isin(positions.keys())].head(cfg.watchlist_size)
         for code, row in watch_candidates.iterrows():
             reason_1, reason_2, reason_3 = _row_reasons(row, "WATCH")
@@ -1622,6 +2058,7 @@ def write_strategy_outputs(
     output_dir: Path,
 ) -> Dict[str, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
+    signal_df = dedupe_signal_rows(signal_df)
     paths = {
         "signal_daily": output_dir / "signal_daily.csv",
         "signal_latest": output_dir / "signal_daily_latest.csv",
@@ -1648,6 +2085,35 @@ def write_strategy_outputs(
     rule_overall.to_csv(paths["rule_overall"], index=False, encoding="utf-8-sig")
     rule_industry.to_csv(paths["rule_industry"], index=False, encoding="utf-8-sig")
     rule_top.to_csv(paths["rule_top"], index=False, encoding="utf-8-sig")
+    meta = {
+        "config": asdict(cfg),
+        "runtime": metadata,
+        "latest_signal_date": None if pd.isna(latest_date) else str(pd.Timestamp(latest_date).date()),
+    }
+    paths["strategy_meta"].write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    return paths
+
+
+def write_operational_latest_outputs(
+    signal_df: pd.DataFrame,
+    decision_df: pd.DataFrame,
+    state_df: pd.DataFrame,
+    metadata: Dict[str, object],
+    cfg: EarningsStrategyConfig,
+    output_dir: Path,
+) -> Dict[str, Path]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    signal_df = dedupe_signal_rows(signal_df)
+    latest_date = signal_df["date"].max() if not signal_df.empty else pd.NaT
+    paths = {
+        "signal_latest": output_dir / "signal_daily_latest.csv",
+        "decision_report": output_dir / "decision_report_daily.csv",
+        "fast_state": output_dir / "fast_position_state.csv",
+        "strategy_meta": output_dir / "strategy_metadata.json",
+    }
+    signal_df.to_csv(paths["signal_latest"], index=False, encoding="utf-8-sig")
+    decision_df.to_csv(paths["decision_report"], index=False, encoding="utf-8-sig")
+    state_df.to_csv(paths["fast_state"], index=False, encoding="utf-8-sig")
     meta = {
         "config": asdict(cfg),
         "runtime": metadata,
@@ -1826,6 +2292,7 @@ def _seed_fast_state_from_trade_log(output_dir: Path, cfg: EarningsStrategyConfi
                 "hold_bars",
                 "stop_pct",
                 "last_eval_date",
+                "state_source",
             ]
         )
     trade_df = pd.read_csv(trade_path, dtype={"code": str}, low_memory=False)
@@ -1836,9 +2303,10 @@ def _seed_fast_state_from_trade_log(output_dir: Path, cfg: EarningsStrategyConfi
         return pd.DataFrame()
     open_df["last_eval_date"] = pd.NaT
     open_df["stop_pct"] = cfg.fixed_stop_loss
+    open_df["state_source"] = "fast"
     open_df["hold_bars"] = pd.to_numeric(open_df["holding_days"], errors="coerce").fillna(0).astype(int)
     open_df["last_close"] = pd.to_numeric(open_df["exit_price"], errors="coerce")
-    keep = ["trade_id", "strategy_id", "code", "name", "entry_date", "entry_price", "last_close", "hold_bars", "stop_pct", "last_eval_date"]
+    keep = ["trade_id", "strategy_id", "code", "name", "entry_date", "entry_price", "last_close", "hold_bars", "stop_pct", "last_eval_date", "state_source"]
     return open_df[keep].copy()
 
 
@@ -1861,6 +2329,7 @@ def load_fast_position_state(output_dir: Path, cfg: EarningsStrategyConfig) -> p
                 "hold_bars",
                 "stop_pct",
                 "last_eval_date",
+                "state_source",
             ]
         )
     state["code"] = state["code"].astype(str).str.zfill(6)
@@ -1870,7 +2339,131 @@ def load_fast_position_state(output_dir: Path, cfg: EarningsStrategyConfig) -> p
     state["hold_bars"] = pd.to_numeric(state["hold_bars"], errors="coerce").fillna(0).astype(int)
     state["stop_pct"] = pd.to_numeric(state["stop_pct"], errors="coerce").fillna(cfg.fixed_stop_loss)
     state["last_eval_date"] = pd.to_datetime(state["last_eval_date"], errors="coerce")
+    state["state_source"] = state.get("state_source", "fast")
+    state["state_source"] = state["state_source"].fillna("fast").astype(str)
     return state
+
+
+def _allowed_operational_chat_ids() -> set[str]:
+    raw = os.getenv("NEW_STRATEGY_TELEGRAM_BRIDGE_ALLOWED_CHAT_IDS", "").strip()
+    if not raw:
+        raw = os.getenv("NEW_STRATEGY_TELEGRAM_CHAT_ID", "").strip()
+    return {item.strip() for item in raw.split(",") if item.strip()}
+
+
+def _load_manual_portfolio_positions(output_dir: Path) -> pd.DataFrame:
+    positions_path = output_dir / "telegram_bridge" / "manual_portfolio_positions.csv"
+    if not positions_path.exists():
+        return pd.DataFrame()
+    try:
+        positions = pd.read_csv(positions_path, dtype={"chat_id": str, "code": str}, low_memory=False)
+    except Exception:
+        return pd.DataFrame()
+    if positions.empty or "code" not in positions.columns:
+        return pd.DataFrame()
+    positions["code"] = positions["code"].astype(str).str.zfill(6)
+    allowed_chat_ids = _allowed_operational_chat_ids()
+    if allowed_chat_ids and "chat_id" in positions.columns:
+        positions = positions[positions["chat_id"].astype(str).isin(allowed_chat_ids)].copy()
+    if "quantity" in positions.columns:
+        qty = pd.to_numeric(positions["quantity"], errors="coerce").fillna(0.0)
+        positions = positions[qty > 0].copy()
+    return positions.reset_index(drop=True)
+
+
+def _calendar_hold_bars(entry_dt: pd.Timestamp, eval_dt: pd.Timestamp) -> int:
+    if pd.isna(entry_dt):
+        return 0
+    try:
+        return max(0, int((pd.Timestamp(eval_dt).normalize() - pd.Timestamp(entry_dt).normalize()).days))
+    except Exception:
+        return 0
+
+
+def _reconcile_manual_positions(
+    positions: Dict[str, Dict[str, object]],
+    today: pd.DataFrame,
+    output_dir: Path,
+    cfg: EarningsStrategyConfig,
+    dt: pd.Timestamp,
+    next_trade_id: int,
+) -> int:
+    manual_positions = _load_manual_portfolio_positions(output_dir)
+    if manual_positions.empty:
+        return next_trade_id
+
+    for _, row in manual_positions.iterrows():
+        code = str(row.get("code", "")).zfill(6)
+        if not code or code in EXCLUDED_SECURITY_CODES:
+            continue
+        avg_price = _coerce_float(row.get("avg_price"))
+        if not np.isfinite(avg_price) or avg_price <= 0:
+            continue
+        entry_dt = pd.to_datetime(row.get("last_trade_at"), errors="coerce")
+        if pd.isna(entry_dt):
+            entry_dt = pd.to_datetime(row.get("updated_at"), errors="coerce")
+        if pd.isna(entry_dt):
+            entry_dt = dt
+        existing = positions.get(code, {})
+        trade_id = int(existing.get("trade_id", 0) or 0)
+        if trade_id <= 0:
+            trade_id = next_trade_id
+            next_trade_id += 1
+        live_close = _coerce_float(today.at[code, "close"]) if code in today.index else float("nan")
+        existing_close = _coerce_float(existing.get("last_close"))
+        last_close = live_close if np.isfinite(live_close) else existing_close
+        if not np.isfinite(last_close):
+            last_close = avg_price
+        existing_hold_bars = int(existing.get("hold_bars", 0) or 0)
+        hold_bars = max(existing_hold_bars, _calendar_hold_bars(entry_dt, dt))
+        positions[code] = {
+            "trade_id": trade_id,
+            "strategy_id": cfg.strategy_id,
+            "code": code,
+            "name": str(row.get("name") or existing.get("name") or (today.at[code, "name"] if code in today.index else code)),
+            "entry_date": entry_dt,
+            "entry_price": float(avg_price),
+            "last_close": float(last_close),
+            "hold_bars": int(hold_bars),
+            "stop_pct": float(existing.get("stop_pct", cfg.fixed_stop_loss) or cfg.fixed_stop_loss),
+            "last_eval_date": pd.to_datetime(existing.get("last_eval_date"), errors="coerce"),
+            "state_source": "manual",
+        }
+    return next_trade_id
+
+
+def _alert_trace_fields(
+    row: pd.Series,
+    cfg: EarningsStrategyConfig,
+    *,
+    position: Dict[str, object] | None = None,
+    effective_stop_price: float | None = None,
+    exit_reason: str = "",
+) -> Dict[str, object]:
+    weekly_ma = _coerce_float(row.get("v2_week_ma"))
+    monthly_ma = _coerce_float(row.get("v2_month_ma"))
+    current_price = _coerce_float(row.get("close"))
+    safe_low = _safe_low_for_stop(row, current_price)
+    entry_price = _coerce_float(position.get("entry_price")) if position else _coerce_float(row.get("close"))
+    stop_price = _coerce_float(effective_stop_price)
+    if not np.isfinite(stop_price) and np.isfinite(entry_price):
+        stop_price = float(entry_price * (1.0 + cfg.fixed_stop_loss))
+    weekly_trigger_price = float("nan")
+    if np.isfinite(weekly_ma):
+        weekly_trigger_price = weekly_ma * (1.0 + cfg.weekly_sell_threshold)
+    return {
+        "alert_quote_time": row.get("quote_time"),
+        "alert_current_price": current_price,
+        "alert_low_price": safe_low,
+        "alert_low_price_raw": _coerce_float(row.get("low")),
+        "alert_entry_price": entry_price,
+        "alert_stop_loss_price": stop_price,
+        "alert_weekly_ma": weekly_ma,
+        "alert_weekly_trigger_price": weekly_trigger_price,
+        "alert_monthly_ma": monthly_ma,
+        "alert_exit_reason": str(exit_reason or ""),
+        "alert_position_source": str((position or {}).get("state_source", "")),
+    }
 
 
 def simulate_fast_alert_cycle(
@@ -1883,10 +2476,7 @@ def simulate_fast_alert_cycle(
     today = today[~today["code"].isin(EXCLUDED_SECURITY_CODES)]
     today = today.set_index("code")
     dt = pd.Timestamp(today["date"].iloc[0])
-    exposure_series = today["exposure"].dropna()
-    exposure = float(exposure_series.iloc[0]) if not exposure_series.empty else 1.0
-    regime_series = today["regime"].dropna()
-    regime = str(regime_series.iloc[0]) if not regime_series.empty else "unknown"
+    exposure, regime = _resolve_macro_context(today, dt)
     target_positions = _target_positions(exposure, cfg)
     trend_mode = str(cfg.trend_mode or "optimal_ma_v2").strip().lower()
 
@@ -1899,7 +2489,10 @@ def simulate_fast_alert_cycle(
             code = str(row["code"]).zfill(6)
             if code in EXCLUDED_SECURITY_CODES:
                 continue
-            positions[code] = row.to_dict()
+            payload = row.to_dict()
+            payload.setdefault("state_source", "fast")
+            positions[code] = payload
+    next_trade_id = _reconcile_manual_positions(positions, today, output_dir, cfg, dt, next_trade_id)
 
     signal_rows: List[Dict[str, object]] = []
     decision_rows: List[Dict[str, object]] = []
@@ -1942,7 +2535,8 @@ def simulate_fast_alert_cycle(
                     "stop_rule": f"{cfg.fixed_stop_loss:.0%}",
                     "target_exit_rule": "가격데이터 누락",
                     **_execution_plan_fields(row, "SELL"),
-                        **_signal_context_fields(row),
+                    **_signal_context_fields(row),
+                    **_alert_trace_fields(row, cfg, position=pos, exit_reason="missing_price_row"),
                 }
             )
             sell_count += 1
@@ -1968,24 +2562,18 @@ def simulate_fast_alert_cycle(
 
         row = today.loc[code]
         close = float(row["close"])
-        low = float(row["low"])
+        low = _safe_low_for_stop(row, close)
         pos["last_close"] = close
         effective_stop_price = _effective_stop_price(row, pos)
-        stop_hit = low <= effective_stop_price
-        stale = hold_bars >= cfg.max_holding_days
-        quality_drop = bool((not bool(row["quality_gate_ok"])) or (hold_bars >= cfg.min_hold_days and row["conviction_score"] <= cfg.sell_threshold))
+        stop_hit = bool(np.isfinite(low) and low <= effective_stop_price)
         timing_break = bool(_trend_break(row, cfg))
-        sell_signal = stop_hit or stale or quality_drop or timing_break
+        sell_signal = stop_hit or timing_break
 
         if sell_signal:
             exit_price = effective_stop_price if stop_hit else close
             realized_return = exit_price / float(pos["entry_price"]) - 1.0
             if stop_hit:
                 exit_reason = "stop_loss"
-            elif stale:
-                exit_reason = "stale_hold"
-            elif quality_drop:
-                exit_reason = "quality_drop"
             else:
                 exit_reason = "timing_break"
             sell_row = row.copy()
@@ -2007,9 +2595,10 @@ def simulate_fast_alert_cycle(
                     "reason_3": reason_3,
                     "risk_flag": _risk_flag(row),
                     "stop_rule": f"{cfg.fixed_stop_loss:.0%}",
-                    "target_exit_rule": "초기손절/원금보호/품질/타이밍/보유기한",
+                    "target_exit_rule": "초기손절/원금보호/품질/타이밍",
                     **_execution_plan_fields(sell_row, "SELL"),
-                        **_signal_context_fields(sell_row),
+                    **_signal_context_fields(sell_row),
+                    **_alert_trace_fields(sell_row, cfg, position=pos, effective_stop_price=effective_stop_price, exit_reason=exit_reason),
                 }
             )
             sell_count += 1
@@ -2035,7 +2624,7 @@ def simulate_fast_alert_cycle(
     for code in to_remove:
         positions.pop(code, None)
 
-    candidates = today[today["buy_candidate"]].sort_values("conviction_score", ascending=False)
+    candidates = _sort_candidates_by_ma_state(today[today["buy_candidate"]])
     slots = max(0, target_positions - len(positions))
     if slots > 0:
         for code, row in candidates.iterrows():
@@ -2054,6 +2643,7 @@ def simulate_fast_alert_cycle(
                 "hold_bars": 0,
                 "stop_pct": cfg.fixed_stop_loss,
                 "last_eval_date": dt,
+                "state_source": "fast",
             }
             next_trade_id += 1
             reason_1, reason_2, reason_3 = _row_reasons(row, "BUY")
@@ -2074,7 +2664,8 @@ def simulate_fast_alert_cycle(
                     "stop_rule": f"{cfg.fixed_stop_loss:.0%}",
                     "target_exit_rule": "품질 유지 + 타이밍 양호 시 보유",
                     **_execution_plan_fields(row, "BUY"),
-                        **_signal_context_fields(row),
+                    **_signal_context_fields(row),
+                    **_alert_trace_fields(row, cfg, position=positions[code]),
                 }
             )
             buy_count += 1
@@ -2119,12 +2710,13 @@ def simulate_fast_alert_cycle(
                 "stop_rule": f"{cfg.fixed_stop_loss:.0%}",
                 "target_exit_rule": "품질 유지 + 타이밍 양호 시 보유",
                 **_execution_plan_fields(row, "HOLD"),
-                        **_signal_context_fields(row),
+                **_signal_context_fields(row),
+                **_alert_trace_fields(row, cfg, position=positions[code]),
             }
         )
         hold_count += 1
 
-    watch_candidates = today[today["watch_candidate"]].sort_values("conviction_score", ascending=False)
+    watch_candidates = _sort_candidates_by_ma_state(today[today["watch_candidate"]])
     watch_candidates = watch_candidates[~watch_candidates.index.isin(positions.keys())].head(cfg.watchlist_size)
     for code, row in watch_candidates.iterrows():
         reason_1, reason_2, reason_3 = _row_reasons(row, "WATCH")
@@ -2145,7 +2737,8 @@ def simulate_fast_alert_cycle(
                 "stop_rule": "",
                 "target_exit_rule": "기존 코어점수 + 타이밍 확인 후 편입",
                 **_execution_plan_fields(row, "WATCH"),
-                        **_signal_context_fields(row),
+                **_signal_context_fields(row),
+                **_alert_trace_fields(row, cfg),
             }
         )
         watch_count += 1
@@ -2165,6 +2758,7 @@ def simulate_fast_alert_cycle(
                 "hold_bars": int(pos["hold_bars"]),
                 "stop_pct": float(pos["stop_pct"]),
                 "last_eval_date": dt,
+                "state_source": str(pos.get("state_source", "fast")),
             }
         )
 
@@ -2187,7 +2781,7 @@ def simulate_fast_alert_cycle(
         }
     )
 
-    signal_df = pd.DataFrame(signal_rows).sort_values(["signal", "conviction_score"], ascending=[True, False]).reset_index(drop=True)
+    signal_df = pd.DataFrame(signal_rows).sort_values(["signal", "code"], ascending=[True, True]).reset_index(drop=True)
     decision_df = pd.DataFrame(decision_rows)
     if state_rows:
         state_df_out = pd.DataFrame(state_rows).sort_values(["entry_date", "trade_id"]).reset_index(drop=True)
@@ -2204,6 +2798,7 @@ def simulate_fast_alert_cycle(
                 "hold_bars",
                 "stop_pct",
                 "last_eval_date",
+                "state_source",
             ]
         )
     metadata = {
@@ -2225,6 +2820,7 @@ def write_fast_alert_outputs(
     output_dir: Path,
 ) -> Dict[str, Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
+    signal_df = dedupe_signal_rows(signal_df)
     paths = {
         "signal_fast_latest": _fast_signal_path(output_dir),
         "decision_fast_latest": _fast_decision_path(output_dir),

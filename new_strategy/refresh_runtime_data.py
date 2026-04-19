@@ -6,10 +6,12 @@ import re
 import io
 import requests
 from contextlib import redirect_stderr, redirect_stdout
-from datetime import datetime
+from datetime import datetime, timedelta
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Optional
 
+import holidays
 import pandas as pd
 
 from new_strategy.build_feature_dataset import build_feature_dataset, build_feature_dataset_incremental
@@ -46,6 +48,24 @@ def _latest_basic_date(stock_dir: Path) -> Optional[str]:
         if m:
             dates.append(m.group(1))
     return max(dates) if dates else None
+
+
+@lru_cache(maxsize=8)
+def _kr_public_holidays(year: int) -> set:
+    return set(holidays.country_holidays("KR", years=[year]).keys())
+
+
+def _is_kr_trading_day(dt: datetime) -> bool:
+    if dt.weekday() >= 5:
+        return False
+    return dt.date() not in _kr_public_holidays(dt.year)
+
+
+def _previous_kr_trading_day_yyyymmdd(base: Optional[datetime] = None) -> str:
+    current = (base or datetime.now()) - timedelta(days=1)
+    while not _is_kr_trading_day(current):
+        current -= timedelta(days=1)
+    return current.strftime("%Y%m%d")
 
 
 def _year_range(stock_dir: Path, fallback_start: int = 2015) -> tuple[int, int]:
@@ -161,6 +181,7 @@ def refresh_price_panel_via_kiwoom_eod(
     *,
     min_coverage_ratio: float = 0.70,
     per_request_sleep_seconds: float = 0.22,
+    recent_backfill_days: int = 14,
 ) -> Dict[str, object]:
     if not price_panel_path.exists():
         raise FileNotFoundError(f"price panel not found: {price_panel_path}")
@@ -203,7 +224,7 @@ def refresh_price_panel_via_kiwoom_eod(
         pd.to_numeric(merged["market_cap"], errors="coerce"),
     )
     merged["is_trading_day"] = True
-    new_rows = merged[
+    target_rows = merged[
         [
             "date",
             "code",
@@ -222,7 +243,7 @@ def refresh_price_panel_via_kiwoom_eod(
         ]
     ].copy()
 
-    missing_codes = sorted(set(codes) - set(new_rows["code"].astype(str)))
+    missing_codes = sorted(set(codes) - set(target_rows["code"].astype(str)))
     krx_fallback_rows = 0
     krx_fallback_used = False
     if missing_codes:
@@ -233,25 +254,47 @@ def refresh_price_panel_via_kiwoom_eod(
                 if not krx_missing.empty:
                     krx_fallback_rows = int(len(krx_missing))
                     krx_fallback_used = True
-                    new_rows = (
-                        pd.concat([new_rows, krx_missing], ignore_index=True)
+                    target_rows = (
+                        pd.concat([target_rows, krx_missing], ignore_index=True)
                         .drop_duplicates(subset=["date", "code"], keep="first")
                         .reset_index(drop=True)
                     )
         except Exception:
             pass
 
-    final_coverage_ratio = len(new_rows) / max(len(codes), 1)
+    final_coverage_ratio = len(target_rows) / max(len(codes), 1)
     if final_coverage_ratio < min_coverage_ratio:
         raise RuntimeError(
-            f"Kiwoom EOD coverage too low after KRX fallback: {len(new_rows)}/{len(codes)} ({final_coverage_ratio:.1%})"
+            f"Kiwoom EOD coverage too low after KRX fallback: {len(target_rows)}/{len(codes)} ({final_coverage_ratio:.1%})"
         )
 
     price_df = pd.read_csv(price_panel_path, dtype={"code": str}, low_memory=False)
     price_df["code"] = price_df["code"].astype(str).str.zfill(6)
     price_df["date"] = pd.to_datetime(price_df["date"], errors="coerce")
+    backfill_rows = pd.DataFrame(columns=target_rows.columns)
+    backfill_dates: list[str] = []
+    if recent_backfill_days > 0:
+        target_dt = pd.to_datetime(target_date, errors="coerce")
+        if pd.notna(target_dt):
+            present_dates = set(price_df["date"].dropna().dt.date.unique().tolist())
+            # Target date is already included via Kiwoom/KRX fallback rows.
+            present_dates.add(target_dt.date())
+            cursor = (target_dt - timedelta(days=max(1, int(recent_backfill_days)))).date()
+            while cursor <= target_dt.date():
+                probe = datetime(cursor.year, cursor.month, cursor.day)
+                if _is_kr_trading_day(probe) and cursor not in present_dates:
+                    day_iso = cursor.isoformat()
+                    try:
+                        krx_day = _fetch_krx_daily_rows(day_iso)
+                        if not krx_day.empty:
+                            backfill_rows = pd.concat([backfill_rows, krx_day], ignore_index=True)
+                            backfill_dates.append(day_iso)
+                    except Exception:
+                        pass
+                cursor += timedelta(days=1)
+    rows_to_append = target_rows if backfill_rows.empty else pd.concat([target_rows, backfill_rows], ignore_index=True)
     combined = (
-        pd.concat([price_df, new_rows], ignore_index=True)
+        pd.concat([price_df, rows_to_append], ignore_index=True)
         .dropna(subset=["date", "code", "close"])
         .drop_duplicates(subset=["date", "code"], keep="last")
         .sort_values(["date", "code"])
@@ -270,12 +313,15 @@ def refresh_price_panel_via_kiwoom_eod(
         "price_before": prev_latest,
         "price_after": target_date,
         "kiwoom_quote_rows": kiwoom_quote_rows,
-        "quote_rows": int(len(new_rows)),
+        "quote_rows": int(len(target_rows)),
         "universe_codes": int(len(codes)),
         "coverage_ratio": float(final_coverage_ratio),
         "kiwoom_coverage_ratio": float(coverage_ratio),
         "krx_fallback_used": krx_fallback_used,
         "krx_fallback_rows": krx_fallback_rows,
+        "krx_backfill_days": int(len(backfill_dates)),
+        "krx_backfill_dates": backfill_dates,
+        "krx_backfill_rows": int(len(backfill_rows)),
         "price_bounds": bounds,
     }
 
@@ -539,6 +585,8 @@ def run_refresh_pipeline(
     refresh_gold: bool = False,
     rebuild_db: bool = False,
     prefer_kiwoom_eod: bool = False,
+    rebuild_feature_after_refresh: bool = True,
+    stock_end: Optional[str] = None,
 ) -> Dict[str, object]:
     stock_dir = stock_root()
     meta: Dict[str, object] = {
@@ -563,8 +611,25 @@ def run_refresh_pipeline(
             except Exception as exc:
                 meta["kiwoom_eod_error"] = str(exc)
 
+        if kiwoom_used:
+            latest_basic_before = _latest_basic_date(stock_dir)
+            target_basic = (str(stock_end).strip() if stock_end else "") or _previous_kr_trading_day_yyyymmdd()
+            needs_krx_reconcile = (latest_basic_before is None) or (latest_basic_before < target_basic)
+            if needs_krx_reconcile:
+                meta["stock_raw"] = refresh_stock_raw(stock_dir=stock_dir, end=target_basic)
+                meta["stock_raw"]["reconcile_target"] = target_basic
+                meta["stock_raw"]["reconcile_trigger"] = "refresh_data_with_kiwoom"
+            else:
+                meta["stock_raw"] = {
+                    "basic_before": latest_basic_before,
+                    "basic_after": latest_basic_before,
+                    "reconcile_target": target_basic,
+                    "reconcile_trigger": "refresh_data_with_kiwoom",
+                    "skipped": True,
+                }
+
         if not kiwoom_used:
-            meta["stock_raw"] = refresh_stock_raw(stock_dir=stock_dir)
+            meta["stock_raw"] = refresh_stock_raw(stock_dir=stock_dir, end=stock_end)
             latest_basic = meta["stock_raw"]["basic_after"]
             latest_basic_iso = None
             if latest_basic:
@@ -609,13 +674,23 @@ def run_refresh_pipeline(
         or (latest_price_max is not None and latest_price_max != latest_feature_max)
     )
     meta["feature_rebuild_needed"] = feature_rebuild_needed
+    meta["feature_rebuild_skipped"] = bool(feature_rebuild_needed and not rebuild_feature_after_refresh)
 
-    meta["feature"] = rebuild_feature_and_optional_db(
-        stock_dir=stock_dir,
-        rebuild_feature=feature_rebuild_needed,
-        rebuild_db=rebuild_db,
-        prefer_incremental=feature_rebuild_needed and not macro_rebuilt,
-    )
+    if rebuild_feature_after_refresh or rebuild_db:
+        meta["feature"] = rebuild_feature_and_optional_db(
+            stock_dir=stock_dir,
+            rebuild_feature=feature_rebuild_needed if rebuild_feature_after_refresh else False,
+            rebuild_db=rebuild_db,
+            prefer_incremental=feature_rebuild_needed and not macro_rebuilt,
+        )
+    else:
+        meta["feature"] = {
+            "feature": str(feature_path),
+            "feature_bounds": existing_feature_bounds,
+            "feature_rebuilt": False,
+            "feature_incremental": False,
+            "skipped": True,
+        }
     meta["run_finished_at"] = datetime.now().isoformat()
 
     refresh_meta_path = strategy_output_path("refresh_runtime_metadata.json")

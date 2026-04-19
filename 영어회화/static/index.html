@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#123229" />
+    <link rel="manifest" href="/static/manifest.webmanifest" />
+    <link rel="stylesheet" href="/static/styles.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Space+Grotesk:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <title>English Line Drill</title>
+  </head>
+  <body>
+    <div class="bg-orb bg-orb-one"></div>
+    <div class="bg-orb bg-orb-two"></div>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Daily Pattern Sprint</p>
+          <h1>English Line Drill</h1>
+          <p id="modeBadge" class="mode-badge"></p>
+        </div>
+        <button id="installBtn" class="ghost-btn" hidden>Install</button>
+      </header>
+
+      <section class="stat-grid" id="statGrid">
+        <article class="stat-card">
+          <p>Total</p>
+          <strong id="totalDialogues">0</strong>
+        </article>
+        <article class="stat-card">
+          <p>Due Today</p>
+          <strong id="dueToday">0</strong>
+        </article>
+        <article class="stat-card">
+          <p>Done</p>
+          <strong id="reviewedToday">0</strong>
+        </article>
+      </section>
+
+      <nav class="tabbar">
+        <button class="tab active" data-tab="today">Today</button>
+        <button class="tab" data-tab="practice">Practice</button>
+        <button class="tab" data-tab="review">Review</button>
+      </nav>
+
+      <section class="panel active" id="todayPanel">
+        <div class="panel-head today-head">
+          <h2>Today's 5 Lines</h2>
+          <div class="panel-actions today-actions">
+            <button id="playTodayBtn" class="ghost-btn">Play 5</button>
+            <button id="todayRepeatBtn" class="ghost-btn">Repeat Off</button>
+            <button id="shuffleToday" class="ghost-btn">Shuffle</button>
+          </div>
+        </div>
+        <ul id="todayList" class="tile-list"></ul>
+      </section>
+
+      <section class="panel" id="practicePanel">
+        <div class="panel-head practice-head">
+          <h2>Dialogue Practice</h2>
+          <p id="dialogMeta" class="muted practice-meta"></p>
+        </div>
+
+        <article class="dialog-card">
+          <div class="chip-row" id="patternChips"></div>
+          <ol id="turnList" class="turn-list"></ol>
+          <div class="control-row practice-controls">
+            <button id="playBtn">Play</button>
+            <button id="practiceRepeatBtn" class="ghost-btn">Repeat Off</button>
+            <button id="toggleKoBtn" class="ghost-btn">Show KO</button>
+            <button id="clozeBtn" class="ghost-btn">Cloze</button>
+          </div>
+          <div id="clozeBox" class="cloze-box" hidden></div>
+        </article>
+
+        <div class="pager-row">
+          <button id="prevBtn" class="ghost-btn">Prev</button>
+          <span id="pagerText">0 / 0</span>
+          <button id="nextBtn" class="ghost-btn">Next</button>
+        </div>
+      </section>
+
+      <section class="panel" id="reviewPanel">
+        <div class="panel-head">
+          <h2>Review Queue</h2>
+          <button id="refreshReview" class="ghost-btn">Refresh</button>
+        </div>
+        <ul id="reviewList" class="tile-list"></ul>
+        <article class="score-card">
+          <label for="recallInput">Recall sentence</label>
+          <textarea
+            id="recallInput"
+            rows="3"
+            placeholder="Type the sentence you recalled..."
+          ></textarea>
+          <div class="score-row" id="scoreRow"></div>
+          <p class="muted small">
+            Guide: 5 perfect, 4 minor miss, 3 understandable, 2 partial, 1 low,
+            0 blank
+          </p>
+        </article>
+      </section>
+    </main>
+
+    <script src="/static/app.js" type="module"></script>
+  </body>
+</html>
