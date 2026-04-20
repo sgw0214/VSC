@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$Wrapper
 )
 
@@ -6,7 +6,7 @@ Set-Location "E:\VSC\CODE"
 
 $pythonExe = "e:\Miniconda3\python.exe"
 $scriptPath = [System.IO.Path]::GetFullPath($PSCommandPath)
-$logDir = "C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2"
+$logDir = "E:\VSC\python\new_strategy\output\strategy_v2"
 $stdout = Join-Path $logDir "background_refresh_service.log"
 $wrapperLog = Join-Path $logDir "background_refresh_wrapper.log"
 $statePath = Join-Path $logDir "background_refresh_wrapper_state.json"
@@ -135,3 +135,4 @@ while ($true) {
     $restartCount += 1
     Start-Sleep -Seconds $restartDelaySeconds
 }
+

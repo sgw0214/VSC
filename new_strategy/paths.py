@@ -1,11 +1,11 @@
-from pathlib import Path
+﻿from pathlib import Path
 import os
 
 
-# Code lives in the git workspace. Data/output live in OneDrive by default.
+# Code lives in the git workspace. Data/output live in local runtime path by default.
 CODE_ROOT = Path(__file__).resolve().parent
-DEFAULT_DATA_ROOT = Path(r"C:\Users\sgw02\OneDrive\python\new_strategy")
-DEFAULT_STOCK_ROOT = Path(r"C:\Users\sgw02\OneDrive\python\Stock")
+DEFAULT_DATA_ROOT = Path(r"E:\VSC\python\new_strategy")
+DEFAULT_STOCK_ROOT = Path(r"E:\VSC\python\Stock")
 DEFAULT_STRATEGY_OUTPUT_SUBDIR = "strategy_v2"
 DEFAULT_TREND_DATA_SUBDIR = "trend_lab"
 DEFAULT_TREND_OUTPUT_SUBDIR = "trend_lab"
@@ -74,4 +74,5 @@ def cache_path(*parts: str) -> Path:
 
 def stock_path(*parts: str) -> Path:
     return stock_root().joinpath(*parts)
+
 

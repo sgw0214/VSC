@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$Wrapper
 )
 
@@ -17,7 +17,7 @@ $appArgs = @(
 $scriptPath = [System.IO.Path]::GetFullPath($PSCommandPath)
 $appPath = "E:\VSC\CODE\new_strategy\streamlit_app.py"
 $sourceDir = "E:\VSC\CODE\new_strategy"
-$logDir = "C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2"
+$logDir = "E:\VSC\python\new_strategy\output\strategy_v2"
 $stdout = Join-Path $logDir "streamlit_stdout.log"
 $stderr = Join-Path $logDir "streamlit_stderr.log"
 $wrapperLog = Join-Path $logDir "streamlit_wrapper.log"
@@ -226,3 +226,4 @@ while ($true) {
     $restartCount += 1
     Start-Sleep -Seconds $restartDelaySeconds
 }
+

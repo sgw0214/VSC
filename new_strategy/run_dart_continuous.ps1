@@ -1,10 +1,10 @@
-$ErrorActionPreference = "Continue"
+﻿$ErrorActionPreference = "Continue"
 
 $workdir = "e:\VSC\CODE"
 Set-Location $workdir
 
 $apiKey = "e8a64572875ad1ee7bdf3690df2ead1ba141aa4f"
-$dataRoot = if ($env:NEW_STRATEGY_DATA_ROOT) { $env:NEW_STRATEGY_DATA_ROOT } else { "C:\Users\sgw02\OneDrive\python\new_strategy" }
+$dataRoot = if ($env:NEW_STRATEGY_DATA_ROOT) { $env:NEW_STRATEGY_DATA_ROOT } else { "E:\VSC\python\new_strategy" }
 $logPath = Join-Path $dataRoot "dart_continuous.log"
 $batch = 500
 
@@ -59,3 +59,4 @@ while ($true) {
         Start-Sleep -Seconds 2
     }
 }
+

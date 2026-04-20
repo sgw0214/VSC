@@ -20,10 +20,10 @@ MARKET_SCHEDULE_PATH = REPO_ROOT / "run_market_schedule_service.py"
 BRIDGE_SERVICE_PATH = REPO_ROOT / "telegram_bridge_service.py"
 BRIDGE_TOOLS_PATH = REPO_ROOT / "telegram_bridge_tools.py"
 STREAMLIT_APP_PATH = REPO_ROOT / "streamlit_app.py"
-STREAMLIT_WRAPPER_STATE_PATH = Path(r"C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2\streamlit_wrapper_state.json")
-BRIDGE_STATE_PATH = Path(r"C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2\telegram_bridge\telegram_bridge_state.json")
-MESSAGE_LOG_PATH = Path(r"C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2\telegram_bridge\telegram_bridge_message_log.csv")
-MARKET_STATE_PATH = Path(r"C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2\market_schedule_state.json")
+STREAMLIT_WRAPPER_STATE_PATH = Path(r"E:\VSC\python\new_strategy\output\strategy_v2\streamlit_wrapper_state.json")
+BRIDGE_STATE_PATH = Path(r"E:\VSC\python\new_strategy\output\strategy_v2\telegram_bridge\telegram_bridge_state.json")
+MESSAGE_LOG_PATH = Path(r"E:\VSC\python\new_strategy\output\strategy_v2\telegram_bridge\telegram_bridge_message_log.csv")
+MARKET_STATE_PATH = Path(r"E:\VSC\python\new_strategy\output\strategy_v2\market_schedule_state.json")
 MANUAL_POSITIONS_PATH = BRIDGE_STATE_PATH.parent / "manual_portfolio_positions.csv"
 SHADOW_RUNTIME_DIR = REPO_ROOT / "output" / "strategy_v2"
 CANONICAL_RUNTIME_FILES = [
@@ -484,4 +484,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
 

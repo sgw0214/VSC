@@ -1,11 +1,11 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
 
-OUT_DIR = Path(r"C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2\telegram_bridge\mockups")
+OUT_DIR = Path(r"E:\VSC\python\new_strategy\output\strategy_v2\telegram_bridge\mockups")
 FONT_REG = Path(r"C:\Windows\Fonts\malgun.ttf")
 FONT_BOLD = Path(r"C:\Windows\Fonts\malgunbd.ttf")
 
@@ -39,15 +39,15 @@ def badge(draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, *, bg: str,
 
 
 def action_palette(action: str) -> tuple[str, str]:
-    if "매도" in action or "축소" in action:
+    if "留ㅻ룄" in action or "異뺤냼" in action:
         return "#fee2e2", "#b91c1c"
-    if "보유" in action:
+    if "蹂댁쑀" in action:
         return "#dbeafe", "#1d4ed8"
     return "#fef3c7", "#b45309"
 
 
 def holding_palette(kind: str) -> tuple[str, str]:
-    if kind == "보유":
+    if kind == "蹂댁쑀":
         return "#ecfeff", "#155e75"
     return "#f5f3ff", "#6d28d9"
 
@@ -55,22 +55,22 @@ def holding_palette(kind: str) -> tuple[str, str]:
 def mock_rows(kind: str) -> list[dict[str, str]]:
     if kind == "premarket":
         return [
-            {"holding": "보유", "name": "신영증권", "action": "보유유지", "current": "201,500", "dist": "월 +189.2% / 주 +86.9%", "price_ref": "주106선 108,300"},
-            {"holding": "보유", "name": "LG전자", "action": "소액매도검토", "current": "113,000", "dist": "월 +17.0% / 주 -6.8%", "price_ref": "주7선 121,400"},
-            {"holding": "신규", "name": "덴티움", "action": "소액매수검토", "current": "53,800", "dist": "월 +7.3% / 주 +2.6%", "price_ref": "제안 53,800(예시)"},
-            {"holding": "신규", "name": "동서", "action": "소액매수검토", "current": "27,250", "dist": "월 +1.8% / 주 +6.8%", "price_ref": "제안 27,250(예시)"},
+            {"holding": "蹂댁쑀", "name": "?좎쁺利앷텒", "action": "蹂댁쑀?좎?", "current": "201,500", "dist": "??+189.2% / 二?+86.9%", "price_ref": "二?06??108,300"},
+            {"holding": "蹂댁쑀", "name": "LG?꾩옄", "action": "?뚯븸留ㅻ룄寃??, "current": "113,000", "dist": "??+17.0% / 二?-6.8%", "price_ref": "二???121,400"},
+            {"holding": "?좉퇋", "name": "?댄떚?", "action": "?뚯븸留ㅼ닔寃??, "current": "53,800", "dist": "??+7.3% / 二?+2.6%", "price_ref": "?쒖븞 53,800(?덉떆)"},
+            {"holding": "?좉퇋", "name": "?숈꽌", "action": "?뚯븸留ㅼ닔寃??, "current": "27,250", "dist": "??+1.8% / 二?+6.8%", "price_ref": "?쒖븞 27,250(?덉떆)"},
         ]
     if kind == "open":
         return [
-            {"holding": "보유", "name": "신영증권", "action": "보유유지", "current": "203,200", "dist": "월 +190.5% / 주 +84.1%", "price_ref": "주106선 110,100"},
-            {"holding": "보유", "name": "LG전자", "action": "소액매도검토", "current": "111,900", "dist": "월 +15.4% / 주 -7.5%", "price_ref": "주7선 120,900"},
-            {"holding": "신규", "name": "덴티움", "action": "소액매수검토", "current": "54,100", "dist": "월 +6.9% / 주 +3.1%", "price_ref": "제안 54,100(예시)"},
+            {"holding": "蹂댁쑀", "name": "?좎쁺利앷텒", "action": "蹂댁쑀?좎?", "current": "203,200", "dist": "??+190.5% / 二?+84.1%", "price_ref": "二?06??110,100"},
+            {"holding": "蹂댁쑀", "name": "LG?꾩옄", "action": "?뚯븸留ㅻ룄寃??, "current": "111,900", "dist": "??+15.4% / 二?-7.5%", "price_ref": "二???120,900"},
+            {"holding": "?좉퇋", "name": "?댄떚?", "action": "?뚯븸留ㅼ닔寃??, "current": "54,100", "dist": "??+6.9% / 二?+3.1%", "price_ref": "?쒖븞 54,100(?덉떆)"},
         ]
     return [
-        {"holding": "보유", "name": "신영증권", "action": "익일보유", "current": "201,500", "dist": "월 +189.2% / 주 +86.9%", "price_ref": "주106선 108,300"},
-        {"holding": "보유", "name": "LG전자", "action": "익일소액매도검토", "current": "113,000", "dist": "월 +17.0% / 주 -6.8%", "price_ref": "주7선 121,400"},
-        {"holding": "신규", "name": "덴티움", "action": "익일관심유지", "current": "53,800", "dist": "월 +7.3% / 주 +2.6%", "price_ref": "제안 53,800(예시)"},
-        {"holding": "신규", "name": "동서", "action": "익일관심유지", "current": "27,250", "dist": "월 +1.8% / 주 +6.8%", "price_ref": "제안 27,250(예시)"},
+        {"holding": "蹂댁쑀", "name": "?좎쁺利앷텒", "action": "?듭씪蹂댁쑀", "current": "201,500", "dist": "??+189.2% / 二?+86.9%", "price_ref": "二?06??108,300"},
+        {"holding": "蹂댁쑀", "name": "LG?꾩옄", "action": "?듭씪?뚯븸留ㅻ룄寃??, "current": "113,000", "dist": "??+17.0% / 二?-6.8%", "price_ref": "二???121,400"},
+        {"holding": "?좉퇋", "name": "?댄떚?", "action": "?듭씪愿?ъ쑀吏", "current": "53,800", "dist": "??+7.3% / 二?+2.6%", "price_ref": "?쒖븞 53,800(?덉떆)"},
+        {"holding": "?좉퇋", "name": "?숈꽌", "action": "?듭씪愿?ъ쑀吏", "current": "27,250", "dist": "??+1.8% / 二?+6.8%", "price_ref": "?쒖븞 27,250(?덉떆)"},
     ]
 
 
@@ -83,14 +83,14 @@ def render(kind: str, title: str, subline: str, footer: str) -> Path:
     draw_text(draw, (MARGIN + 30, MARGIN + 26), title, size=40, bold=True)
     draw_text(draw, (MARGIN + 30, MARGIN + 82), subline, size=21, fill="#475569")
 
-    badge(draw, (MARGIN + 30, MARGIN + 124), "시장 방어구간", bg="#fee2e2", fg="#b91c1c")
-    badge(draw, (MARGIN + 210, MARGIN + 124), "운용강도 40%", bg="#dbeafe", fg="#1d4ed8")
+    badge(draw, (MARGIN + 30, MARGIN + 124), "?쒖옣 諛⑹뼱援ш컙", bg="#fee2e2", fg="#b91c1c")
+    badge(draw, (MARGIN + 210, MARGIN + 124), "?댁슜媛뺣룄 40%", bg="#dbeafe", fg="#1d4ed8")
 
     table_x = MARGIN + 30
     table_y = MARGIN + 190
     table_w = WIDTH - MARGIN * 2 - 60
     col_widths = [140, 240, 250, 180, 360, table_w - 140 - 240 - 250 - 180 - 360]
-    headers = ["구분", "종목", "액션", "현재가", "월/주 이격률", "가격 기준"]
+    headers = ["援щ텇", "醫낅ぉ", "?≪뀡", "?꾩옱媛", "??二??닿꺽瑜?, "媛寃?湲곗?"]
 
     x = table_x
     for header, cw in zip(headers, col_widths):
@@ -123,8 +123,8 @@ def render(kind: str, title: str, subline: str, footer: str) -> Path:
 
     note_y = start_y + len(rows) * row_h + 14
     rounded(draw, (table_x, note_y, table_x + table_w - 8, note_y + 86), fill="#f8fafc", outline="#e5e7eb", width=1, radius=14)
-    draw_text(draw, (table_x + 18, note_y + 16), "메모", size=20, bold=True)
-    draw_text(draw, (table_x + 18, note_y + 46), "매수제안가는 현재 mockup 예시값입니다. 실제 적용 시 가격 규칙 산식으로 별도 정의가 필요합니다.", size=18, fill="#475569")
+    draw_text(draw, (table_x + 18, note_y + 16), "硫붾え", size=20, bold=True)
+    draw_text(draw, (table_x + 18, note_y + 46), "留ㅼ닔?쒖븞媛???꾩옱 mockup ?덉떆媛믪엯?덈떎. ?ㅼ젣 ?곸슜 ??媛寃?洹쒖튃 ?곗떇?쇰줈 蹂꾨룄 ?뺤쓽媛 ?꾩슂?⑸땲??", size=18, fill="#475569")
 
     draw_text(draw, (table_x, HEIGHT - MARGIN - 34), footer, size=17, fill="#64748b")
 
@@ -135,9 +135,9 @@ def render(kind: str, title: str, subline: str, footer: str) -> Path:
 
 def main() -> None:
     paths = [
-        render("premarket", "프리장 브리핑 시안", "오늘 아침 우선순위를 바로 읽는 간단 표형 시안", "프리장: 보유 점검과 신규 관심만 우선 확인"),
-        render("open", "본장 브리핑 시안", "장 시작 후 즉시 대응 대상을 정리하는 간단 표형 시안", "본장: 보유/축소 우선, 신규는 과열 확인"),
-        render("postclose", "장후 브리핑 시안", "내일 기준 행동을 정리하는 익일 표형 시안", "장후: 익일보유 / 익일관심 / 익일소액매도 정리"),
+        render("premarket", "?꾨━??釉뚮━???쒖븞", "?ㅻ뒛 ?꾩묠 ?곗꽑?쒖쐞瑜?諛붾줈 ?쎈뒗 媛꾨떒 ?쒗삎 ?쒖븞", "?꾨━?? 蹂댁쑀 ?먭?怨??좉퇋 愿?щ쭔 ?곗꽑 ?뺤씤"),
+        render("open", "蹂몄옣 釉뚮━???쒖븞", "???쒖옉 ??利됱떆 ?????곸쓣 ?뺣━?섎뒗 媛꾨떒 ?쒗삎 ?쒖븞", "蹂몄옣: 蹂댁쑀/異뺤냼 ?곗꽑, ?좉퇋??怨쇱뿴 ?뺤씤"),
+        render("postclose", "?ν썑 釉뚮━???쒖븞", "?댁씪 湲곗? ?됰룞???뺣━?섎뒗 ?듭씪 ?쒗삎 ?쒖븞", "?ν썑: ?듭씪蹂댁쑀 / ?듭씪愿??/ ?듭씪?뚯븸留ㅻ룄 ?뺣━"),
     ]
     for path in paths:
         print(path)
@@ -145,3 +145,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

@@ -1,4 +1,4 @@
-if (-not $env:NEW_STRATEGY_HIDDEN_BRIDGE) {
+﻿if (-not $env:NEW_STRATEGY_HIDDEN_BRIDGE) {
     $env:NEW_STRATEGY_HIDDEN_BRIDGE = "1"
     Start-Process powershell `
         -ArgumentList @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $PSCommandPath) `
@@ -18,7 +18,7 @@ if (-not $env:NEW_STRATEGY_TELEGRAM_BRIDGE_ALLOWED_CHAT_IDS) {
     $env:NEW_STRATEGY_TELEGRAM_BRIDGE_ALLOWED_CHAT_IDS = $env:NEW_STRATEGY_TELEGRAM_CHAT_ID
 }
 
-$logDir = "C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2\telegram_bridge"
+$logDir = "E:\VSC\python\new_strategy\output\strategy_v2\telegram_bridge"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 
 $logPath = Join-Path $logDir "bridge_stdout.log"
@@ -36,3 +36,4 @@ while ($true) {
 
     Start-Sleep -Seconds $restartDelaySeconds
 }
+

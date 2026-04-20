@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
@@ -17,7 +17,7 @@ from new_strategy.telegram_bridge_tools import (
 )
 
 
-OUT_DIR = Path(r"C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2\telegram_bridge\brief_images")
+OUT_DIR = Path(r"E:\VSC\python\new_strategy\output\strategy_v2\telegram_bridge\brief_images")
 FONT_REG = Path(r"C:\Windows\Fonts\malgun.ttf")
 FONT_BOLD = Path(r"C:\Windows\Fonts\malgunbd.ttf")
 
@@ -51,15 +51,15 @@ def _badge(draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, *, bg: str
 
 
 def _action_palette(action: str) -> tuple[str, str]:
-    if "매도" in action or "축소" in action:
+    if "留ㅻ룄" in action or "異뺤냼" in action:
         return "#fee2e2", "#b91c1c"
-    if "보유" in action:
+    if "蹂댁쑀" in action:
         return "#dbeafe", "#1d4ed8"
     return "#fef3c7", "#b45309"
 
 
 def _holding_palette(kind: str) -> tuple[str, str]:
-    if kind == "보유":
+    if kind == "蹂댁쑀":
         return "#ecfeff", "#155e75"
     return "#f5f3ff", "#6d28d9"
 
@@ -96,17 +96,17 @@ def _row_payload(row: pd.Series) -> dict[str, str]:
     weekly_window = levels.get("weekly_window")
     weekly_ma_price = levels.get("weekly_ma_price")
 
-    month_dist = _dist_text(current_price_num, monthly_ma_price, monthly_window, "월")
-    week_dist = _dist_text(current_price_num, weekly_ma_price, weekly_window, "주")
+    month_dist = _dist_text(current_price_num, monthly_ma_price, monthly_window, "??)
+    week_dist = _dist_text(current_price_num, weekly_ma_price, weekly_window, "二?)
     dist_text = f"{month_dist} / {week_dist}"
 
     if is_holding:
-        price_ref = f"주{int(weekly_window) if weekly_window else '-'}선 {_safe_int_price(weekly_ma_price)}"
-        holding_text = "보유"
+        price_ref = f"二?int(weekly_window) if weekly_window else '-'}??{_safe_int_price(weekly_ma_price)}"
+        holding_text = "蹂댁쑀"
     else:
         buy_suggest = monthly_ma_price * 1.02 if monthly_ma_price not in (None, 0) else None
-        price_ref = f"제안 {_safe_int_price(buy_suggest)}"
-        holding_text = "신규"
+        price_ref = f"?쒖븞 {_safe_int_price(buy_suggest)}"
+        holding_text = "?좉퇋"
 
     return {
         "holding": holding_text,
@@ -134,14 +134,14 @@ def render_postclose_brief_image(chat_id: str = "") -> Path | None:
     draw = ImageDraw.Draw(img)
 
     _rounded(draw, (MARGIN, MARGIN, WIDTH - MARGIN, height - MARGIN), fill="#ffffff", outline="#e2e8f0", width=2, radius=28)
-    _text(draw, (MARGIN + 30, MARGIN + 24), "장후 브리핑", size=42, bold=True)
+    _text(draw, (MARGIN + 30, MARGIN + 24), "?ν썑 釉뚮━??, size=42, bold=True)
 
     latest_date = "-"
     if "date" in df.columns:
         dt = pd.to_datetime(df["date"], errors="coerce").dropna()
         if not dt.empty:
             latest_date = str(dt.max().date())
-    _text(draw, (MARGIN + 30, MARGIN + 80), f"기준일 {latest_date} · 익일 행동 정리", size=22, fill="#475569")
+    _text(draw, (MARGIN + 30, MARGIN + 80), f"湲곗???{latest_date} 쨌 ?듭씪 ?됰룞 ?뺣━", size=22, fill="#475569")
 
     market_label = _market_state_label(decision.get("market_regime")) if decision is not None else "unknown"
     exposure_label = "-"
@@ -151,12 +151,12 @@ def render_postclose_brief_image(chat_id: str = "") -> Path | None:
         except Exception:
             exposure_label = "-"
 
-    _badge(draw, (MARGIN + 30, MARGIN + 120), f"시장 {market_label}", bg="#fee2e2" if "방어" in market_label else "#ecfeff", fg="#b91c1c" if "방어" in market_label else "#155e75")
-    _badge(draw, (MARGIN + 210, MARGIN + 120), f"운용강도 {exposure_label}", bg="#dbeafe", fg="#1d4ed8")
+    _badge(draw, (MARGIN + 30, MARGIN + 120), f"?쒖옣 {market_label}", bg="#fee2e2" if "諛⑹뼱" in market_label else "#ecfeff", fg="#b91c1c" if "諛⑹뼱" in market_label else "#155e75")
+    _badge(draw, (MARGIN + 210, MARGIN + 120), f"?댁슜媛뺣룄 {exposure_label}", bg="#dbeafe", fg="#1d4ed8")
     _badge(
         draw,
         (MARGIN + 400, MARGIN + 120),
-        f"보유 {_count_signal(counts, 'HOLD')} / 관심 {_count_signal(counts, 'BUY_WATCH')} / 축소 {_count_signal(counts, 'SELL_WATCH')} / 매도 {_count_signal(counts, 'SELL')}",
+        f"蹂댁쑀 {_count_signal(counts, 'HOLD')} / 愿??{_count_signal(counts, 'BUY_WATCH')} / 異뺤냼 {_count_signal(counts, 'SELL_WATCH')} / 留ㅻ룄 {_count_signal(counts, 'SELL')}",
         bg="#f8fafc",
         fg="#334155",
     )
@@ -165,7 +165,7 @@ def render_postclose_brief_image(chat_id: str = "") -> Path | None:
     table_y = HEADER_H
     table_w = WIDTH - MARGIN * 2 - 60
     col_widths = [120, 290, 250, 180, 430, table_w - 120 - 290 - 250 - 180 - 430]
-    headers = ["구분", "종목", "액션", "현재가", "월/주 이격률", "가격 기준"]
+    headers = ["援щ텇", "醫낅ぉ", "?≪뀡", "?꾩옱媛", "??二??닿꺽瑜?, "媛寃?湲곗?"]
 
     x = table_x
     for header, col_w in zip(headers, col_widths):
@@ -199,7 +199,7 @@ def render_postclose_brief_image(chat_id: str = "") -> Path | None:
     _text(
         draw,
         (table_x, note_y),
-        "매수제안가 = 최적 월이평선 × 1.02",
+        "留ㅼ닔?쒖븞媛 = 理쒖쟻 ?붿씠?됱꽑 횞 1.02",
         size=18,
         fill="#64748b",
     )
@@ -208,4 +208,5 @@ def render_postclose_brief_image(chat_id: str = "") -> Path | None:
     out = OUT_DIR / f"postclose_brief_{latest_date.replace('-', '') or 'latest'}.png"
     img.save(out)
     return out
+
 

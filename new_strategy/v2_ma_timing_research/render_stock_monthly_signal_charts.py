@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -7,11 +7,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
-PRICE_PANEL_PATH = Path(r"C:\Users\sgw02\OneDrive\python\new_strategy\price_panel.csv")
+PRICE_PANEL_PATH = Path(r"E:\VSC\python\new_strategy\price_panel.csv")
 SIGNAL_POINTS_PATH = Path(
-    r"C:\Users\sgw02\OneDrive\python\new_strategy\output\v2_stock_check_skinnovation\096770_monthly_signal_points.csv"
+    r"E:\VSC\python\new_strategy\output\v2_stock_check_skinnovation\096770_monthly_signal_points.csv"
 )
-OUTPUT_DIR = Path(r"C:\Users\sgw02\OneDrive\python\new_strategy\output\v2_stock_check_skinnovation")
+OUTPUT_DIR = Path(r"E:\VSC\python\new_strategy\output\v2_stock_check_skinnovation")
 
 
 def load_daily_ohlc(code: str) -> pd.DataFrame:
@@ -182,3 +182,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

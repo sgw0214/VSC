@@ -1,8 +1,8 @@
-Set-Location "E:\VSC\CODE"
+﻿Set-Location "E:\VSC\CODE"
 
 $scriptPath = [System.IO.Path]::GetFullPath("E:\VSC\CODE\new_strategy\run_streamlit_dashboard.ps1")
-$statePath = "C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2\streamlit_wrapper_state.json"
-$wrapperLog = "C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2\streamlit_wrapper.log"
+$statePath = "E:\VSC\python\new_strategy\output\strategy_v2\streamlit_wrapper_state.json"
+$wrapperLog = "E:\VSC\python\new_strategy\output\strategy_v2\streamlit_wrapper.log"
 
 function Write-StopLog([string]$message) {
     Add-Content -Path $wrapperLog -Value ("[{0}] {1}" -f (Get-Date -Format "s"), $message)
@@ -49,3 +49,4 @@ if (Test-Path $statePath) {
     }
     Remove-Item $statePath -Force -ErrorAction SilentlyContinue
 }
+

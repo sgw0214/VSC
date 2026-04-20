@@ -1,7 +1,7 @@
-Set-Location "E:\VSC\CODE"
+﻿Set-Location "E:\VSC\CODE"
 
 $scriptPath = [System.IO.Path]::GetFullPath("E:\VSC\CODE\new_strategy\run_kiwoom_live_quotes.ps1")
-$logDir = "C:\Users\sgw02\OneDrive\python\new_strategy\output\strategy_v2"
+$logDir = "E:\VSC\python\new_strategy\output\strategy_v2"
 $stopLogPath = Join-Path $logDir "kiwoom_live_quotes_stop.log"
 
 function Write-StopLog([string]$message) {
@@ -28,3 +28,4 @@ foreach ($target in $pythonTargets) {
     Write-Output ("stopped kiwoom live quotes process pid=" + $target.ProcessId)
     Write-StopLog ("python_stopped pid={0}" -f $target.ProcessId)
 }
+
