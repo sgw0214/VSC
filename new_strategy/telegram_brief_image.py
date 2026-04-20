@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
@@ -51,15 +51,15 @@ def _badge(draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, *, bg: str
 
 
 def _action_palette(action: str) -> tuple[str, str]:
-    if "留ㅻ룄" in action or "異뺤냼" in action:
+    if "??" in action or "??" in action:
         return "#fee2e2", "#b91c1c"
-    if "蹂댁쑀" in action:
+    if "??" in action:
         return "#dbeafe", "#1d4ed8"
     return "#fef3c7", "#b45309"
 
 
 def _holding_palette(kind: str) -> tuple[str, str]:
-    if kind == "蹂댁쑀":
+    if kind == "??":
         return "#ecfeff", "#155e75"
     return "#f5f3ff", "#6d28d9"
 
@@ -84,7 +84,7 @@ def _row_payload(row: pd.Series) -> dict[str, str]:
     code = str(row.get("code") or "").zfill(6)
     name = str(row.get("name") or code)
     is_holding = bool(row.get("is_real_holding", False))
-    signal_ko = str(row.get("signal_ko") or row.get("display_signal") or row.get("signal") or "-")
+    signal_ko = str(row.get("signal_ko") or row.get("display_signal_ko") or row.get("display_signal") or row.get("signal") or "-")
 
     price_payload = _current_price_payload(code)
     current_price_num = price_payload.get("numeric")
@@ -96,17 +96,17 @@ def _row_payload(row: pd.Series) -> dict[str, str]:
     weekly_window = levels.get("weekly_window")
     weekly_ma_price = levels.get("weekly_ma_price")
 
-    month_dist = _dist_text(current_price_num, monthly_ma_price, monthly_window, "??)
-    week_dist = _dist_text(current_price_num, weekly_ma_price, weekly_window, "二?)
+    month_dist = _dist_text(current_price_num, monthly_ma_price, monthly_window, "?")
+    week_dist = _dist_text(current_price_num, weekly_ma_price, weekly_window, "?")
     dist_text = f"{month_dist} / {week_dist}"
 
     if is_holding:
-        price_ref = f"二?int(weekly_window) if weekly_window else '-'}??{_safe_int_price(weekly_ma_price)}"
-        holding_text = "蹂댁쑀"
+        price_ref = f"?{int(weekly_window) if weekly_window else '-'}? {_safe_int_price(weekly_ma_price)}"
+        holding_text = "??"
     else:
         buy_suggest = monthly_ma_price * 1.02 if monthly_ma_price not in (None, 0) else None
-        price_ref = f"?쒖븞 {_safe_int_price(buy_suggest)}"
-        holding_text = "?좉퇋"
+        price_ref = f"?? {_safe_int_price(buy_suggest)}"
+        holding_text = "??"
 
     return {
         "holding": holding_text,
@@ -134,14 +134,14 @@ def render_postclose_brief_image(chat_id: str = "") -> Path | None:
     draw = ImageDraw.Draw(img)
 
     _rounded(draw, (MARGIN, MARGIN, WIDTH - MARGIN, height - MARGIN), fill="#ffffff", outline="#e2e8f0", width=2, radius=28)
-    _text(draw, (MARGIN + 30, MARGIN + 24), "?ν썑 釉뚮━??, size=42, bold=True)
+    _text(draw, (MARGIN + 30, MARGIN + 24), "?? ???", size=42, bold=True)
 
     latest_date = "-"
     if "date" in df.columns:
         dt = pd.to_datetime(df["date"], errors="coerce").dropna()
         if not dt.empty:
             latest_date = str(dt.max().date())
-    _text(draw, (MARGIN + 30, MARGIN + 80), f"湲곗???{latest_date} 쨌 ?듭씪 ?됰룞 ?뺣━", size=22, fill="#475569")
+    _text(draw, (MARGIN + 30, MARGIN + 80), f"??? {latest_date} ? ?? ?? ??", size=22, fill="#475569")
 
     market_label = _market_state_label(decision.get("market_regime")) if decision is not None else "unknown"
     exposure_label = "-"
@@ -151,12 +151,13 @@ def render_postclose_brief_image(chat_id: str = "") -> Path | None:
         except Exception:
             exposure_label = "-"
 
-    _badge(draw, (MARGIN + 30, MARGIN + 120), f"?쒖옣 {market_label}", bg="#fee2e2" if "諛⑹뼱" in market_label else "#ecfeff", fg="#b91c1c" if "諛⑹뼱" in market_label else "#155e75")
-    _badge(draw, (MARGIN + 210, MARGIN + 120), f"?댁슜媛뺣룄 {exposure_label}", bg="#dbeafe", fg="#1d4ed8")
+    defensive = "??" in market_label
+    _badge(draw, (MARGIN + 30, MARGIN + 120), f"?? {market_label}", bg="#fee2e2" if defensive else "#ecfeff", fg="#b91c1c" if defensive else "#155e75")
+    _badge(draw, (MARGIN + 210, MARGIN + 120), f"???? {exposure_label}", bg="#dbeafe", fg="#1d4ed8")
     _badge(
         draw,
         (MARGIN + 400, MARGIN + 120),
-        f"蹂댁쑀 {_count_signal(counts, 'HOLD')} / 愿??{_count_signal(counts, 'BUY_WATCH')} / 異뺤냼 {_count_signal(counts, 'SELL_WATCH')} / 留ㅻ룄 {_count_signal(counts, 'SELL')}",
+        f"?? {_count_signal(counts, 'HOLD')} / ?? {_count_signal(counts, 'BUY_WATCH')} / ?? {_count_signal(counts, 'SELL_WATCH')} / ?? {_count_signal(counts, 'SELL')}",
         bg="#f8fafc",
         fg="#334155",
     )
@@ -165,7 +166,7 @@ def render_postclose_brief_image(chat_id: str = "") -> Path | None:
     table_y = HEADER_H
     table_w = WIDTH - MARGIN * 2 - 60
     col_widths = [120, 290, 250, 180, 430, table_w - 120 - 290 - 250 - 180 - 430]
-    headers = ["援щ텇", "醫낅ぉ", "?≪뀡", "?꾩옱媛", "??二??닿꺽瑜?, "媛寃?湲곗?"]
+    headers = ["??", "??", "??", "???", "?/? ???", "?? ??"]
 
     x = table_x
     for header, col_w in zip(headers, col_widths):
@@ -196,17 +197,9 @@ def render_postclose_brief_image(chat_id: str = "") -> Path | None:
         _text(draw, (x + 12, y0 + 22), row["price_ref"], size=21, fill="#0f172a")
 
     note_y = start_y + len(rows) * ROW_H + 10
-    _text(
-        draw,
-        (table_x, note_y),
-        "留ㅼ닔?쒖븞媛 = 理쒖쟻 ?붿씠?됱꽑 횞 1.02",
-        size=18,
-        fill="#64748b",
-    )
+    _text(draw, (table_x, note_y), "????? = ?? ??? x 1.02", size=18, fill="#64748b")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     out = OUT_DIR / f"postclose_brief_{latest_date.replace('-', '') or 'latest'}.png"
     img.save(out)
     return out
-
-
